@@ -236,6 +236,7 @@
     <div class="row">
       <div class="pill" id="statusPill">Ready</div>
       <button class="btn secondary" id="extractBtn" type="button">Extract ZIP</button>
+      <button class="btn secondary" id="revealAllBtn" type="button">Reveal All Flex Techs</button>
       <button class="btn" id="findBtn" type="button">Find Closest</button>
       <button class="btn secondary" id="prevBtn" type="button" disabled>Prev</button>
       <button class="btn secondary" id="nextBtn" type="button" disabled>Next</button>
@@ -649,7 +650,9 @@ function renderList(items, meta){
   $("nextBtn").disabled = true;
 
   const hasTarget = !!(meta && meta.targetZip && ZIP_INDEX.get(meta.targetZip));
-  const header = meta?.mode === "stateOnly"
+  const header = meta?.mode === "revealAll"
+    ? `All Flex Techs (Full List)`
+    : meta?.mode === "stateOnly"
     ? `All Flex Techs in ${esc(meta.stateFilter || "")}`
     : meta?.mode === "lastName"
       ? `Last name matches: ${esc(meta.lastName || "")}` + (meta.stateFilter ? ` (State: ${esc(meta.stateFilter)})` : "")
@@ -953,6 +956,27 @@ function goNext(){
       $("zipInput").focus();
     }
 
+    function revealAllFlexTechs(){
+      // Show every flex tech from the active Tech DB (built-in or uploaded override)
+      const rows = getActiveTechRows();
+      if (!rows || !Array.isArray(rows) || !rows.length){
+        renderEmpty("No Flex techs found in the current DB.");
+        setStatus("No Flex techs in DB");
+        return;
+      }
+
+      const all = rows.map(r => rowToTech(r)).filter(Boolean);
+      all.sort((a,b)=>{
+        const an = (a.last_name || "") + " " + (a.first_name || "");
+        const bn = (b.last_name || "") + " " + (b.first_name || "");
+        return an.localeCompare(bn);
+      });
+
+      renderList(all, { mode: "revealAll" });
+      setStatus(`Showing ALL Flex Techs: ${all.length.toLocaleString()}`);
+    }
+
+
     // --- Wire UI ---
     $("extractBtn").addEventListener("click", () => {
       const z = extractZipFromText($("ticketInput").value);
@@ -966,6 +990,11 @@ function goNext(){
     });
 
     $("findBtn").addEventListener("click", runFindClosest);
+
+    const revealAllBtn = document.getElementById("revealAllBtn");
+    if (revealAllBtn){
+      revealAllBtn.addEventListener("click", revealAllFlexTechs);
+    }
 
     // Flex-only Tech DB upload (does not modify files on disk; stored in browser localStorage)
     if (uploadDbBtn && techDbUpload){
