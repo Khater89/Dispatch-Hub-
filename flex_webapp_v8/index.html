@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Flex Tech Finder (Tier 2) — Closest by ZIP</title>
+  <title>Flex Tech Finder (Tier 2) â€” Closest by ZIP</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root{
@@ -201,7 +201,7 @@
 
 <body>
   <div class="card">
-    <h1>USA Tier 2 Flex Tech Finder — Closest by ZIP</h1>
+    <h1>USA Tier 2 Flex Tech Finder â€” Closest by ZIP</h1>
     <p class="muted">
       Filter by <strong>state</strong>, paste the ticket (optional), enter a <strong>ZIP</strong>, then click <strong>Find Closest</strong>.
       The tool calculates distance using the same Haversine approach as the Oncall Lookup and uses the shared <code>zipdb</code> + a dedicated <code>Tier 2 techdb</code>.
@@ -215,7 +215,7 @@
       </div>
       <div>
         <label for="zipInput">Ticket ZIP (required for Find Closest)</label>
-        <input id="zipInput" inputmode="numeric" placeholder="Required for Find Closest — e.g. 90210" />
+        <input id="zipInput" inputmode="numeric" placeholder="Required for Find Closest â€” e.g. 90210" />
       </div>
     </div>
 
@@ -246,7 +246,7 @@
     <div id="results"></div>
 
     <p class="muted" style="margin-top:16px;">
-      Notes: The tool prefers <code>USA Tier 2 Flex Tech</code> when present in the Tech DB; otherwise it falls back to <code>TIER II TECH</code>. Tech location is based on the tech’s home ZIP in <code>techdb</code>.
+      Notes: The tool prefers <code>USA Tier 2 Flex Tech</code> when present in the Tech DB; otherwise it falls back to <code>TIER II TECH</code>. Tech location is based on the techâ€™s home ZIP in <code>techdb</code>.
       If you want to include other tiers later, tell me which type names to include.
     </p>
   </div>
@@ -397,14 +397,14 @@
           // If user is NOT using an uploaded override, update the DB pill
           try{
             if(!(Array.isArray(TECH_ROWS_OVERRIDE) && TECH_ROWS_OVERRIDE.length)){
-              setDbPill(`DB: cloud — ${j.rows.length.toLocaleString()}`);
+              setDbPill(`DB: cloud â€” ${j.rows.length.toLocaleString()}`);
             }
           }catch(_){ /* ignore */ }
 
           // Rebuild the derived list so the UI actually uses the cloud DB
           try{
             rebuildTechList();
-            setStatus(`Ready — Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
+            setStatus(`Ready â€” Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
             refreshResultsAfterDbChange();
           }catch(_){ /* ignore */ }
 
@@ -525,7 +525,7 @@
         const metaRaw = localStorage.getItem(LS_META_KEY);
         TECH_META_OVERRIDE = metaRaw ? JSON.parse(metaRaw) : null;
         const label = TECH_META_OVERRIDE?.filename ? `DB: uploaded (${TECH_META_OVERRIDE.filename})` : "DB: uploaded";
-        setDbPill(`${label} — ${rows.length.toLocaleString()}`);
+        setDbPill(`${label} â€” ${rows.length.toLocaleString()}`);
         if (downloadDbBtn) downloadDbBtn.disabled = false;
         return true;
       }catch(_){
@@ -548,7 +548,7 @@
         localStorage.removeItem(LS_META_KEY);
       }catch(_){ }
       const builtinCount = Array.isArray(window.TECH_DB_ROWS) ? window.TECH_DB_ROWS.length : 0;
-      setDbPill(`DB: built-in — ${builtinCount.toLocaleString()}`);
+      setDbPill(`DB: built-in â€” ${builtinCount.toLocaleString()}`);
       if (downloadDbBtn) downloadDbBtn.disabled = true;
     }
 
@@ -714,7 +714,7 @@ function renderList(items, meta){
           </tbody>
         </table>
       </div>
-      ${hasTarget ? `<div class="muted" style="margin-top:10px;">Target: ${esc(meta.targetZip)}${meta.targetCity ? ` — ${esc(meta.targetCity)}, ${esc(meta.targetState)}` : ""}</div>` : ""}
+      ${hasTarget ? `<div class="muted" style="margin-top:10px;">Target: ${esc(meta.targetZip)}${meta.targetCity ? ` â€” ${esc(meta.targetCity)}, ${esc(meta.targetState)}` : ""}</div>` : ""}
     </div>
   `;
 }
@@ -749,8 +749,8 @@ function renderList(items, meta){
             ${kv("State", item.state)}
             ${kv("Tech ZIP", item.zip)}
             ${kv("Distance", `${miles.toFixed(1)} mi  (${km.toFixed(1)} km)`) }
-            ${kv("Target ZIP", `${targetZip}${meta.targetCity ? ` — ${meta.targetCity}, ${meta.targetState}` : ""}`)}
-            ${stateFilter ? kv("Applied State Filter", `${stateFilter}${stateName ? ` — ${stateName}` : ""}`) : ""}
+            ${kv("Target ZIP", `${targetZip}${meta.targetCity ? ` â€” ${meta.targetCity}, ${meta.targetState}` : ""}`)}
+            ${stateFilter ? kv("Applied State Filter", `${stateFilter}${stateName ? ` â€” ${stateName}` : ""}`) : ""}
           </div>
         </div>
       `;
@@ -790,7 +790,7 @@ function renderList(items, meta){
       const target = ZIP_INDEX.get(targetZip);
       if (!target){
         // ZIP invalid -> just list by name (no distance)
-        setStatus(`ZIP ${targetZip} not found — showing last-name matches without distance`);
+        setStatus(`ZIP ${targetZip} not found â€” showing last-name matches without distance`);
         renderList(items, meta);
         return;
       }
@@ -957,25 +957,28 @@ function goNext(){
     }
 
     function revealAllFlexTechs(){
-      // Show every flex tech from the active Tech DB (built-in or uploaded override)
-      const rows = getActiveTechRows();
-      if (!rows || !Array.isArray(rows) || !rows.length){
-        renderEmpty("No Flex techs found in the current DB.");
-        setStatus("No Flex techs in DB");
-        return;
-      }
+  // Show every Flex Tier 2 tech that is currently loaded (built-in, uploaded, or cloud)
+  if (!Array.isArray(ALL_TIER2_TECHS) || !ALL_TIER2_TECHS.length){
+    // Try rebuilding once (in case DB was swapped)
+    try { rebuildTechList(); } catch(e) {}
+  }
 
-      const all = rows.map(r => rowToTech(r)).filter(Boolean);
-      all.sort((a,b)=>{
-        const an = (a.last_name || "") + " " + (a.first_name || "");
-        const bn = (b.last_name || "") + " " + (b.first_name || "");
-        return an.localeCompare(bn);
-      });
+  const all = Array.isArray(ALL_TIER2_TECHS) ? [...ALL_TIER2_TECHS] : [];
+  if (!all.length){
+    renderEmpty("No Flex techs found in the current DB.");
+    setStatus("No Flex techs in DB");
+    return;
+  }
 
-      renderList(all, { mode: "revealAll" });
-      setStatus(`Showing ALL Flex Techs: ${all.length.toLocaleString()}`);
-    }
+  all.sort((a,b)=>{
+    const an = (a.last_name || "") + " " + (a.first_name || "");
+    const bn = (b.last_name || "") + " " + (b.first_name || "");
+    return an.localeCompare(bn);
+  });
 
+  renderList(all, { mode: "revealAll" });
+  setStatus(`Showing ALL Flex Techs: ${all.length.toLocaleString()}`);
+}
 
     // --- Wire UI ---
     $("extractBtn").addEventListener("click", () => {
@@ -1008,10 +1011,10 @@ function goNext(){
           TECH_ROWS_OVERRIDE = rows;
           TECH_META_OVERRIDE = { filename: f.name, sheet, updatedAt: new Date().toISOString(), count: rows.length };
           saveOverrideToStorage(rows, TECH_META_OVERRIDE);
-          setDbPill(`DB: uploaded (${f.name}) — ${rows.length.toLocaleString()}`);
+          setDbPill(`DB: uploaded (${f.name}) â€” ${rows.length.toLocaleString()}`);
           if (downloadDbBtn) downloadDbBtn.disabled = false;
           rebuildTechList();
-          setStatus(`Flex Tech DB Ready: ${rows.length.toLocaleString()} — Sheet: ${sheet}`);
+          setStatus(`Flex Tech DB Ready: ${rows.length.toLocaleString()} â€” Sheet: ${sheet}`);
           refreshResultsAfterDbChange();
         }catch(e){
           setStatus(String(e?.message || e), true);
@@ -1025,7 +1028,7 @@ function goNext(){
       resetDbBtn.addEventListener("click", () => {
         clearOverride();
         rebuildTechList();
-        setStatus(`Ready — Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
+        setStatus(`Ready â€” Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
         refreshResultsAfterDbChange();
       });
     }
@@ -1085,12 +1088,13 @@ $("lastNameInput").addEventListener("keydown", (e) => {
       const hadOverride = loadOverrideFromStorage();
       if (!hadOverride){
         const builtinCount = Array.isArray(window.TECH_DB_ROWS) ? window.TECH_DB_ROWS.length : 0;
-        setDbPill(`DB: built-in — ${builtinCount.toLocaleString()}`);
+        setDbPill(`DB: built-in â€” ${builtinCount.toLocaleString()}`);
       }
       rebuildTechList();
-      setStatus(`Ready — Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
+      setStatus(`Ready â€” Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
     })();
   
 </script>
 </body>
 </html>
+
