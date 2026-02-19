@@ -1095,6 +1095,170 @@ $("lastNameInput").addEventListener("keydown", (e) => {
     })();
   
 </script>
+<script>
+// RevealAllFix_v1
+(function(){
+  function safeSetStatus(msg){ try{ if (typeof setStatus==="function") setStatus(msg); }catch(e){} }
+  function safeRenderEmpty(msg){ try{ if (typeof renderEmpty==="function") renderEmpty(msg); }catch(e){} }
+
+  // Override/define revealAllFlexTechs safely
+  window.revealAllFlexTechs = function(){
+    try{
+      if (!Array.isArray(window.ALL_TIER2_TECHS) || !window.ALL_TIER2_TECHS.length){
+        try{ if (typeof rebuildTechList==="function") rebuildTechList(); }catch(e){}
+      }
+
+      const all = Array.isArray(window.ALL_TIER2_TECHS) ? [...window.ALL_TIER2_TECHS] : [];
+      if (!all.length){
+        safeRenderEmpty("No Flex techs found in the current DB.");
+        safeSetStatus("No Flex techs in DB");
+        return;
+      }
+
+      all.sort((a,b)=>{
+        const an = ((a.last_name||"")+" "+(a.first_name||"")).trim();
+        const bn = ((b.last_name||"")+" "+(b.first_name||"")).trim();
+        return an.localeCompare(bn);
+      });
+
+      if (typeof renderList==="function") renderList(all, { mode:"revealAll" });
+      safeSetStatus(`Showing ALL Flex Techs: ${all.length.toLocaleString()}`);
+    }catch(err){
+      console.error("RevealAllFix_v1 error:", err);
+      safeSetStatus("Reveal All error - check Console");
+    }
+  };
+
+  // Ensure button click is wired
+  document.addEventListener("DOMContentLoaded", ()=>{
+    const ids = ["revealAllFlexBtn","revealAllFlexTechsBtn","revealAllBtn"];
+    let btn = null;
+
+    for (const id of ids){
+      btn = document.getElementById(id);
+      if (btn) break;
+    }
+
+    if (!btn){
+      const allBtns = Array.from(document.querySelectorAll("button"));
+      btn = allBtns.find(b => (b.textContent||"").toLowerCase().includes("reveal all"));
+    }
+
+    if (btn){
+      btn.addEventListener("click", window.revealAllFlexTechs);
+    }
+  });
+})();
+</script>
+<!-- RevealAllFlexPatch_v2 START -->
+<script>
+(function(){
+  const ARR_KEYS = ["ALL_TIER2_TECHS","TIER2_TECHS","ALL_FLEX_TECHS","FLEX_TECHS","ALL_TECHS","TECHS"];
+  const LOADERS  = ["ensureTier2Loaded","loadTier2Techs","loadTier2Db","loadFlexDb","loadTechDb","bootstrap","init"];
+
+  function getArr(){
+    for (const k of ARR_KEYS){
+      const v = window[k];
+      if (Array.isArray(v) && v.length) return v;
+    }
+    return null;
+  }
+
+  async function tryLoad(){
+    for (const n of LOADERS){
+      const fn = window[n];
+      if (typeof fn === "function"){
+        try{
+          const r = fn.length ? fn(false) : fn();
+          if (r && typeof r.then === "function") await r;
+        }catch(e){}
+      }
+      const a = getArr();
+      if (a) return a;
+    }
+    return getArr();
+  }
+
+  function findHost(){
+    return document.getElementById("results")
+      || document.getElementById("resultsList")
+      || document.getElementById("resultList")
+      || document.getElementById("output")
+      || document.querySelector("[data-results]")
+      || document.querySelector(".results");
+  }
+
+  function esc(s){
+    return String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function renderAll(arr){
+    const host = findHost();
+    if (!host) { alert("Can't find results container. (Expected id='results')"); return; }
+
+    host.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.style.display = "grid";
+    wrap.style.gap = "10px";
+
+    for (const t of arr){
+      const card = document.createElement("div");
+      card.style.border = "1px solid rgba(0,0,0,.15)";
+      card.style.borderRadius = "10px";
+      card.style.padding = "10px";
+      card.style.background = "#fff";
+
+      const keys = Object.keys(t || {});
+      card.innerHTML = keys.length
+        ? keys.map(k => `<div><b>${esc(k)}</b>: ${esc(t[k])}</div>`).join("")
+        : "<i>(empty row)</i>";
+
+      wrap.appendChild(card);
+    }
+    host.appendChild(wrap);
+  }
+
+  async function revealAll(e){
+    if (e) e.preventDefault();
+
+    let arr = getArr();
+    if (!arr) arr = await tryLoad();
+
+    const host = findHost();
+    if (!arr){
+      if (host) host.innerHTML = "<div style='padding:10px;border:1px solid rgba(0,0,0,.15);border-radius:10px;'>No Flex Techs loaded yet. Load DB first, then click Reveal All.</div>";
+      return;
+    }
+
+    const sorted = [...arr].sort((a,b)=>{
+      const an = ((a.last_name||a.lastName||"") + " " + (a.first_name||a.firstName||"")).trim() || (a.name||"");
+      const bn = ((b.last_name||b.lastName||"") + " " + (b.first_name||b.firstName||"")).trim() || (b.name||"");
+      return String(an).localeCompare(String(bn));
+    });
+
+    renderAll(sorted);
+  }
+
+  // IMPORTANT: make it global (works with inline onclick + module scripts)
+  window.revealAllFlexTechs = revealAll;
+
+  function findBtn(){
+    return document.getElementById("revealAllFlexBtn")
+      || document.getElementById("revealAllFlexTechsBtn")
+      || document.getElementById("revealAllBtn")
+      || Array.from(document.querySelectorAll("button,a")).find(el => /reveal\s*all/i.test(el.textContent||""));
+  }
+
+  document.addEventListener("DOMContentLoaded", ()=>{
+    const btn = findBtn();
+    if (!btn) { console.warn("RevealAllFlexPatch_v2: button not found"); return; }
+    btn.addEventListener("click", window.revealAllFlexTechs);
+  });
+})();
+</script>
+<!-- RevealAllFlexPatch_v2 END -->
 </body>
 </html>
+
+
 
