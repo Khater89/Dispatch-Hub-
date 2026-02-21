@@ -1151,111 +1151,109 @@ $("lastNameInput").addEventListener("keydown", (e) => {
 })();
 </script>
 <!-- RevealAllFlexPatch_v2 START -->
+<!-- RevealAllFlexPatch_cloud_v1 START -->
 <script>
 (function(){
-  const ARR_KEYS = ["ALL_TIER2_TECHS","TIER2_TECHS","ALL_FLEX_TECHS","FLEX_TECHS","ALL_TECHS","TECHS"];
-  const LOADERS  = ["ensureTier2Loaded","loadTier2Techs","loadTier2Db","loadFlexDb","loadTechDb","bootstrap","init"];
-
-  function getArr(){
-    for (const k of ARR_KEYS){
-      const v = window[k];
-      if (Array.isArray(v) && v.length) return v;
-    }
-    return null;
+  function join(base, path){
+    if(!base) return path;
+    if(base.endsWith("/") && path.startsWith("/")) return base.slice(0,-1)+path;
+    if(!base.endsWith("/") && !path.startsWith("/")) return base+"/"+path;
+    return base+path;
   }
-
-  async function tryLoad(){
-    for (const n of LOADERS){
-      const fn = window[n];
-      if (typeof fn === "function"){
-        try{
-          const r = fn.length ? fn(false) : fn();
-          if (r && typeof r.then === "function") await r;
-        }catch(e){}
-      }
-      const a = getArr();
-      if (a) return a;
-    }
-    return getArr();
+  async function fetchJson(url){
+    const r = await fetch(url, { cache:"no-store" });
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return await r.json();
   }
-
+  function pickArray(payload){
+    if(Array.isArray(payload)) return payload;
+    if(payload && Array.isArray(payload.data)) return payload.data;
+    if(payload && Array.isArray(payload.rows)) return payload.rows;
+    return [];
+  }
+  function getType(row){
+    return String(row?.type ?? row?.tech_type ?? row?.techType ?? row?.tier ?? row?.role ?? row?.Type ?? "");
+  }
+  function filterFlex(rows){
+    const hasUSAFlex = rows.some(r => /usa\s*tier\s*2\s*flex\s*tech/i.test(getType(r)));
+    if (hasUSAFlex) return rows.filter(r => /usa\s*tier\s*2\s*flex\s*tech/i.test(getType(r)));
+    return rows.filter(r => /tier\s*ii\s*tech/i.test(getType(r)) || /flex/i.test(getType(r)));
+  }
   function findHost(){
     return document.getElementById("results")
       || document.getElementById("resultsList")
       || document.getElementById("resultList")
       || document.getElementById("output")
       || document.querySelector("[data-results]")
-      || document.querySelector(".results");
+      || document.querySelector(".results")
+      || document.querySelector(".empty-state")?.parentElement;
   }
-
   function esc(s){
     return String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
-
-  function renderAll(arr){
+  function renderCards(rows){
     const host = findHost();
-    if (!host) { alert("Can't find results container. (Expected id='results')"); return; }
-
+    if(!host){ alert("Results container not found"); return; }
     host.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.style.display = "grid";
     wrap.style.gap = "10px";
-
-    for (const t of arr){
+    rows.forEach(t=>{
       const card = document.createElement("div");
       card.style.border = "1px solid rgba(0,0,0,.15)";
       card.style.borderRadius = "10px";
       card.style.padding = "10px";
       card.style.background = "#fff";
-
-      const keys = Object.keys(t || {});
+      const keys = Object.keys(t||{});
       card.innerHTML = keys.length
         ? keys.map(k => `<div><b>${esc(k)}</b>: ${esc(t[k])}</div>`).join("")
         : "<i>(empty row)</i>";
-
       wrap.appendChild(card);
-    }
+    });
     host.appendChild(wrap);
   }
 
-  async function revealAll(e){
-    if (e) e.preventDefault();
+  window.revealAllFlexTechs = async function(e){
+    if(e) e.preventDefault();
 
-    let arr = getArr();
-    if (!arr) arr = await tryLoad();
-
-    const host = findHost();
-    if (!arr){
-      if (host) host.innerHTML = "<div style='padding:10px;border:1px solid rgba(0,0,0,.15);border-radius:10px;'>No Flex Techs loaded yet. Load DB first, then click Reveal All.</div>";
-      return;
+    // 1) لو الداتا محمّلة بالفعل داخل الصفحة
+    const keys = ["ALL_TIER2_TECHS","TIER2_TECHS","ALL_FLEX_TECHS","FLEX_TECHS","ALL_TECHS","TECHS"];
+    for(const k of keys){
+      const v = window[k];
+      if(Array.isArray(v) && v.length){
+        const flex = filterFlex(v);
+        renderCards(flex);
+        return;
+      }
     }
 
-    const sorted = [...arr].sort((a,b)=>{
-      const an = ((a.last_name||a.lastName||"") + " " + (a.first_name||a.firstName||"")).trim() || (a.name||"");
-      const bn = ((b.last_name||b.lastName||"") + " " + (b.first_name||b.firstName||"")).trim() || (b.name||"");
-      return String(an).localeCompare(String(bn));
-    });
+    // 2) لو الداتا Cloud: جيبها من API_BASE
+    const base = window.API_BASE || "";
+    if(!base){ alert("API_BASE not set"); return; }
 
-    renderAll(sorted);
-  }
+    const paths = ["/api/oncall/techdb","/oncall/techdb","/api/techdb","/techdb"];
+    let rows = [];
+    for(const p of paths){
+      try{
+        const payload = await fetchJson(join(base, p));
+        rows = pickArray(payload);
+        if(rows.length) break;
+      }catch(_){}
+    }
+    if(!rows.length){ alert("Could not load Tech DB from cloud"); return; }
 
-  // IMPORTANT: make it global (works with inline onclick + module scripts)
-  window.revealAllFlexTechs = revealAll;
+    const flex = filterFlex(rows);
+    renderCards(flex);
+  };
 
-  function findBtn(){
-    return document.getElementById("revealAllFlexBtn")
-      || document.getElementById("revealAllFlexTechsBtn")
-      || document.getElementById("revealAllBtn")
-      || Array.from(document.querySelectorAll("button,a")).find(el => /reveal\s*all/i.test(el.textContent||""));
-  }
-
-  document.addEventListener("DOMContentLoaded", ()=>{
-    const btn = findBtn();
-    if (!btn) { console.warn("RevealAllFlexPatch_v2: button not found"); return; }
-    btn.addEventListener("click", window.revealAllFlexTechs);
+  // ربط الزر حتى لو انعاد رسمه
+  document.addEventListener("click", (e)=>{
+    const el = e.target && e.target.closest ? e.target.closest("#revealAllFlexBtn,#revealAllFlexTechsBtn,#revealAllBtn") : null;
+    if(el) return window.revealAllFlexTechs(e);
   });
 })();
 </script>
+<!-- RevealAllFlexPatch_cloud_v1 END -->
 <!-- RevealAllFlexPatch_v2 END -->
 </body>
 </html>
