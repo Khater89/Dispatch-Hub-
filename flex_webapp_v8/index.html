@@ -1,9 +1,9 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Flex Tech Finder (Tier 2) â€” Closest by ZIP</title>
+  <title>Flex Tech Finder (Tier 2) — Closest by ZIP</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root{
@@ -189,19 +189,18 @@
       border-radius: 8px;
       border: 1px solid rgba(37,99,235,.14);
     }
-  
 
-/* List-mode table (state-only / last-name search) */
-.table-wrap{ overflow:auto; border:1px solid var(--border); border-radius: 14px; }
-.tbl{ width:100%; border-collapse: collapse; font-size: 14px; }
-.tbl th,.tbl td{ padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; }
-.tbl thead th{ position: sticky; top: 0; background: rgba(0,0,0,.35); backdrop-filter: blur(6px); }
-</style>
+    /* List-mode table (state-only / last-name search) */
+    .table-wrap{ overflow:auto; border:1px solid var(--border); border-radius: 14px; }
+    .tbl{ width:100%; border-collapse: collapse; font-size: 14px; }
+    .tbl th,.tbl td{ padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; }
+    .tbl thead th{ position: sticky; top: 0; background: rgba(0,0,0,.35); backdrop-filter: blur(6px); }
+  </style>
 </head>
 
 <body>
   <div class="card">
-    <h1>USA Tier 2 Flex Tech Finder â€” Closest by ZIP</h1>
+    <h1>USA Tier 2 Flex Tech Finder — Closest by ZIP</h1>
     <p class="muted">
       Filter by <strong>state</strong>, paste the ticket (optional), enter a <strong>ZIP</strong>, then click <strong>Find Closest</strong>.
       The tool calculates distance using the same Haversine approach as the Oncall Lookup and uses the shared <code>zipdb</code> + a dedicated <code>Tier 2 techdb</code>.
@@ -215,11 +214,11 @@
       </div>
       <div>
         <label for="zipInput">Ticket ZIP (required for Find Closest)</label>
-        <input id="zipInput" inputmode="numeric" placeholder="Required for Find Closest â€” e.g. 90210" />
+        <input id="zipInput" inputmode="numeric" placeholder="Required for Find Closest — e.g. 90210" />
       </div>
     </div>
 
-        <label for="lastNameInput">Last name (optional)</label>
+    <label for="lastNameInput">Last name (optional)</label>
     <input id="lastNameInput" placeholder="Example: Young (works without ZIP or State)" />
 
     <label for="ticketInput">Ticket text (optional)</label>
@@ -246,7 +245,7 @@
     <div id="results"></div>
 
     <p class="muted" style="margin-top:16px;">
-      Notes: The tool prefers <code>USA Tier 2 Flex Tech</code> when present in the Tech DB; otherwise it falls back to <code>TIER II TECH</code>. Tech location is based on the techâ€™s home ZIP in <code>techdb</code>.
+      Notes: The tool prefers <code>USA Tier 2 Flex Tech</code> when present in the Tech DB; otherwise it falls back to <code>TIER II TECH</code>. Tech location is based on the tech’s home ZIP in <code>techdb</code>.
       If you want to include other tiers later, tell me which type names to include.
     </p>
   </div>
@@ -257,7 +256,6 @@
   <script src="techdb.js"></script>
 
   <script>
-
     // --- Helpers ---
     const $ = (id) => document.getElementById(id);
     const statusPill = $("statusPill");
@@ -272,7 +270,6 @@
       return await r.json();
     }
 
-
     function digitsOnly(s){ return String(s || "").replace(/\D+/g, ""); }
 
     function normZip(z){
@@ -284,7 +281,6 @@
 
     function extractZipFromText(text){
       const t = String(text || "");
-      // Prefer patterns like "ZIP: 12345" or "Zip Code 12345-6789"
       const m1 = t.match(/\bzip\s*(?:code)?\s*[:#-]?\s*(\d{5})(?:-\d{4})?\b/i);
       if (m1) return m1[1];
       const m2 = t.match(/\b(\d{5})(?:-\d{4})?\b/);
@@ -337,11 +333,10 @@
         .join("");
     })();
 
-
     // --- Optional: Load Tech DB from cloud API (preferred) ---
     // Table name if you used the included seed script:
     //   usa_tier_2_flex_tech
-    (async function tryLoadCloudTechDb(){
+    window.__CLOUD_TECHDB_PROMISE = (async function tryLoadCloudTechDb(){
       const base = apiBase();
       if(!base) return;
       try{
@@ -397,14 +392,14 @@
           // If user is NOT using an uploaded override, update the DB pill
           try{
             if(!(Array.isArray(TECH_ROWS_OVERRIDE) && TECH_ROWS_OVERRIDE.length)){
-              setDbPill(`DB: cloud â€” ${j.rows.length.toLocaleString()}`);
+              setDbPill(`DB: cloud — ${j.rows.length.toLocaleString()}`);
             }
           }catch(_){ /* ignore */ }
 
           // Rebuild the derived list so the UI actually uses the cloud DB
           try{
             rebuildTechList();
-            setStatus(`Ready â€” Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
+            setStatus(`Ready — Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
             refreshResultsAfterDbChange();
           }catch(_){ /* ignore */ }
 
@@ -525,7 +520,7 @@
         const metaRaw = localStorage.getItem(LS_META_KEY);
         TECH_META_OVERRIDE = metaRaw ? JSON.parse(metaRaw) : null;
         const label = TECH_META_OVERRIDE?.filename ? `DB: uploaded (${TECH_META_OVERRIDE.filename})` : "DB: uploaded";
-        setDbPill(`${label} â€” ${rows.length.toLocaleString()}`);
+        setDbPill(`${label} — ${rows.length.toLocaleString()}`);
         if (downloadDbBtn) downloadDbBtn.disabled = false;
         return true;
       }catch(_){
@@ -548,7 +543,7 @@
         localStorage.removeItem(LS_META_KEY);
       }catch(_){ }
       const builtinCount = Array.isArray(window.TECH_DB_ROWS) ? window.TECH_DB_ROWS.length : 0;
-      setDbPill(`DB: built-in â€” ${builtinCount.toLocaleString()}`);
+      setDbPill(`DB: built-in — ${builtinCount.toLocaleString()}`);
       if (downloadDbBtn) downloadDbBtn.disabled = true;
     }
 
@@ -563,8 +558,6 @@
       if (!window.XLSX) throw new Error("XLSX library not loaded. (Internet required to load XLSX)");
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, {type:'array'});
-      // Use the LAST sheet (the workbook often contains multiple region sheets,
-      // and the relevant one for Flex is typically the final tab).
       const lastSheetName = wb.SheetNames[wb.SheetNames.length - 1];
       const ws = wb.Sheets[lastSheetName];
       const json = XLSX.utils.sheet_to_json(ws, {defval:''});
@@ -582,9 +575,6 @@
         const typeVal = String(getField(r, ["Type","TYPE"]) ?? "").trim();
         if (typeVal && typeExamples.size < 10) typeExamples.add(typeVal);
 
-        // Keep only Flex Tier2 rows.
-        // Note: some exports use a legacy label like "TIER II TECH" in the Type column
-        // even on the "USA Tier 2 Flex Tech" sheet.
         const typeNorm = normalizeType(typeVal);
         const isAllowed = isUsaTier2FlexType(typeVal) || typeNorm === "TIER II TECH";
         if (!isAllowed) continue;
@@ -630,96 +620,92 @@
     }
 
     // --- Rendering ---
-    // --- Rendering ---
     function kv(label, value){
       if (!value) return "";
       return `<div class="kv"><div class="k">${label}</div><div class="v">${value}</div></div>`;
     }
 
-function esc(s){
-  return String(s ?? "").replace(/[&<>"']/g, (ch)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[ch]));
-}
-
-function renderList(items, meta){
-  // List mode: show all matches (state-only or last-name search)
-  currentList = [];
-  currentIndex = 0;
-  currentMeta = null;
-
-  $("prevBtn").disabled = true;
-  $("nextBtn").disabled = true;
-
-  const hasTarget = !!(meta && meta.targetZip && ZIP_INDEX.get(meta.targetZip));
-  const header = meta?.mode === "revealAll"
-    ? `All Flex Techs (Full List)`
-    : meta?.mode === "stateOnly"
-    ? `All Flex Techs in ${esc(meta.stateFilter || "")}`
-    : meta?.mode === "lastName"
-      ? `Last name matches: ${esc(meta.lastName || "")}` + (meta.stateFilter ? ` (State: ${esc(meta.stateFilter)})` : "")
-      : "Results";
-
-  let rowsHtml = "";
-  for (let i=0; i<items.length; i++){
-    const t = items[i];
-    let distStr = "";
-    if (hasTarget){
-      const miles = Number.isFinite(t.distance_miles) ? t.distance_miles : NaN;
-      if (Number.isFinite(miles)){
-        const km = miles * 1.609344;
-        distStr = `${miles.toFixed(1)} mi (${km.toFixed(1)} km)`;
-      } else {
-        distStr = "N/A";
-      }
+    function esc(s){
+      return String(s ?? "").replace(/[&<>"']/g, (ch)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[ch]));
     }
-    rowsHtml += `
-      <tr>
-        <td>${i+1}</td>
-        <td>${esc(t.tech_id)}</td>
-        <td>${esc(t.first_name)} ${esc(t.last_name)}</td>
-        <td>${esc(t.type)}</td>
-        <td>${esc(t.region)}</td>
-        <td>${esc(t.zone)}</td>
-        <td>${esc(t.city)}</td>
-        <td>${esc(t.state)}</td>
-        <td>${esc(t.zip)}</td>
-        ${hasTarget ? `<td>${distStr}</td>` : ``}
-      </tr>
-    `;
-  }
 
-  resultsDiv.innerHTML = `
-    <div class="tech-card">
-      <div class="tech-name">
-        <span>${header}</span>
-        <span class="badge">${items.length}</span>
-      </div>
-      <div class="table-wrap">
-        <table class="tbl">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Tech ID</th>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Region</th>
-              <th>Zone</th>
-              <th>City</th>
-              <th>State</th>
-              <th>ZIP</th>
-              ${hasTarget ? `<th>Distance</th>` : ``}
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-          </tbody>
-        </table>
-      </div>
-      ${hasTarget ? `<div class="muted" style="margin-top:10px;">Target: ${esc(meta.targetZip)}${meta.targetCity ? ` â€” ${esc(meta.targetCity)}, ${esc(meta.targetState)}` : ""}</div>` : ""}
-    </div>
-  `;
-}
+    function renderList(items, meta){
+      currentList = [];
+      currentIndex = 0;
+      currentMeta = null;
 
+      $("prevBtn").disabled = true;
+      $("nextBtn").disabled = true;
 
+      const hasTarget = !!(meta && meta.targetZip && ZIP_INDEX.get(meta.targetZip));
+      const header = meta?.mode === "revealAll"
+        ? `All Flex Techs (Full List)`
+        : meta?.mode === "stateOnly"
+        ? `All Flex Techs in ${esc(meta.stateFilter || "")}`
+        : meta?.mode === "lastName"
+          ? `Last name matches: ${esc(meta.lastName || "")}` + (meta.stateFilter ? ` (State: ${esc(meta.stateFilter)})` : "")
+          : "Results";
+
+      let rowsHtml = "";
+      for (let i=0; i<items.length; i++){
+        const t = items[i];
+        let distStr = "";
+        if (hasTarget){
+          const miles = Number.isFinite(t.distance_miles) ? t.distance_miles : NaN;
+          if (Number.isFinite(miles)){
+            const km = miles * 1.609344;
+            distStr = `${miles.toFixed(1)} mi (${km.toFixed(1)} km)`;
+          } else {
+            distStr = "N/A";
+          }
+        }
+        rowsHtml += `
+          <tr>
+            <td>${i+1}</td>
+            <td>${esc(t.tech_id)}</td>
+            <td>${esc(t.first_name)} ${esc(t.last_name)}</td>
+            <td>${esc(t.type)}</td>
+            <td>${esc(t.region)}</td>
+            <td>${esc(t.zone)}</td>
+            <td>${esc(t.city)}</td>
+            <td>${esc(t.state)}</td>
+            <td>${esc(t.zip)}</td>
+            ${hasTarget ? `<td>${distStr}</td>` : ``}
+          </tr>
+        `;
+      }
+
+      resultsDiv.innerHTML = `
+        <div class="tech-card">
+          <div class="tech-name">
+            <span>${header}</span>
+            <span class="badge">${items.length}</span>
+          </div>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Tech ID</th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Region</th>
+                  <th>Zone</th>
+                  <th>City</th>
+                  <th>State</th>
+                  <th>ZIP</th>
+                  ${hasTarget ? `<th>Distance</th>` : ``}
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+          ${hasTarget ? `<div class="muted" style="margin-top:10px;">Target: ${esc(meta.targetZip)}${meta.targetCity ? ` — ${esc(meta.targetCity)}, ${esc(meta.targetState)}` : ""}</div>` : ""}
+        </div>
+      `;
+    }
 
     function renderEmpty(msg){
       resultsDiv.innerHTML = `<div class="empty"><p><strong>${msg}</strong></p><p class="muted">Check the ZIP / state filter, then try again.</p></div>`;
@@ -749,8 +735,8 @@ function renderList(items, meta){
             ${kv("State", item.state)}
             ${kv("Tech ZIP", item.zip)}
             ${kv("Distance", `${miles.toFixed(1)} mi  (${km.toFixed(1)} km)`) }
-            ${kv("Target ZIP", `${targetZip}${meta.targetCity ? ` â€” ${meta.targetCity}, ${meta.targetState}` : ""}`)}
-            ${stateFilter ? kv("Applied State Filter", `${stateFilter}${stateName ? ` â€” ${stateName}` : ""}`) : ""}
+            ${kv("Target ZIP", `${targetZip}${meta.targetCity ? ` — ${meta.targetCity}, ${meta.targetState}` : ""}`)}
+            ${stateFilter ? kv("Applied State Filter", `${stateFilter}${stateName ? ` — ${stateName}` : ""}`) : ""}
           </div>
         </div>
       `;
@@ -765,138 +751,129 @@ function renderList(items, meta){
     let currentMeta = null;
 
     function runSearch(){
-  if (!window.ZIP_DB_ROWS || !Array.isArray(getActiveTechRows())){
-    renderEmpty("zipdb / techdb not loaded.");
-    setStatus("Error: DB not loaded");
-    return;
-  }
+      if (!window.ZIP_DB_ROWS || !Array.isArray(getActiveTechRows())){
+        renderEmpty("zipdb / techdb not loaded.");
+        setStatus("Error: DB not loaded");
+        return;
+      }
 
-  const lastQRaw = String($("lastNameInput")?.value || "").trim();
-  const lastQ = lastQRaw.toUpperCase();
+      const lastQRaw = String($("lastNameInput")?.value || "").trim();
+      const lastQ = lastQRaw.toUpperCase();
 
-  let stateFilter = toStateAbbr($("stateInput").value);
-  const targetZip = normZip($("zipInput").value);
+      let stateFilter = toStateAbbr($("stateInput").value);
+      const targetZip = normZip($("zipInput").value);
 
-  // --- Mode A: Last name search (works without ZIP or State) ---
-  if (lastQ){
-    let items = ALL_TIER2_TECHS.filter(t => String(t.last_name || "").toUpperCase().includes(lastQ));
-    // Optional: if state is provided, apply it (not required)
-    if (stateFilter) items = items.filter(t => t.state === stateFilter);
+      // --- Mode A: Last name search (works without ZIP or State) ---
+      if (lastQ){
+        let items = ALL_TIER2_TECHS.filter(t => String(t.last_name || "").toUpperCase().includes(lastQ));
+        if (stateFilter) items = items.filter(t => t.state === stateFilter);
 
-    // If user provided a ZIP, optionally compute distance and sort
-    let meta = { mode: "lastName", lastName: lastQRaw, stateFilter, targetZip, targetCity: "", targetState: "" };
+        let meta = { mode: "lastName", lastName: lastQRaw, stateFilter, targetZip, targetCity: "", targetState: "" };
 
-    if (targetZip){
-      const target = ZIP_INDEX.get(targetZip);
-      if (!target){
-        // ZIP invalid -> just list by name (no distance)
-        setStatus(`ZIP ${targetZip} not found â€” showing last-name matches without distance`);
+        if (targetZip){
+          const target = ZIP_INDEX.get(targetZip);
+          if (!target){
+            setStatus(`ZIP ${targetZip} not found — showing last-name matches without distance`);
+            renderList(items, meta);
+            return;
+          }
+          meta.targetCity = target.city ? String(target.city).toUpperCase() : "";
+          meta.targetState = target.state || "";
+
+          const ranked = [];
+          for (const t of items){
+            const loc = ZIP_INDEX.get(t.zip);
+            const d = loc ? haversineMiles(target.lat, target.lon, loc.lat, loc.lon) : NaN;
+            ranked.push({ ...t, distance_miles: d });
+          }
+          ranked.sort((a,b) => {
+            const da = Number.isFinite(a.distance_miles) ? a.distance_miles : 1e18;
+            const db = Number.isFinite(b.distance_miles) ? b.distance_miles : 1e18;
+            return da - db;
+          });
+
+          if (!ranked.length){
+            renderEmpty(`No Tier 2 techs matched last name "${lastQRaw}".`);
+            setStatus("No results");
+            return;
+          }
+
+          setStatus(`${ranked.length} match(es) for "${lastQRaw}"` + (stateFilter ? ` in ${stateFilter}` : "") + ` (distance computed)`);
+          renderList(ranked, meta);
+          return;
+        }
+
+        items.sort((a,b) => (a.last_name+a.first_name).localeCompare(b.last_name+b.first_name));
+        if (!items.length){
+          renderEmpty(`No Tier 2 techs matched last name "${lastQRaw}".`);
+          setStatus("No results");
+          return;
+        }
+        setStatus(`${items.length} match(es) for "${lastQRaw}"` + (stateFilter ? ` in ${stateFilter}` : ""));
         renderList(items, meta);
         return;
       }
-      meta.targetCity = target.city ? String(target.city).toUpperCase() : "";
-      meta.targetState = target.state || "";
+
+      // --- Mode B: State-only list (when ZIP is empty) ---
+      if (!targetZip){
+        if (!stateFilter){
+          renderEmpty("Enter ZIP to find closest, or enter State to list all techs, or enter Last name to search.");
+          setStatus("Missing input");
+          return;
+        }
+        const items = ALL_TIER2_TECHS.filter(t => t.state === stateFilter);
+        if (!items.length){
+          renderEmpty(`No Tier 2 techs found for ${stateFilter}.`);
+          setStatus("No results");
+          return;
+        }
+        items.sort((a,b) => (a.last_name+a.first_name).localeCompare(b.last_name+b.first_name));
+        setStatus(`${items.length} tech(s) found in ${stateFilter}`);
+        renderList(items, { mode: "stateOnly", stateFilter });
+        return;
+      }
+
+      // --- Mode C: Original behavior (ZIP-based ranking) ---
+      const target = ZIP_INDEX.get(targetZip);
+      if (!target){
+        renderEmpty(`ZIP ${targetZip} not found in ZIP database.`);
+        setStatus("ZIP not found");
+        return;
+      }
+
+      if (!stateFilter) stateFilter = String(target.state || "").toUpperCase();
+
+      const candidates = ALL_TIER2_TECHS.filter(t => !stateFilter || t.state === stateFilter);
 
       const ranked = [];
-      for (const t of items){
+      for (const t of candidates){
         const loc = ZIP_INDEX.get(t.zip);
-        const d = loc ? haversineMiles(target.lat, target.lon, loc.lat, loc.lon) : NaN;
+        if (!loc) continue;
+        const d = haversineMiles(target.lat, target.lon, loc.lat, loc.lon);
+        if (!Number.isFinite(d)) continue;
         ranked.push({ ...t, distance_miles: d });
       }
-      ranked.sort((a,b) => {
-        const da = Number.isFinite(a.distance_miles) ? a.distance_miles : 1e18;
-        const db = Number.isFinite(b.distance_miles) ? b.distance_miles : 1e18;
-        return da - db;
-      });
+
+      ranked.sort((a,b) => a.distance_miles - b.distance_miles);
 
       if (!ranked.length){
-        renderEmpty(`No Tier 2 techs matched last name "${lastQRaw}".`);
+        renderEmpty(`No Tier 2 techs found for ${stateFilter || "(no state)"}.`);
         setStatus("No results");
         return;
       }
 
-      setStatus(`${ranked.length} match(es) for "${lastQRaw}"` + (stateFilter ? ` in ${stateFilter}` : "") + ` (distance computed)`);
-      renderList(ranked, meta);
-      return;
+      currentList = ranked;
+      currentIndex = 0;
+      currentMeta = {
+        targetZip,
+        targetCity: target.city ? String(target.city).toUpperCase() : "",
+        targetState: target.state || "",
+        stateFilter
+      };
+
+      setStatus(`${ranked.length} techs ranked (${stateFilter})`);
+      renderTech(currentList[currentIndex], currentIndex, currentList.length, currentMeta);
     }
-
-    // No ZIP: just list
-    items.sort((a,b) => (a.last_name+a.first_name).localeCompare(b.last_name+b.first_name));
-    if (!items.length){
-      renderEmpty(`No Tier 2 techs matched last name "${lastQRaw}".`);
-      setStatus("No results");
-      return;
-    }
-    setStatus(`${items.length} match(es) for "${lastQRaw}"` + (stateFilter ? ` in ${stateFilter}` : ""));
-    renderList(items, meta);
-    return;
-  }
-
-  // --- Mode B: State-only list (when ZIP is empty) ---
-  if (!targetZip){
-    if (!stateFilter){
-      renderEmpty("Enter ZIP to find closest, or enter State to list all techs, or enter Last name to search.");
-      setStatus("Missing input");
-      return;
-    }
-    const items = ALL_TIER2_TECHS.filter(t => t.state === stateFilter);
-    if (!items.length){
-      renderEmpty(`No Tier 2 techs found for ${stateFilter}.`);
-      setStatus("No results");
-      return;
-    }
-    items.sort((a,b) => (a.last_name+a.first_name).localeCompare(b.last_name+b.first_name));
-    setStatus(`${items.length} tech(s) found in ${stateFilter}`);
-    renderList(items, { mode: "stateOnly", stateFilter });
-    return;
-  }
-
-  // --- Mode C: Original behavior (ZIP-based ranking) ---
-  const target = ZIP_INDEX.get(targetZip);
-  if (!target){
-    renderEmpty(`ZIP ${targetZip} not found in ZIP database.`);
-    setStatus("ZIP not found");
-    return;
-  }
-
-  // If user left state empty, auto use state from the ZIP
-  if (!stateFilter) stateFilter = String(target.state || "").toUpperCase();
-
-  // Filter techs by state
-  const candidates = ALL_TIER2_TECHS.filter(t => !stateFilter || t.state === stateFilter);
-
-  // Compute distances
-  const ranked = [];
-  for (const t of candidates){
-    const loc = ZIP_INDEX.get(t.zip);
-    if (!loc) continue; // can't compute distance
-    const d = haversineMiles(target.lat, target.lon, loc.lat, loc.lon);
-    if (!Number.isFinite(d)) continue;
-    ranked.push({ ...t, distance_miles: d });
-  }
-
-  ranked.sort((a,b) => a.distance_miles - b.distance_miles);
-
-  if (!ranked.length){
-    renderEmpty(`No Tier 2 techs found for ${stateFilter || "(no state)"}.`);
-    setStatus("No results");
-    return;
-  }
-
-  currentList = ranked;
-  currentIndex = 0;
-  currentMeta = {
-    targetZip,
-    targetCity: target.city ? String(target.city).toUpperCase() : "",
-    targetState: target.state || "",
-    stateFilter
-  };
-
-  setStatus(`${ranked.length} techs ranked (${stateFilter})`);
-  renderTech(currentList[currentIndex], currentIndex, currentList.length, currentMeta);
-}
-
-
 
     function runFindClosest(){
       if (!window.ZIP_DB_ROWS || !Array.isArray(getActiveTechRows())){
@@ -905,7 +882,6 @@ function renderList(items, meta){
         return;
       }
 
-      // Ticket ZIP is mandatory for Find Closest
       let targetZip = normZip($("zipInput").value);
       if (!targetZip){
         const z = extractZipFromText($("ticketInput").value);
@@ -922,14 +898,13 @@ function renderList(items, meta){
         return;
       }
 
-      // Force ZIP-based ranking (ignore last-name mode when clicking Find Closest)
       const savedLast = $("lastNameInput").value;
       $("lastNameInput").value = "";
       runSearch();
       $("lastNameInput").value = savedLast;
     }
 
-function goNext(){
+    function goNext(){
       if (!currentList.length) return;
       if (currentIndex < currentList.length - 1) currentIndex++;
       renderTech(currentList[currentIndex], currentIndex, currentList.length, currentMeta);
@@ -956,29 +931,30 @@ function goNext(){
       $("zipInput").focus();
     }
 
-    function revealAllFlexTechs(){
-  // Show every Flex Tier 2 tech that is currently loaded (built-in, uploaded, or cloud)
-  if (!Array.isArray(ALL_TIER2_TECHS) || !ALL_TIER2_TECHS.length){
-    // Try rebuilding once (in case DB was swapped)
-    try { rebuildTechList(); } catch(e) {}
-  }
+    // ✅ FIXED: reveal all waits for cloud load, then rebuilds list
+    async function revealAllFlexTechs(e){
+      try{
+        if (window.__CLOUD_TECHDB_PROMISE) await window.__CLOUD_TECHDB_PROMISE;
+      }catch(_){}
 
-  const all = Array.isArray(ALL_TIER2_TECHS) ? [...ALL_TIER2_TECHS] : [];
-  if (!all.length){
-    renderEmpty("No Flex techs found in the current DB.");
-    setStatus("No Flex techs in DB");
-    return;
-  }
+      try { rebuildTechList(); } catch(_) {}
 
-  all.sort((a,b)=>{
-    const an = (a.last_name || "") + " " + (a.first_name || "");
-    const bn = (b.last_name || "") + " " + (b.first_name || "");
-    return an.localeCompare(bn);
-  });
+      const all = Array.isArray(ALL_TIER2_TECHS) ? [...ALL_TIER2_TECHS] : [];
+      if (!all.length){
+        renderEmpty("No Flex techs found in the current DB.");
+        setStatus("No Flex techs in DB");
+        return;
+      }
 
-  renderList(all, { mode: "revealAll" });
-  setStatus(`Showing ALL Flex Techs: ${all.length.toLocaleString()}`);
-}
+      all.sort((a,b)=>{
+        const an = ((a.last_name||"")+" "+(a.first_name||"")).trim();
+        const bn = ((b.last_name||"")+" "+(b.first_name||"")).trim();
+        return an.localeCompare(bn);
+      });
+
+      renderList(all, { mode: "revealAll" });
+      setStatus(`Showing ALL Flex Techs: ${all.length.toLocaleString()}`);
+    }
 
     // --- Wire UI ---
     $("extractBtn").addEventListener("click", () => {
@@ -999,7 +975,7 @@ function goNext(){
       revealAllBtn.addEventListener("click", revealAllFlexTechs);
     }
 
-    // Flex-only Tech DB upload (does not modify files on disk; stored in browser localStorage)
+    // Flex-only Tech DB upload (stored in browser localStorage)
     if (uploadDbBtn && techDbUpload){
       uploadDbBtn.addEventListener("click", () => techDbUpload.click());
       techDbUpload.addEventListener("change", async () => {
@@ -1011,10 +987,10 @@ function goNext(){
           TECH_ROWS_OVERRIDE = rows;
           TECH_META_OVERRIDE = { filename: f.name, sheet, updatedAt: new Date().toISOString(), count: rows.length };
           saveOverrideToStorage(rows, TECH_META_OVERRIDE);
-          setDbPill(`DB: uploaded (${f.name}) â€” ${rows.length.toLocaleString()}`);
+          setDbPill(`DB: uploaded (${f.name}) — ${rows.length.toLocaleString()}`);
           if (downloadDbBtn) downloadDbBtn.disabled = false;
           rebuildTechList();
-          setStatus(`Flex Tech DB Ready: ${rows.length.toLocaleString()} â€” Sheet: ${sheet}`);
+          setStatus(`Flex Tech DB Ready: ${rows.length.toLocaleString()} — Sheet: ${sheet}`);
           refreshResultsAfterDbChange();
         }catch(e){
           setStatus(String(e?.message || e), true);
@@ -1028,7 +1004,7 @@ function goNext(){
       resetDbBtn.addEventListener("click", () => {
         clearOverride();
         rebuildTechList();
-        setStatus(`Ready â€” Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
+        setStatus(`Ready — Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
         refreshResultsAfterDbChange();
       });
     }
@@ -1045,20 +1021,15 @@ function goNext(){
       if (e.key === "Enter") runFindClosest();
     });
 
+    $("lastNameInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") runSearch();
+    });
 
-
-
-$("lastNameInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") runSearch();
-});
-    // Small QoL: auto extract when user pastes ticket (only if ZIP field empty)
     $("ticketInput").addEventListener("input", () => {
       if ($("zipInput").value.trim()) return;
       const z = extractZipFromText($("ticketInput").value);
       if (z) $("zipInput").value = normZip(z);
     });
-
-
 
     // Auto list by State (no need to click Find Closest)
     let stateDebounce = null;
@@ -1067,7 +1038,6 @@ $("lastNameInput").addEventListener("keydown", (e) => {
       stateDebounce = setTimeout(() => {
         const stateFilter = toStateAbbr($("stateInput").value);
         if (!stateFilter){
-          // If cleared, do nothing (user may be using last-name or ZIP modes)
           return;
         }
 
@@ -1088,189 +1058,12 @@ $("lastNameInput").addEventListener("keydown", (e) => {
       const hadOverride = loadOverrideFromStorage();
       if (!hadOverride){
         const builtinCount = Array.isArray(window.TECH_DB_ROWS) ? window.TECH_DB_ROWS.length : 0;
-        setDbPill(`DB: built-in â€” ${builtinCount.toLocaleString()}`);
+        setDbPill(`DB: built-in — ${builtinCount.toLocaleString()}`);
       }
       rebuildTechList();
-      setStatus(`Ready â€” Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
+      setStatus(`Ready — Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
     })();
-  
-</script>
-<script>
-// RevealAllFix_v1
-(function(){
-  function safeSetStatus(msg){ try{ if (typeof setStatus==="function") setStatus(msg); }catch(e){} }
-  function safeRenderEmpty(msg){ try{ if (typeof renderEmpty==="function") renderEmpty(msg); }catch(e){} }
+  </script>
 
-  // Override/define revealAllFlexTechs safely
-  window.revealAllFlexTechs = function(){
-    try{
-      if (!Array.isArray(window.ALL_TIER2_TECHS) || !window.ALL_TIER2_TECHS.length){
-        try{ if (typeof rebuildTechList==="function") rebuildTechList(); }catch(e){}
-      }
-
-      const all = Array.isArray(window.ALL_TIER2_TECHS) ? [...window.ALL_TIER2_TECHS] : [];
-      if (!all.length){
-        safeRenderEmpty("No Flex techs found in the current DB.");
-        safeSetStatus("No Flex techs in DB");
-        return;
-      }
-
-      all.sort((a,b)=>{
-        const an = ((a.last_name||"")+" "+(a.first_name||"")).trim();
-        const bn = ((b.last_name||"")+" "+(b.first_name||"")).trim();
-        return an.localeCompare(bn);
-      });
-
-      if (typeof renderList==="function") renderList(all, { mode:"revealAll" });
-      safeSetStatus(`Showing ALL Flex Techs: ${all.length.toLocaleString()}`);
-    }catch(err){
-      console.error("RevealAllFix_v1 error:", err);
-      safeSetStatus("Reveal All error - check Console");
-    }
-  };
-
-  // Ensure button click is wired
-  document.addEventListener("DOMContentLoaded", ()=>{
-    const ids = ["revealAllFlexBtn","revealAllFlexTechsBtn","revealAllBtn"];
-    let btn = null;
-
-    for (const id of ids){
-      btn = document.getElementById(id);
-      if (btn) break;
-    }
-
-    if (!btn){
-      const allBtns = Array.from(document.querySelectorAll("button"));
-      btn = allBtns.find(b => (b.textContent||"").toLowerCase().includes("reveal all"));
-    }
-
-    if (btn){
-      btn.addEventListener("click", window.revealAllFlexTechs);
-    }
-  });
-})();
-</script>
-<!-- RevealAllFlexPatch_cloud_v2 START -->
-<script>
-(function(){
-  function join(base, path){
-    if(!base) return path;
-    if(base.endsWith("/") && path.startsWith("/")) return base.slice(0,-1)+path;
-    if(!base.endsWith("/") && !path.startsWith("/")) return base+"/"+path;
-    return base+path;
-  }
-
-  async function fetchJson(url){
-    const r = await fetch(url, { cache:"no-store" });
-    if(!r.ok) throw new Error("HTTP "+r.status);
-    return await r.json();
-  }
-
-  function pickArray(payload){
-    if(Array.isArray(payload)) return payload;
-    if(payload && Array.isArray(payload.data)) return payload.data;
-    if(payload && Array.isArray(payload.rows)) return payload.rows;
-    return [];
-  }
-
-  function getType(row){
-    return String(row?.type ?? row?.tech_type ?? row?.techType ?? row?.tier ?? row?.role ?? row?.Type ?? "");
-  }
-
-  function filterFlex(rows){
-    // Prefer USA Tier 2 Flex Tech if present, else fallback to Tier II Tech / flex
-    const hasUSAFlex = rows.some(r => /usa\s*tier\s*2\s*flex\s*tech/i.test(getType(r)));
-    if (hasUSAFlex) return rows.filter(r => /usa\s*tier\s*2\s*flex\s*tech/i.test(getType(r)));
-    return rows.filter(r => /tier\s*ii\s*tech/i.test(getType(r)) || /flex/i.test(getType(r)));
-  }
-
-  function findHost(){
-    return document.getElementById("results")
-      || document.getElementById("resultsList")
-      || document.getElementById("resultList")
-      || document.getElementById("output")
-      || document.querySelector("[data-results]")
-      || document.querySelector(".results")
-      || document.querySelector(".empty-state")?.parentElement;
-  }
-
-  function esc(s){
-    return String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  function renderCards(rows){
-    const host = findHost();
-    if(!host){ alert("Results container not found"); return; }
-    host.innerHTML = "";
-
-    const wrap = document.createElement("div");
-    wrap.style.display = "grid";
-    wrap.style.gap = "10px";
-
-    rows.forEach(t=>{
-      const card = document.createElement("div");
-      card.style.border = "1px solid rgba(0,0,0,.15)";
-      card.style.borderRadius = "10px";
-      card.style.padding = "10px";
-      card.style.background = "#fff";
-
-      const keys = Object.keys(t||{});
-      card.innerHTML = keys.length
-        ? keys.map(k => `<div><b>${esc(k)}</b>: ${esc(t[k])}</div>`).join("")
-        : "<i>(empty row)</i>";
-
-      wrap.appendChild(card);
-    });
-
-    host.appendChild(wrap);
-  }
-
-  window.revealAllFlexTechs = async function(e){
-    try{
-      if(e) e.preventDefault();
-
-      const host = findHost();
-      if(host) host.innerHTML = "<div style='padding:10px'>Loading Flex Techs…</div>";
-
-      // Always fetch latest from cloud if API_BASE exists
-      const base = window.API_BASE || "";
-      if(!base){
-        if(host) host.innerHTML = "<div style='padding:10px;border:1px solid rgba(0,0,0,.15);border-radius:10px;'>API_BASE not set (config.js). Can't load from cloud.</div>";
-        return;
-      }
-
-      // Your repo uses /api/oncall/techdb for Tech DB
-      const url = join(base, "/api/oncall/techdb");
-      const payload = await fetchJson(url);
-      const rows = pickArray(payload);
-
-      if(!rows.length){
-        if(host) host.innerHTML = "<div style='padding:10px;border:1px solid rgba(0,0,0,.15);border-radius:10px;'>Cloud Tech DB returned 0 rows.</div>";
-        return;
-      }
-
-      const flex = filterFlex(rows);
-      renderCards(flex);
-
-      if(typeof setStatus==="function"){
-        setStatus(`Showing ALL Flex Techs: ${flex.length}`);
-      }
-    }catch(err){
-      console.error("RevealAllFlexPatch_cloud_v2 error:", err);
-      alert("Reveal All failed. افتح Console (F12) وشوف الخطأ.");
-    }
-  };
-
-  // Delegated click (works even if UI re-renders)
-  document.addEventListener("click", (e)=>{
-    const el = e.target && e.target.closest ? e.target.closest("#revealAllFlexBtn,#revealAllFlexTechsBtn,#revealAllBtn") : null;
-    if(el) return window.revealAllFlexTechs(e);
-  });
-})();
-</script>
-<!-- RevealAllFlexPatch_cloud_v2 END -->
 </body>
 </html>
-
-
-
