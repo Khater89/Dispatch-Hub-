@@ -1150,8 +1150,7 @@ $("lastNameInput").addEventListener("keydown", (e) => {
   });
 })();
 </script>
-<!-- RevealAllFlexPatch_v2 START -->
-<!-- RevealAllFlexPatch_cloud_v1 START -->
+<!-- RevealAllFlexPatch_cloud_v2 START -->
 <script>
 (function(){
   function join(base, path){
@@ -1160,25 +1159,31 @@ $("lastNameInput").addEventListener("keydown", (e) => {
     if(!base.endsWith("/") && !path.startsWith("/")) return base+"/"+path;
     return base+path;
   }
+
   async function fetchJson(url){
     const r = await fetch(url, { cache:"no-store" });
     if(!r.ok) throw new Error("HTTP "+r.status);
     return await r.json();
   }
+
   function pickArray(payload){
     if(Array.isArray(payload)) return payload;
     if(payload && Array.isArray(payload.data)) return payload.data;
     if(payload && Array.isArray(payload.rows)) return payload.rows;
     return [];
   }
+
   function getType(row){
     return String(row?.type ?? row?.tech_type ?? row?.techType ?? row?.tier ?? row?.role ?? row?.Type ?? "");
   }
+
   function filterFlex(rows){
+    // Prefer USA Tier 2 Flex Tech if present, else fallback to Tier II Tech / flex
     const hasUSAFlex = rows.some(r => /usa\s*tier\s*2\s*flex\s*tech/i.test(getType(r)));
     if (hasUSAFlex) return rows.filter(r => /usa\s*tier\s*2\s*flex\s*tech/i.test(getType(r)));
     return rows.filter(r => /tier\s*ii\s*tech/i.test(getType(r)) || /flex/i.test(getType(r)));
   }
+
   function findHost(){
     return document.getElementById("results")
       || document.getElementById("resultsList")
@@ -1188,73 +1193,82 @@ $("lastNameInput").addEventListener("keydown", (e) => {
       || document.querySelector(".results")
       || document.querySelector(".empty-state")?.parentElement;
   }
+
   function esc(s){
     return String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
+
   function renderCards(rows){
     const host = findHost();
     if(!host){ alert("Results container not found"); return; }
     host.innerHTML = "";
+
     const wrap = document.createElement("div");
     wrap.style.display = "grid";
     wrap.style.gap = "10px";
+
     rows.forEach(t=>{
       const card = document.createElement("div");
       card.style.border = "1px solid rgba(0,0,0,.15)";
       card.style.borderRadius = "10px";
       card.style.padding = "10px";
       card.style.background = "#fff";
+
       const keys = Object.keys(t||{});
       card.innerHTML = keys.length
         ? keys.map(k => `<div><b>${esc(k)}</b>: ${esc(t[k])}</div>`).join("")
         : "<i>(empty row)</i>";
+
       wrap.appendChild(card);
     });
+
     host.appendChild(wrap);
   }
 
   window.revealAllFlexTechs = async function(e){
-    if(e) e.preventDefault();
+    try{
+      if(e) e.preventDefault();
 
-    // 1) لو الداتا محمّلة بالفعل داخل الصفحة
-    const keys = ["ALL_TIER2_TECHS","TIER2_TECHS","ALL_FLEX_TECHS","FLEX_TECHS","ALL_TECHS","TECHS"];
-    for(const k of keys){
-      const v = window[k];
-      if(Array.isArray(v) && v.length){
-        const flex = filterFlex(v);
-        renderCards(flex);
+      const host = findHost();
+      if(host) host.innerHTML = "<div style='padding:10px'>Loading Flex Techs…</div>";
+
+      // Always fetch latest from cloud if API_BASE exists
+      const base = window.API_BASE || "";
+      if(!base){
+        if(host) host.innerHTML = "<div style='padding:10px;border:1px solid rgba(0,0,0,.15);border-radius:10px;'>API_BASE not set (config.js). Can't load from cloud.</div>";
         return;
       }
+
+      // Your repo uses /api/oncall/techdb for Tech DB
+      const url = join(base, "/api/oncall/techdb");
+      const payload = await fetchJson(url);
+      const rows = pickArray(payload);
+
+      if(!rows.length){
+        if(host) host.innerHTML = "<div style='padding:10px;border:1px solid rgba(0,0,0,.15);border-radius:10px;'>Cloud Tech DB returned 0 rows.</div>";
+        return;
+      }
+
+      const flex = filterFlex(rows);
+      renderCards(flex);
+
+      if(typeof setStatus==="function"){
+        setStatus(`Showing ALL Flex Techs: ${flex.length}`);
+      }
+    }catch(err){
+      console.error("RevealAllFlexPatch_cloud_v2 error:", err);
+      alert("Reveal All failed. افتح Console (F12) وشوف الخطأ.");
     }
-
-    // 2) لو الداتا Cloud: جيبها من API_BASE
-    const base = window.API_BASE || "";
-    if(!base){ alert("API_BASE not set"); return; }
-
-    const paths = ["/api/oncall/techdb","/oncall/techdb","/api/techdb","/techdb"];
-    let rows = [];
-    for(const p of paths){
-      try{
-        const payload = await fetchJson(join(base, p));
-        rows = pickArray(payload);
-        if(rows.length) break;
-      }catch(_){}
-    }
-    if(!rows.length){ alert("Could not load Tech DB from cloud"); return; }
-
-    const flex = filterFlex(rows);
-    renderCards(flex);
   };
 
-  // ربط الزر حتى لو انعاد رسمه
+  // Delegated click (works even if UI re-renders)
   document.addEventListener("click", (e)=>{
     const el = e.target && e.target.closest ? e.target.closest("#revealAllFlexBtn,#revealAllFlexTechsBtn,#revealAllBtn") : null;
     if(el) return window.revealAllFlexTechs(e);
   });
 })();
 </script>
-<!-- RevealAllFlexPatch_cloud_v1 END -->
-<!-- RevealAllFlexPatch_v2 END -->
+<!-- RevealAllFlexPatch_cloud_v2 END -->
 </body>
 </html>
 
