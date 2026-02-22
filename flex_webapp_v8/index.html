@@ -6,197 +6,270 @@
   <title>Flex Tech Finder (Tier 2) — Closest by ZIP</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
-    <link rel="stylesheet" href="../assets/glass.css">
-<script src="../assets/glass.js" defer></script>
-    :root{
-      --bg1:#e8fff3;
-      --bg2:#eaf3ff;
-      --ink:#0b1b2b;
-      --muted:#3a556a;
-      --border: rgba(37,99,235,.25);
-      --border2: rgba(17,163,127,.25);
-      --accent:#2563eb;
-      --accent2:#11a37f;
-      --card: rgba(255,255,255,.78);
-    }
+   /* ===== Light UI Theme (CSS only) — Safe to merge with your working logic ===== */
 
-    body{
-      font-family: Arial, sans-serif;
-      margin:0;
-      padding:24px;
-      color:var(--ink);
-      background: linear-gradient(135deg, var(--bg1), var(--bg2));
-    }
+:root{
+  --bg1: #f0f4f8;
+  --bg2: #d9e2ec;
+  --ink: #102a43;
+  --muted: #486581;
+  --border: #bcccdc;
+  --accent: #2563eb;
+  --accent2: #11a37f;
+  --card: #ffffff;
+  --input-bg: #f5f7fa;
 
-    .card{
-      max-width: 980px;
-      margin: 0 auto;
-      background: var(--card);
-      backdrop-filter: blur(6px);
-      border-radius: 16px;
-      padding: 18px;
-      border: 1px solid rgba(37,99,235,.18);
-      box-shadow: 0 10px 30px rgba(0,0,0,.06);
-    }
+  /* keep old border variable usage */
+  --border-rgba: rgba(37,99,235,.25);
+}
 
-    h1{
-      margin:0 0 8px 0;
-      font-size: 22px;
-      letter-spacing: .2px;
-    }
+body{
+  font-family: "Segoe UI", Arial, sans-serif;
+  margin:0;
+  padding:24px;
+  color: var(--ink);
+  background: linear-gradient(135deg, var(--bg1), var(--bg2));
+  min-height:100vh;
+}
 
-    .muted{
-      color: var(--muted);
-      margin: 6px 0 0 0;
-      line-height: 1.4;
-    }
+.card{
+  max-width: 980px;
+  margin: 0 auto;
+  background: var(--card);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+}
 
-    label{
-      display:block;
-      margin-top: 14px;
-      margin-bottom: 6px;
-      font-weight: 700;
-    }
+h1{
+  margin:0 0 12px 0;
+  font-size: 22px;
+  color: var(--accent);
+  font-weight: 800;
+  letter-spacing: .2px;
+}
 
-    input, textarea{
-      width:100%;
-      padding: 11px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(17,163,127,.35);
-      outline: none;
-      box-sizing: border-box;
-      background: #fff;
-      font-size: 14px;
-    }
+.muted{
+  color: var(--muted);
+  margin: 6px 0 0 0;
+  line-height: 1.5;
+  font-size: 14px;
+}
 
-    textarea{ min-height: 110px; resize: vertical; }
+label{
+  display:block;
+  margin-top: 16px;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+}
 
-    input:focus, textarea:focus{
-      border-color: rgba(37,99,235,.65);
-      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
-    }
+input, textarea{
+  width:100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  outline: none;
+  box-sizing: border-box;
+  background: var(--input-bg);
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
 
-    .row{
-      margin-top: 12px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
+textarea{ min-height: 110px; resize: vertical; }
 
-    .pill{
-      display:inline-block;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(17,163,127,.35);
-      background: rgba(17,163,127,.06);
-      font-size: 12px;
-      font-weight: 700;
-    }
+input:focus, textarea:focus{
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.10);
+}
 
-    .btn{
-      display:inline-block;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(37,99,235,.35);
-      background: rgba(37,99,235,.06);
-      cursor: pointer;
-      user-select: none;
-      font-weight: 700;
-    }
+.row{
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
 
-    .btn:hover{ background: rgba(37,99,235,.10); }
+.pill{
+  display:inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #c6f6d5;
+  background: #f0fff4;
+  color: #22543d;
+  font-size: 12px;
+  font-weight: 700;
+}
 
-    .btn.secondary{
-      border-color: rgba(17,163,127,.35);
-      background: rgba(17,163,127,.06);
-    }
+/* Buttons */
+.btn{
+  display:inline-block;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: #fff;
+  color: var(--accent);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 700;
+  font-size: 13px;
+  transition: all 0.2s;
+}
 
-    .btn.secondary:hover{ background: rgba(17,163,127,.10); }
+.btn:hover{
+  background: var(--accent);
+  color: #fff;
+}
 
-    .btn:disabled{
-      opacity: .5;
-      cursor: not-allowed;
-    }
+/* keep your IDs behavior without changing HTML */
+.btn#findBtn, .btn#clearBtn{
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
 
-    .split{
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    @media (max-width: 720px){
-      .split{ grid-template-columns: 1fr; }
-    }
+.btn#findBtn:hover, .btn#clearBtn:hover{
+  filter: brightness(.95);
+}
 
-    .tech-card{
-      margin-top: 14px;
-      border-radius: 16px;
-      padding: 14px;
-      background: #fff;
-      border: 1px solid rgba(17,163,127,.22);
-      box-shadow: 0 10px 24px rgba(0,0,0,.06);
-    }
+.btn.secondary{
+  border-color: var(--border);
+  background: #f1f5f9;
+  color: #475569;
+}
 
-    .tech-name{
-      display:flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 10px;
-      font-size: 18px;
-      font-weight: 800;
-      margin-bottom: 10px;
-    }
+.btn.secondary:hover{
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #334155;
+}
 
-    .badge{
-      font-size: 12px;
-      font-weight: 800;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(37,99,235,.35);
-      background: rgba(37,99,235,.06);
-      white-space: nowrap;
-    }
+.btn:disabled{
+  opacity: .5;
+  cursor: not-allowed;
+}
 
-    .grid{
-      display:grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px 14px;
-    }
-    @media (max-width: 720px){
-      .grid{ grid-template-columns: 1fr; }
-    }
+.split{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 720px){
+  .split{ grid-template-columns: 1fr; }
+}
 
-    .kv{
-      border: 1px solid rgba(37,99,235,.14);
-      border-left: 4px solid rgba(17,163,127,.55);
-      border-radius: 12px;
-      padding: 10px;
-      background: linear-gradient(135deg, rgba(17,163,127,.05), rgba(37,99,235,.05));
-    }
+/* Results cards */
+.tech-card{
+  margin-top: 20px;
+  border-radius: 12px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
 
-    .k{ font-size: 12px; font-weight: 800; color: var(--muted); margin-bottom: 4px; }
-    .v{ font-size: 14px; font-weight: 700; word-break: break-word; }
+.tech-name{
+  display:flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 15px;
+  color: var(--accent);
+}
 
-    .empty{
-      border: 1px dashed rgba(37,99,235,.35);
-      border-radius: 16px;
-      padding: 14px;
-      margin-top: 14px;
-      background: rgba(255,255,255,.70);
-    }
+.badge{
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #ebf4ff;
+  color: #2b6cb0;
+  border: 1px solid #bee3f8;
+  white-space: nowrap;
+}
 
-    code{
-      background: rgba(37,99,235,.08);
-      padding: 2px 6px;
-      border-radius: 8px;
-      border: 1px solid rgba(37,99,235,.14);
-    }
+.grid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 720px){
+  .grid{ grid-template-columns: 1fr; }
+}
 
-    /* List-mode table (state-only / last-name search) */
-    .table-wrap{ overflow:auto; border:1px solid var(--border); border-radius: 14px; }
-    .tbl{ width:100%; border-collapse: collapse; font-size: 14px; }
-    .tbl th,.tbl td{ padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; }
-    .tbl thead th{ position: sticky; top: 0; background: rgba(0,0,0,.35); backdrop-filter: blur(6px); }
+.kv{
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid var(--accent2);
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.k{
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.v{
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.empty{
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 15px;
+  text-align: center;
+  background: #f8fafc;
+}
+
+code{
+  background: rgba(37,99,235,.08);
+  padding: 2px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(37,99,235,.14);
+}
+
+/* Tables (keep same class names used by your working code) */
+.table-wrap{
+  overflow:auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+.tbl{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #fff;
+}
+
+.tbl th, .tbl td{
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tbl thead th{
+  background: #f1f5f9;
+  color: var(--muted);
+  font-weight: 700;
+  position: sticky; /* keeps the header visible (nice UX) */
+  top: 0;
+}
   </style>
 </head>
 
