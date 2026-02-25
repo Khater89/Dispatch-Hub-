@@ -1,0 +1,13 @@
+/* Glass FX extension */
+:root{ --glass-blur: 16px; --glass-stroke: rgba(255,255,255,.16); }
+html[data-theme="light"]{ --glass-stroke: rgba(15,23,42,.10); }
+.glass, .glass-card, .glass-panel, .glass-header, .glass-toolbar, .glass-table, .card.glass, .panel.glass, .table-wrap.glass { position: relative; overflow: hidden; backdrop-filter: blur(var(--glass-blur)) saturate(1.1); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.1); border: 1px solid var(--glass-stroke) !important; box-shadow: 0 10px 26px rgba(2,6,23,.14), 0 1px 0 rgba(255,255,255,.05) inset, 0 -20px 50px rgba(255,255,255,.03) inset !important; }
+.glass::before, .glass-card::before, .glass-panel::before, .glass-header::before, .glass-toolbar::before, .card.glass::before, .panel.glass::before, .table-wrap.glass::before { content:""; position:absolute; inset:0; pointer-events:none; background: linear-gradient(160deg, rgba(255,255,255,.08), transparent 34%), radial-gradient(200px 120px at 12% 0%, rgba(255,255,255,.10), transparent 70%); opacity:.9; }
+html[data-theme="light"] .glass::before, html[data-theme="light"] .glass-card::before, html[data-theme="light"] .glass-panel::before, html[data-theme="light"] .glass-header::before, html[data-theme="light"] .glass-toolbar::before, html[data-theme="light"] .card.glass::before, html[data-theme="light"] .panel.glass::before, html[data-theme="light"] .table-wrap.glass::before { background: linear-gradient(160deg, rgba(255,255,255,.85), rgba(255,255,255,.2) 32%, transparent 60%), radial-gradient(220px 130px at 10% -5%, rgba(37,99,235,.10), transparent 70%); }
+.hover-lift, .clickable, .option, .row, .list-item { transition: transform .16s ease, background .16s ease, box-shadow .16s ease; }
+.hover-lift:hover, .clickable:hover, .option:hover, .list-item:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(2,6,23,.08); }
+.row:hover{ background: rgba(59,130,246,.06); }
+html[data-theme="light"] .row:hover{ background: rgba(37,99,235,.05); }
+.table-wrap table th{ position: sticky; top: 0; z-index: 2; }
+@media (prefers-reduced-motion:no-preference){ .glass, .glass-card, .glass-panel, .card.glass, .panel.glass{ animation: glassBreath 6s ease-in-out infinite alternate; } }
+@keyframes glassBreath{ 0%{ box-shadow: 0 10px 26px rgba(2,6,23,.14), 0 1px 0 rgba(255,255,255,.05) inset, 0 -20px 50px rgba(255,255,255,.03) inset; } 100%{ box-shadow: 0 14px 30px rgba(2,6,23,.17), 0 1px 0 rgba(255,255,255,.07) inset, 0 -20px 50px rgba(255,255,255,.04) inset; } }
