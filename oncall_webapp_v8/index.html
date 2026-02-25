@@ -3,415 +3,96 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>On‑Call Lookup | 2026 Edition</title>
-  <!-- استيراد الخطوط -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <title>On‑Call Lookup (ZIP/City + Date)</title>
+  <link rel="stylesheet" href="styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  
-  <style>
-    :root {
-      /* Palette 2026 - Deep space & Neon accents */
-      --bg-dark: #05070a;
-      --card-bg: rgba(13, 17, 23, 0.7);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --text-main: #f0f6fc;
-      --text-dim: #8b949e;
-      --primary: #3b82f6; /* Electric Blue */
-      --primary-glow: rgba(59, 130, 246, 0.5);
-      --secondary: #a855f7; /* Hyper Purple */
-      --accent-gradient: linear-gradient(135deg, #3b82f6, #a855f7);
-      --glass-effect: blur(16px) saturate(180%);
-      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    * {
-      box-sizing: border-box;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      margin: 0;
-      background-color: var(--bg-dark);
-      background-image: 
-        radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 40%);
-      color: var(--text-main);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      padding: 40px 20px;
-    }
-
-    .container {
-      max-width: 1100px;
-      width: 100%;
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: 20px;
-    }
-
-    /* Hero Section - Full Width */
-    .hero {
-      grid-column: span 12;
-      padding: 20px 0;
-      text-align: left;
-    }
-
-    .hero h1 {
-      font-size: 2.5rem;
-      font-weight: 800;
-      margin: 0;
-      background: var(--accent-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: -1px;
-    }
-
-    /* Bento Cards */
-    .card {
-      background: var(--card-bg);
-      backdrop-filter: var(--glass-effect);
-      border: 1px solid var(--card-border);
-      border-radius: 24px;
-      padding: 24px;
-      transition: var(--transition);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-      display: flex;
-      flex-direction: column;
-    }
-
-    .card:hover {
-      border-color: rgba(255, 255, 255, 0.15);
-      transform: translateY(-4px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-    }
-
-    h2 {
-      margin: 0 0 16px 0;
-      font-size: 1.1rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    h2::before {
-      content: '';
-      width: 4px;
-      height: 18px;
-      background: var(--accent-gradient);
-      border-radius: 10px;
-    }
-
-    /* Bento Grid Assignment */
-    .upload-oncall { grid-column: span 6; }
-    .upload-tech { grid-column: span 6; }
-    .research-section { grid-column: span 8; }
-    .result-section { grid-column: span 4; }
-    .footer-section { grid-column: span 12; }
-
-    /* Inputs & Fields */
-    .upload {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-
-    .file-input-wrapper {
-      position: relative;
-      border: 2px dashed var(--card-border);
-      border-radius: 16px;
-      padding: 20px;
-      text-align: center;
-      background: rgba(255,255,255,0.02);
-      transition: var(--transition);
-    }
-
-    .file-input-wrapper:hover {
-      border-color: var(--primary);
-      background: rgba(59, 130, 246, 0.05);
-    }
-
-    input.file {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-    }
-
-    .upload-meta {
-      flex: 1;
-    }
-
-    .file-name {
-      font-size: 0.9rem;
-      color: var(--text-dim);
-      margin-bottom: 8px;
-    }
-
-    .progress {
-      height: 6px;
-      background: rgba(255,255,255,0.05);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-
-    .bar {
-      height: 100%;
-      width: 0%;
-      background: var(--accent-gradient);
-      box-shadow: 0 0 10px var(--primary-glow);
-      transition: width 0.4s ease;
-    }
-
-    /* Search Grid */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-
-    label {
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: var(--text-dim);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    input:not([type="file"]), select {
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid var(--card-border);
-      padding: 12px 16px;
-      border-radius: 12px;
-      color: white;
-      font-size: 1rem;
-      transition: var(--transition);
-    }
-
-    input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 4px var(--primary-glow);
-      background: rgba(0,0,0,0.5);
-    }
-
-    /* Buttons */
-    .row {
-      display: flex;
-      gap: 12px;
-      margin-top: 10px;
-    }
-
-    button {
-      padding: 14px 24px;
-      border-radius: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: var(--transition);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    button.primary {
-      background: var(--accent-gradient);
-      color: white;
-      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-    }
-
-    button.primary:hover:not(:disabled) {
-      transform: scale(1.02);
-      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
-    }
-
-    button.secondary {
-      background: rgba(255,255,255,0.05);
-      color: var(--text-main);
-      border: 1px solid var(--card-border);
-    }
-
-    button.secondary:hover:not(:disabled) {
-      background: rgba(255,255,255,0.1);
-    }
-
-    button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-      filter: grayscale(1);
-    }
-
-    .hint {
-      font-size: 0.75rem;
-      color: var(--text-dim);
-      margin-top: 12px;
-      line-height: 1.4;
-    }
-
-    /* Results Area */
-    .result {
-      flex: 1;
-      border-radius: 16px;
-      background: rgba(0,0,0,0.2);
-      border: 1px solid var(--card-border);
-      padding: 15px;
-      font-size: 0.9rem;
-    }
-
-    .muted { color: var(--text-dim); font-style: italic; }
-
-    /* Mobile Responsive */
-    @media (max-width: 900px) {
-      .upload-oncall, .upload-tech, .research-section, .result-section {
-        grid-column: span 12;
-      }
-      .container { gap: 15px; }
-      body { padding: 20px 10px; }
-    }
-
-    /* AM/PM Styling */
-    .ampm-toggle {
-      display: flex;
-      background: rgba(0,0,0,0.3);
-      padding: 4px;
-      border-radius: 12px;
-      border: 1px solid var(--card-border);
-    }
-
-    .ampm-option {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      transition: var(--transition);
-    }
-
-    .ampm-option:has(input:checked) {
-      background: var(--primary);
-      color: white;
-    }
-
-    .ampm-option input { display: none; }
-
-    /* Status Text */
-    .status {
-      font-size: 0.85rem;
-      margin-top: 10px;
-      color: var(--primary);
-    }
-
-  </style>
 </head>
 <body>
 
   <div class="container">
     <header class="hero">
-      <h1>On‑Call Lookup</h1>
-    </header>
+      <div>
+        <h1>On‑Call Lookup</h1>
+</div>
+</header>
 
-    <!-- Section 1: Upload On-Call -->
-    <section class="card upload-oncall">
-      <h2>On-Call Rotation</h2>
+    <section class="card">
+      <h2>1) Upload the On Call Rotation (Excel) file – weekly</h2>
       <div class="upload">
-        <div class="file-input-wrapper">
-          <span id="oncallName">Drop Excel File Here</span>
-          <input id="oncallFile" class="file" type="file" accept=".xlsx,.xls" />
-        </div>
+        <input id="oncallFile" class="file" type="file" accept=".xlsx,.xls" />
         <div class="upload-meta">
+          <div class="file-name" id="oncallName">No file selected</div>
           <div class="progress"><div id="oncallProg" class="bar"></div></div>
         </div>
-        <button id="btnLoadOncall" class="primary">Process File</button>
+        <button id="btnLoadOncall" class="primary">Loading and processing</button>
       </div>
-      <p class="hint">Reads first sheet, maps ZIP areas, ignores Canada.</p>
+      <small class="hint">It reads only the first sheet, replaces the area names with ZIP, and ignores any other sheets.</small>
     </section>
 
-    <!-- Section 2: Upload Techs -->
-    <section class="card upload-tech">
-      <h2>Tech Database</h2>
+    <section class="card">
+      <h2>2) Upload the Tech Database (Excel) file</h2>
       <div class="upload">
-        <div class="file-input-wrapper">
-          <span id="techName">Drop Database Here</span>
-          <input id="techFile" class="file" type="file" accept=".xlsx,.xls" />
-        </div>
+        <input id="techFile" class="file" type="file" accept=".xlsx,.xls" />
         <div class="upload-meta">
+          <div class="file-name" id="techName">No file selected</div>
           <div class="progress"><div id="techProg" class="bar"></div></div>
         </div>
         <button id="btnLoadTech" class="primary">Load Techs</button>
       </div>
-      <p class="hint">Updates technician roster from Excel source.</p>
+      <small class="hint">It reads only the first sheet and ignores Canada entirely.</small>
     </section>
 
-    <!-- Section 3: Research Section -->
-    <section class="card research-section">
-      <h2>Search Criteria</h2>
+    <section class="card">
+      <h2>3) Research</h2>
 
       <div class="grid">
-        <label>ZIP Code (US)
-          <input id="zipInput" inputmode="numeric" placeholder="e.g. 75201" maxlength="5" />
+        <label>ZIP Code (US) (Optional)
+          <input id="zipInput" inputmode="numeric" placeholder="Example: 75201" maxlength="5" />
         </label>
-        <label>City (Optional)
-          <input id="cityInput" placeholder="e.g. Austin" />
+        <label>City (optional if you enter ZIP)
+          <input id="cityInput" placeholder="Example: Austin" />
         </label>
-        <label>State (Required)
-          <input id="stateInput" placeholder="TX" maxlength="2" required />
+        <label>State (2-letter) (Required)<input id="stateInput" placeholder="Example: TX" maxlength="2" required pattern="[A-Za-z]{2}" title="Enter 2-letter state code (e.g., TX)" />
         </label>
       </div>
 
       <div class="grid">
-        <label>Service Date
+        <label>Date
           <input id="dateInput" type="date" />
         </label>
-        
         <div id="ampmWrap" class="ampm-wrap" style="display:none">
-          <label>Shift Time</label>
-          <div class="ampm-toggle" role="radiogroup">
-            <label class="ampm-option">
-              <input type="radio" name="ampm" value="AM" />
-              <span>Morning</span>
-            </label>
-            <label class="ampm-option">
-              <input type="radio" name="ampm" value="PM" />
-              <span>Evening</span>
-            </label>
-          </div>
+        <div class="ampm-label">Ticket time (only required if you choose End Date)</div>
+        <div class="ampm-toggle" role="radiogroup" aria-label="Ticket time AM/PM">
+          <label class="ampm-option">
+            <input type="radio" name="ampm" value="AM" />
+            <span>Morning (12:00 AM → 12:00 PM)</span>
+          </label>
+          <label class="ampm-option">
+            <input type="radio" name="ampm" value="PM" />
+            <span>Evening (1:00 PM → 11:59 PM)</span>
+          </label>
         </div>
+      </div>
+        <div></div>
       </div>
 
       <div class="row">
-        <button id="btnLookup" class="primary">View Technician</button>
-        <button id="btnDownload" class="secondary" disabled>Download Sheet</button>
+        <button id="btnLookup" class="primary big">View Tech</button>
+        <button id="btnDownload" class="secondary big" disabled>Download the sheet after the exchange</button>
       </div>
       <div id="status" class="status"></div>
     </section>
 
-    <!-- Section 4: Result -->
-    <section class="card result-section">
-      <h2>Quick Result</h2>
-      <div id="result" class="result">
-        <p class="muted">Awaiting data...</p>
-      </div>
+    <section class="card">
+      <h2>Result</h2>
+      <div id="result" class="result"><p class="muted">Upload the files and then perform the search.</p></div>
     </section>
 
-    <footer class="footer-section">
-      <div class="card" style="padding: 15px; flex-direction: row; align-items: center; gap: 15px;">
-         <div style="width: 8px; height: 8px; background: var(--primary); border-radius: 50%; box-shadow: 0 0 10px var(--primary);"></div>
-         <p class="hint" style="margin: 0;">System uses proximity-based market determination (Distance Logic) for optimal technician matching.</p>
-      </div>
+    <footer class="foot">
+      <p class="muted">Instead of ZIP Ranges, the application uses a local ZIP rule within the project to determine the nearest market by distance.</p>
     </footer>
   </div>
 
-  <!-- الروابط البرمجية الأصلية -->
   <script src="config.js"></script>
   <script src="zipdb.js"></script>
   <script src="techdb.js"></script>
