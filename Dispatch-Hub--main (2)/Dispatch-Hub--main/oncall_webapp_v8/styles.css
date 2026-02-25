@@ -133,3 +133,10 @@ button:disabled{opacity:.55;cursor:not-allowed}
   border:1px solid rgba(248,113,113,.35) !important;
   background: rgba(127,29,29,.18) !important;
 }
+
+/* Dispatch Hub theme compatibility */
+
+body{background:var(--th-bg, inherit);color:var(--th-text, inherit);}
+input,select,textarea{background:var(--th-input, inherit);color:var(--th-text, inherit);border-color:var(--th-border, currentColor);}
+th,td{border-color:var(--th-border, currentColor);}
+.glass,.card,.panel,.section,.shell,.container{border-color:var(--th-border, currentColor);}
