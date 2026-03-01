@@ -149,7 +149,7 @@
         </div>
 
         <div class="smallnote">
-          Notes: This uses Haversine (great-circle) distance, then multiplies by a <b>driving factor</b> to approximate road distance. If the ticket postal can only be resolved at province-level, an additional <b>auto correction</b> is applied to get closer to real driving distance. ETA is based on the driving-adjusted distance and your speed.
+          Notes: By default this uses Haversine (great-circle) distance, then multiplies by a <b>driving factor</b> to approximate road distance. If the <b>driving API</b> is available (OpenRouteService via <code>/api/canada/ors_matrix</code>), it will use real driving distance & ETA. If the ticket postal can only be resolved at province-level, an additional <b>auto correction</b> is applied.
         </div>
       </div>
 

@@ -134,9 +134,9 @@ Deno.serve(async (req) => {
   //  - /api/...
   //  - /...
   let p = url.pathname;
-  p = p.replace(/^\/functions\/v1\/api/, "");
-  p = p.replace(/^\/api/, "");
-  if (!p.startsWith("/")) p = "/" + p;
+    p = p.replace(/^\/functions\/v1\/api/, "");
+    p = p.replace(/^\/api/, "");
+    if (!p.startsWith("/")) p = "/" + p;
 
   try {
     if (!SUPABASE_URL || !SERVICE_ROLE) {
@@ -265,6 +265,146 @@ Deno.serve(async (req) => {
       });
 
       return new Response(JSON.stringify({ ok: true, table, rows }), {
+        headers: { ...cors(origin), "Content-Type": "application/json" },
+      });
+    }
+
+
+    // --- CANADA: ORS Matrix (distance + duration from job lat/lng to tech postals) ---
+    if (p === "/canada/ors_matrix" && req.method === "POST") {
+      const ORS_API_KEY = Deno.env.get("ORS_API_KEY") || "";
+      if (!ORS_API_KEY) {
+        return new Response(JSON.stringify({ ok: false, error: "Missing ORS_API_KEY env var" }), {
+          status: 500,
+          headers: { ...cors(origin), "Content-Type": "application/json" },
+        });
+      }
+
+      const body = await req.json().catch(() => null) as any;
+      const job_lat = Number(body?.job_lat);
+      const job_lng = Number(body?.job_lng);
+      const techList: any[] = Array.isArray(body?.tech) ? body.tech : [];
+
+      if (!Number.isFinite(job_lat) || !Number.isFinite(job_lng)) {
+        return new Response(JSON.stringify({ ok: false, error: "Invalid job_lat/job_lng" }), {
+          status: 400,
+          headers: { ...cors(origin), "Content-Type": "application/json" },
+        });
+      }
+
+      if (!techList.length) {
+        return new Response(JSON.stringify({ ok: true, distances_km: [], durations_min: [] }), {
+          headers: { ...cors(origin), "Content-Type": "application/json" },
+        });
+      }
+
+      // Geocode postal codes via Nominatim (Canada only) with a tiny in-request cache
+      const geoCache = new Map<string, { lat: number; lng: number } | null>();
+
+      async function geocodePostal(postalRaw: string) {
+        const postal = (postalRaw || "").toString().trim().replace(/\s+/g, "");
+        if (!postal) return null;
+        if (geoCache.has(postal)) return geoCache.get(postal) ?? null;
+
+        const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=ca&limit=1&postalcode=${encodeURIComponent(postal)}`;
+        const r = await fetch(url, {
+          headers: {
+            "User-Agent": "Dispatch-Hub (ORS Matrix) - contact: akhater@acuative.com",
+            "Accept-Language": "en",
+          },
+        });
+
+        if (!r.ok) {
+          geoCache.set(postal, null);
+          return null;
+        }
+        const arr = (await r.json().catch(() => [])) as any[];
+        const first = Array.isArray(arr) && arr.length ? arr[0] : null;
+        const lat = Number(first?.lat);
+        const lng = Number(first?.lon);
+        const out = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+        geoCache.set(postal, out);
+        return out;
+      }
+
+      // Build destinations in ORS format [lng, lat]
+      const destinations: Array<[number, number]> = [];
+      const idxMap: Array<number | null> = [];
+
+      for (const t of techList) {
+        const postal = (t?.tech_postal ?? t?.postal ?? "").toString();
+        const geo = await geocodePostal(postal).catch(() => null);
+        if (!geo) {
+          idxMap.push(null);
+          continue;
+        }
+        destinations.push([geo.lng, geo.lat]);
+        idxMap.push(destinations.length - 1);
+      }
+
+      // If none could be geocoded, return nulls aligned with techList
+      if (!destinations.length) {
+        return new Response(JSON.stringify({
+          ok: true,
+          distances_km: techList.map(() => null),
+          durations_min: techList.map(() => null),
+        }), {
+          headers: { ...cors(origin), "Content-Type": "application/json" },
+        });
+      }
+
+      // ORS Matrix: first location is the origin, others are destinations
+      const payload = {
+        locations: [[job_lng, job_lat], ...destinations],
+        metrics: ["distance", "duration"],
+        units: "m",
+      };
+
+      const orsResp = await fetch("https://api.openrouteservice.org/v2/matrix/driving-car", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": ORS_API_KEY,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const orsJson = await orsResp.json().catch(() => null) as any;
+
+      if (!orsResp.ok || !orsJson) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: "ORS matrix request failed",
+          status: orsResp.status,
+          detail: orsJson,
+        }), {
+          status: 502,
+          headers: { ...cors(origin), "Content-Type": "application/json" },
+        });
+      }
+
+      const distRow = Array.isArray(orsJson?.distances) ? orsJson.distances[0] : [];
+      const durRow = Array.isArray(orsJson?.durations) ? orsJson.durations[0] : [];
+
+      const distances_km = techList.map(() => null as number | null);
+      const durations_min = techList.map(() => null as number | null);
+
+      for (let i = 0; i < idxMap.length; i++) {
+        const di = idxMap[i];
+        if (di === null) continue;
+
+        const dist_m = distRow?.[di + 1];
+        const dur_s = durRow?.[di + 1];
+
+        if (typeof dist_m === "number" && Number.isFinite(dist_m)) {
+          distances_km[i] = Math.round((dist_m / 1000) * 100) / 100;
+        }
+        if (typeof dur_s === "number" && Number.isFinite(dur_s)) {
+          durations_min[i] = Math.round((dur_s / 60) * 10) / 10;
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, distances_km, durations_min }), {
         headers: { ...cors(origin), "Content-Type": "application/json" },
       });
     }

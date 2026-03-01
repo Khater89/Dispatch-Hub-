@@ -6,7 +6,7 @@
   <title>Unified Finder Hub</title>
   
   
-  <meta name="creator" content="Created by Abdelrahman Khater">
+  <meta name="creator" content="Created by Abdel Rahman Khater">
 <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -19,7 +19,7 @@
   --muted:#a7b0c0;
 
   /* fixed header height (your .top-credit is ~42px) */
-  --top-credit-h: 42px;
+  --top-credit-h: 64px;
   --shell-pad: 18px;
 }
 
@@ -65,22 +65,60 @@ body{
 .sub{ margin:2px 0 0; color:var(--muted); font-size:12px; }
 
 .top-credit{
-  position:fixed;
-  top:0; left:0; right:0;
-  z-index:99999;
-  height: var(--top-credit-h);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  padding:8px 12px;
-  font-size:12px;
-  font-weight:700;
-  color:var(--muted);
-  background: rgba(11,18,32,0.92);
-  border-bottom:1px solid var(--border);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  position:fixed; inset:0 0 auto 0;
+  height:var(--top-credit-h);
+  display:flex; align-items:center; justify-content:space-between; gap:14px;
+  padding:10px 16px;
+  background: rgba(0,0,0,0.92);
+  border-bottom:1px solid rgba(255,255,255,0.14);
+  z-index:9999;
+}
+.top-credit .brand-left{display:flex; align-items:center; min-width:0}
+.top-credit .brand-wordmark{
+  height:100%;
+  max-height: calc(var(--top-credit-h) - 18px);
+  width:auto;
+  object-fit:contain;
+  filter: drop-shadow(0 2px 10px rgba(0,0,0,.45));
+}
+.top-credit .brand-right{
+  display:flex; align-items:center; gap:8px;
+  font-size:13px; white-space:nowrap;
+}
+.top-credit .brand-help{color:#f6c453; font-weight:700}
+.top-credit .brand-email{
+  color:#ffffff; text-decoration:none;
+  border-bottom:1px dashed rgba(255,255,255,0.35);
+}
+.top-credit .brand-email:hover{opacity:.92}
+@media (max-width:560px){
+  .top-credit{padding:8px 12px}
+  .top-credit .brand-right{font-size:12px}
+  .top-credit .brand-help{display:none}
+}
+
+.top-credit .brand-left{display:flex; align-items:center; min-width:0}
+.top-credit .brand-wordmark{
+  height:100%;
+  max-height: calc(var(--top-credit-h) - 18px);
+  width:auto;
+  object-fit:contain;
+  filter: drop-shadow(0 2px 10px rgba(0,0,0,.45));
+}
+.top-credit .brand-right{
+  display:flex; align-items:center; gap:8px;
+  font-size:13px; white-space:nowrap;
+}
+.top-credit .brand-help{color:#f6c453; font-weight:700}
+.top-credit .brand-email{
+  color:#ffffff; text-decoration:none;
+  border-bottom:1px dashed rgba(255,255,255,0.35);
+}
+.top-credit .brand-email:hover{opacity:.92}
+@media (max-width:560px){
+  .top-credit{padding:8px 12px}
+  .top-credit .brand-right{font-size:12px}
+  .top-credit .brand-help{display:none}
 }
 
 .top-credit b{ color:var(--text); }
@@ -193,7 +231,20 @@ body{
 <script defer src="assets/glass.js"></script>
 </head>
 <body>
-  <div class="top-credit">Created by <b>Acuative</b> — for help contact <b>abdelrahman Khater</b> <a href="mailto:akhater@acuative.com">akhater@acuative.com</a></div>
+  <div class="top-credit">
+  <div class="brand-left">
+    <img class="brand-wordmark" src="khater_brand_wordmark.png" alt="Abdelrahman Khater" />
+  </div>
+  <div class="brand-right">
+    <span class="brand-help">for help contact</span>
+    <a class="brand-email" href="mailto:akhater@acuative.com">akhater@acuative.com</a>
+  </div>
+</div>
+  <div class="brand-right">
+    <span class="brand-help">for help contact</span>
+    <a class="brand-email" href="mailto:akhater@acuative.com">akhater@acuative.com</a>
+  </div>
+</div>
 <div class="wrap">
     <div class="topbar">
       <div class="brand">
