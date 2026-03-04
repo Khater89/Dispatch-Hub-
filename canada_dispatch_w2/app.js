@@ -27,7 +27,14 @@
   const POSTAL_PROV = (window.CA_POSTAL_PROV && typeof window.CA_POSTAL_PROV === 'object') ? window.CA_POSTAL_PROV : {};
 
   const API_BASE = String(window.API_BASE || '').replace(/\/+$/, '');
-  const REMOTE_ORS_ENDPOINT = API_BASE ? `${API_BASE}/canada/ors_matrix` : '';
+  const API_BASE = String(window.API_BASE || '').replace(/\/+$/, '');
+
+const REMOTE_ORS_ENDPOINT = API_BASE
+  ? (API_BASE.endsWith('/api')
+      ? `${API_BASE}/canada/ors_matrix`
+      : `${API_BASE}/api/canada/ors_matrix`)
+  : '';
+  
   // Local (same-site) endpoint — works with Local proxy (optional): set up any backend to forward /api/canada/ors_matrix
   const LOCAL_ORS_ENDPOINT = '/api/canada/ors_matrix';
   // Optional override
