@@ -26,21 +26,19 @@
   const TECHS = Array.isArray(window.CA_W2_TECHS) ? window.CA_W2_TECHS : [];
   const POSTAL_PROV = (window.CA_POSTAL_PROV && typeof window.CA_POSTAL_PROV === 'object') ? window.CA_POSTAL_PROV : {};
 
-  const API_BASE = String(window.API_BASE || '').replace(/\/+$/, '');
-  const API_BASE = String(window.API_BASE || '').replace(/\/+$/, '');
+
+const API_BASE = String(window.API_BASE || '').replace(/\/+$/, '');
 
 const REMOTE_ORS_ENDPOINT = API_BASE
   ? (API_BASE.endsWith('/api')
       ? `${API_BASE}/canada/ors_matrix`
       : `${API_BASE}/api/canada/ors_matrix`)
   : '';
-  
-  // Local (same-site) endpoint — works with Local proxy (optional): set up any backend to forward /api/canada/ors_matrix
-  const LOCAL_ORS_ENDPOINT = '/api/canada/ors_matrix';
-  // Optional override
-  const OVERRIDE_ORS_ENDPOINT = String(window.ORS_ENDPOINT || '').trim();
 
-  const ORS_ENDPOINTS = [OVERRIDE_ORS_ENDPOINT, REMOTE_ORS_ENDPOINT, LOCAL_ORS_ENDPOINT].filter(Boolean);
+const LOCAL_ORS_ENDPOINT = '/api/canada/ors_matrix';
+const OVERRIDE_ORS_ENDPOINT = String(window.ORS_ENDPOINT || '').trim();
+
+const ORS_ENDPOINTS = [OVERRIDE_ORS_ENDPOINT, REMOTE_ORS_ENDPOINT, LOCAL_ORS_ENDPOINT].filter(Boolean);
   const ORS_ENDPOINT = ORS_ENDPOINTS[0] || '';
 
   function setStatus(text, ok=true){
