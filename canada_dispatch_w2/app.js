@@ -356,7 +356,36 @@
     let listToRender = scored;
 
     if (ORS_ENDPOINTS && ORS_ENDPOINTS.length){
-      const candidates = scored.slice(0, 25);
+      // ✅ smarter candidate selection so we don't miss the real closest tech
+const ticketProv = provForPostal(p);      // ON, QC, ...
+const ticketFSA  = p.slice(0,3);          // e.g. L9T
+
+function candidateRank(x){
+  const tp = normalizePostal(x.tech.postal);
+  const techProv = String(x.tech.province || '').toUpperCase().trim();
+  const provPenalty = (ticketProv && techProv) ? (techProv === ticketProv ? 0 : 10) : 20;
+
+  const techFSA = tp ? tp.slice(0,3) : '';
+  const fsaPenalty =
+    (techFSA === ticketFSA) ? 0 :
+    (tp && tp[0] === p[0]) ? 2 :
+    6;
+
+  // last tie-breaker: the old approx km (still useful within same province)
+  return [provPenalty, fsaPenalty, x.km];
+}
+
+// pick 25 candidates with priority: same province -> same FSA -> same first letter
+const candidates = scored
+  .slice()
+  .sort((a,b)=>{
+    const ra = candidateRank(a), rb = candidateRank(b);
+    for (let i=0;i<ra.length;i++){
+      if (ra[i] !== rb[i]) return ra[i] - rb[i];
+    }
+    return 0;
+  })
+  .slice(0, 25);
       try{
         setStatus('Calculating driving distance (ORS)…', true);
         let j = null;
