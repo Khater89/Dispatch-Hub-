@@ -26,19 +26,20 @@
   const TECHS = Array.isArray(window.CA_W2_TECHS) ? window.CA_W2_TECHS : [];
   const POSTAL_PROV = (window.CA_POSTAL_PROV && typeof window.CA_POSTAL_PROV === 'object') ? window.CA_POSTAL_PROV : {};
 
+  const API_BASE = String(window.API_BASE || '').replace(/\/+$/, '');
 
-const API_BASE = String(window.API_BASE || '').replace(/\/+$/, '');
+  const REMOTE_ORS_ENDPOINT = API_BASE
+    ? (API_BASE.endsWith('/api')
+        ? `${API_BASE}/canada/ors_matrix`
+        : `${API_BASE}/api/canada/ors_matrix`)
+    : '';
 
-const REMOTE_ORS_ENDPOINT = API_BASE
-  ? (API_BASE.endsWith('/api')
-      ? `${API_BASE}/canada/ors_matrix`
-      : `${API_BASE}/api/canada/ors_matrix`)
-  : '';
+  // Local (same-site) endpoint — works with Local proxy (optional): set up any backend to forward /api/canada/ors_matrix
+  const LOCAL_ORS_ENDPOINT = '/api/canada/ors_matrix';
+  // Optional override
+  const OVERRIDE_ORS_ENDPOINT = String(window.ORS_ENDPOINT || '').trim();
 
-const LOCAL_ORS_ENDPOINT = '/api/canada/ors_matrix';
-const OVERRIDE_ORS_ENDPOINT = String(window.ORS_ENDPOINT || '').trim();
-
-const ORS_ENDPOINTS = [OVERRIDE_ORS_ENDPOINT, REMOTE_ORS_ENDPOINT, LOCAL_ORS_ENDPOINT].filter(Boolean);
+  const ORS_ENDPOINTS = [OVERRIDE_ORS_ENDPOINT, REMOTE_ORS_ENDPOINT, LOCAL_ORS_ENDPOINT].filter(Boolean);
   const ORS_ENDPOINT = ORS_ENDPOINTS[0] || '';
 
   function setStatus(text, ok=true){
@@ -146,7 +147,10 @@ const ORS_ENDPOINTS = [OVERRIDE_ORS_ENDPOINT, REMOTE_ORS_ENDPOINT, LOCAL_ORS_END
     if (!p) return null;
 
     const prov = (provHint ? String(provHint).toUpperCase().trim() : provForPostal(p));
-    const city = cityHint ? String(cityHint).toUpperCase().trim() : '';
+    // ✅ تنظيف اسم المدينة (يشيل الأقواس مثل Thornhill (Toronto))
+    const city = cityHint
+      ? String(cityHint).toUpperCase().replace(/\s*\(.*?\)\s*/g,'').trim()
+      : '';
 
     if (POSTAL_OVERRIDE[p]){
       const c = POSTAL_OVERRIDE[p];
@@ -355,15 +359,15 @@ const ORS_ENDPOINTS = [OVERRIDE_ORS_ENDPOINT, REMOTE_ORS_ENDPOINT, LOCAL_ORS_END
       const candidates = scored.slice(0, 25);
       try{
         setStatus('Calculating driving distance (ORS)…', true);
-        let j = null, usedEndpoint = '';
+        let j = null;
         let lastErr = null;
+
         for (const ep of ORS_ENDPOINTS){
           try{
             j = await postJson(ep, {
               ticket_postal: p,
               tech_postals: candidates.map(x => x.tech.postal)
             });
-            usedEndpoint = ep;
             if (j && j.ok) break;
             lastErr = new Error(j?.error || 'ORS routing failed');
           }catch(e){
@@ -373,7 +377,7 @@ const ORS_ENDPOINTS = [OVERRIDE_ORS_ENDPOINT, REMOTE_ORS_ENDPOINT, LOCAL_ORS_END
 
         if (!j || !j.ok) throw (lastErr || new Error('ORS routing failed'));
 
-for (let i=0; i<candidates.length; i++){
+        for (let i=0; i<candidates.length; i++){
           const dk = j.distances_km?.[i];
           const dm = j.durations_min?.[i];
           candidates[i].driveKm = (typeof dk === 'number' && isFinite(dk)) ? dk : null;
@@ -406,8 +410,10 @@ for (let i=0; i<candidates.length; i++){
       resTitle.textContent = `${best.tech.name} (W2) — #${best.tech.tech_id}`;
       resMeta.textContent = `${best.tech.city}, ${best.tech.province} • ${formatPostal(best.tech.postal)} • Ticket: ${formatPostal(p)} • Mode: ORS driving`;
 
-      milesEl.textContent = `${fmtNum(best.miles,1)} (drive ${fmtNum(best.driveMiles,1)})`;
-      kmEl.textContent = `${fmtNum(best.km,1)}`;
+      // ✅ لما ORS شغال، اعرض ORS كـ miles/km بدل Haversine (عشان ما يطلع 0.0 مضلل)
+      milesEl.textContent = `${fmtNum(best.driveMiles,1)} mi (ORS)`;
+      kmEl.textContent = `${fmtNum(best.driveKm,1)} km (ORS)`;
+
       driveKmEl.textContent = `${fmtNum(best.driveKm,1)} (ORS)`;
       etaEl.textContent = eta;
       kpiRow.style.display = 'flex';
@@ -417,7 +423,7 @@ for (let i=0; i<candidates.length; i++){
         `Closest W2 Canada tech: ${best.tech.name} (#${best.tech.tech_id})`,
         `Location: ${best.tech.city}, ${best.tech.province} ${formatPostal(best.tech.postal)}`,
         `Ticket postal: ${formatPostal(p)}`,
-        `Straight-line (Haversine): ${fmtNum(best.miles,1)} mi (${fmtNum(best.km,1)} km)`,
+        `Straight-line (local): N/A (uses province center; may show 0)`,
         `Driving (ORS): ${fmtNum(best.driveMiles,1)} mi (${fmtNum(best.driveKm,1)} km)`,
         `ETA (ORS): ~${eta}`
       ].join('\n');
