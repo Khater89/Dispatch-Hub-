@@ -34,9 +34,7 @@
         : `${API_BASE}/api/canada/ors_matrix`)
     : '';
 
-  // Local (same-site) endpoint — works with Local proxy (optional): set up any backend to forward /api/canada/ors_matrix
   const LOCAL_ORS_ENDPOINT = '/api/canada/ors_matrix';
-  // Optional override
   const OVERRIDE_ORS_ENDPOINT = String(window.ORS_ENDPOINT || '').trim();
 
   const ORS_ENDPOINTS = [OVERRIDE_ORS_ENDPOINT, REMOTE_ORS_ENDPOINT, LOCAL_ORS_ENDPOINT].filter(Boolean);
@@ -147,7 +145,7 @@
     if (!p) return null;
 
     const prov = (provHint ? String(provHint).toUpperCase().trim() : provForPostal(p));
-    // ✅ تنظيف اسم المدينة (يشيل الأقواس مثل Thornhill (Toronto))
+    // تنظيف اسم المدينة (يشيل الأقواس مثل Thornhill (Toronto))
     const city = cityHint
       ? String(cityHint).toUpperCase().replace(/\s*\(.*?\)\s*/g,'').trim()
       : '';
@@ -243,6 +241,12 @@
       throw new Error(msg);
     }
     return j;
+  }
+
+  function chunkArr(arr, size){
+    const out = [];
+    for (let i=0;i<arr.length;i+=size) out.push(arr.slice(i,i+size));
+    return out;
   }
 
   async function copyText(text){
@@ -350,71 +354,81 @@
 
     scored.sort((a,b)=>a.km-b.km);
 
-    // Try ORS driving first (accurate)
+    // Try ORS driving first
     let usedORS = false;
     let best = null;
     let listToRender = scored;
 
     if (ORS_ENDPOINTS && ORS_ENDPOINTS.length){
-      // ✅ smarter candidate selection so we don't miss the real closest tech
-const ticketProv = provForPostal(p);      // ON, QC, ...
-const ticketFSA  = p.slice(0,3);          // e.g. L9T
+      // ✅ IMPORTANT: build a bigger pool so we don't miss the real closest tech
+      const ticketProv = provForPostal(p);
+      const ticketFSA  = p.slice(0,3);
 
-function candidateRank(x){
-  const tp = normalizePostal(x.tech.postal);
-  const techProv = String(x.tech.province || '').toUpperCase().trim();
-  const provPenalty = (ticketProv && techProv) ? (techProv === ticketProv ? 0 : 10) : 20;
+      function candidateRank(x){
+        const tp = normalizePostal(x.tech.postal);
+        const techProv = String(x.tech.province || '').toUpperCase().trim();
+        const provPenalty = (ticketProv && techProv)
+          ? (techProv === ticketProv ? 0 : 10)
+          : 20;
 
-  const techFSA = tp ? tp.slice(0,3) : '';
-  const fsaPenalty =
-    (techFSA === ticketFSA) ? 0 :
-    (tp && tp[0] === p[0]) ? 2 :
-    6;
+        const techFSA = tp ? tp.slice(0,3) : '';
+        const fsaPenalty =
+          (techFSA === ticketFSA) ? 0 :
+          (tp && tp[0] === p[0]) ? 2 :
+          6;
 
-  // last tie-breaker: the old approx km (still useful within same province)
-  return [provPenalty, fsaPenalty, x.km];
-}
+        return [provPenalty, fsaPenalty, x.km];
+      }
 
-// pick 25 candidates with priority: same province -> same FSA -> same first letter
-const candidates = scored
-  .slice()
-  .sort((a,b)=>{
-    const ra = candidateRank(a), rb = candidateRank(b);
-    for (let i=0;i<ra.length;i++){
-      if (ra[i] !== rb[i]) return ra[i] - rb[i];
-    }
-    return 0;
-  })
-  .slice(0, 25);
+      const pool = scored
+        .slice()
+        .sort((a,b)=>{
+          const ra = candidateRank(a), rb = candidateRank(b);
+          for (let i=0;i<ra.length;i++){
+            if (ra[i] !== rb[i]) return ra[i] - rb[i];
+          }
+          return 0;
+        })
+        .slice(0, 75); // 👈 75 candidates (3 calls × 25)
+
       try{
         setStatus('Calculating driving distance (ORS)…', true);
-        let j = null;
-        let lastErr = null;
 
-        for (const ep of ORS_ENDPOINTS){
-          try{
-            j = await postJson(ep, {
-              ticket_postal: p,
-              tech_postals: candidates.map(x => x.tech.postal)
-            });
-            if (j && j.ok) break;
-            lastErr = new Error(j?.error || 'ORS routing failed');
-          }catch(e){
-            lastErr = e;
+        // call ORS in chunks of 25
+        const chunks = chunkArr(pool, 25);
+
+        for (const oneChunk of chunks){
+          let j = null;
+          let lastErr = null;
+
+          for (const ep of ORS_ENDPOINTS){
+            try{
+              j = await postJson(ep, {
+                ticket_postal: p,
+                tech_postals: oneChunk.map(x => x.tech.postal)
+              });
+              if (j && j.ok) break;
+              lastErr = new Error(j?.error || 'ORS routing failed');
+            }catch(e){
+              lastErr = e;
+            }
+          }
+
+          if (!j || !j.ok) throw (lastErr || new Error('ORS routing failed'));
+
+          for (let i=0; i<oneChunk.length; i++){
+            const dk = j.distances_km?.[i];
+            const dm = j.durations_min?.[i];
+            oneChunk[i].driveKm = (typeof dk === 'number' && isFinite(dk)) ? dk : null;
+            oneChunk[i].driveMin = (typeof dm === 'number' && isFinite(dm)) ? dm : null;
+            oneChunk[i].driveMiles = oneChunk[i].driveKm != null ? oneChunk[i].driveKm * 0.621371 : null;
           }
         }
 
-        if (!j || !j.ok) throw (lastErr || new Error('ORS routing failed'));
+        const hasAny = pool.some(x => x.driveKm != null && x.driveMin != null);
+        if (!hasAny) throw new Error('ORS returned no routes for candidates');
 
-        for (let i=0; i<candidates.length; i++){
-          const dk = j.distances_km?.[i];
-          const dm = j.durations_min?.[i];
-          candidates[i].driveKm = (typeof dk === 'number' && isFinite(dk)) ? dk : null;
-          candidates[i].driveMin = (typeof dm === 'number' && isFinite(dm)) ? dm : null;
-          candidates[i].driveMiles = candidates[i].driveKm != null ? candidates[i].driveKm * 0.621371 : null;
-        }
-
-        candidates.sort((a,b)=>{
+        pool.sort((a,b)=>{
           const am = (a.driveMin != null) ? a.driveMin : 1e12;
           const bm = (b.driveMin != null) ? b.driveMin : 1e12;
           if (am !== bm) return am - bm;
@@ -423,9 +437,10 @@ const candidates = scored
           return ak - bk;
         });
 
-        best = candidates.find(x=>x.driveKm!=null && x.driveMin!=null) || candidates[0];
-        listToRender = candidates;
+        best = pool.find(x=>x.driveKm!=null && x.driveMin!=null) || pool[0];
+        listToRender = pool;
         usedORS = true;
+
       }catch(e){
         console.warn('ORS routing failed; using estimate:', e);
         usedORS = false;
@@ -439,7 +454,7 @@ const candidates = scored
       resTitle.textContent = `${best.tech.name} (W2) — #${best.tech.tech_id}`;
       resMeta.textContent = `${best.tech.city}, ${best.tech.province} • ${formatPostal(best.tech.postal)} • Ticket: ${formatPostal(p)} • Mode: ORS driving`;
 
-      // ✅ لما ORS شغال، اعرض ORS كـ miles/km بدل Haversine (عشان ما يطلع 0.0 مضلل)
+      // show ORS distance as the primary numbers
       milesEl.textContent = `${fmtNum(best.driveMiles,1)} mi (ORS)`;
       kmEl.textContent = `${fmtNum(best.driveKm,1)} km (ORS)`;
 
@@ -452,7 +467,7 @@ const candidates = scored
         `Closest W2 Canada tech: ${best.tech.name} (#${best.tech.tech_id})`,
         `Location: ${best.tech.city}, ${best.tech.province} ${formatPostal(best.tech.postal)}`,
         `Ticket postal: ${formatPostal(p)}`,
-        `Straight-line (local): N/A (uses province center; may show 0)`,
+        `Straight-line (local): N/A (uses province center; may be misleading)`,
         `Driving (ORS): ${fmtNum(best.driveMiles,1)} mi (${fmtNum(best.driveKm,1)} km)`,
         `ETA (ORS): ~${eta}`
       ].join('\n');
@@ -461,7 +476,7 @@ const candidates = scored
       return;
     }
 
-    // Fallback: original estimate logic
+    // Fallback: estimate
     const best2 = scored[0];
     const effFactor = effectiveDriveFactor(baseFactor, ticketLL, best2.ll);
 
