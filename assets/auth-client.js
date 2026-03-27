@@ -97,18 +97,18 @@
       .ufh-auth-status.ok { border-color: rgba(74,222,128,.45); background: rgba(20,83,45,.22); color: #bbf7d0; }
       .ufh-auth-owner { margin-top: 8px; color:#93c5fd; font-weight:700; font-size:13px; }
       .ufh-auth-badge {
-        position: fixed; right: 14px; top: 14px; z-index: 2147483645;
-        display:flex; gap:10px; align-items:center;
-        padding: 10px 12px; border-radius: 999px;
-        border: 1px solid rgba(255,255,255,.14); background: rgba(8,15,28,.88); color:#fff;
-        box-shadow: 0 12px 30px rgba(0,0,0,.35);
+        position: fixed; left: 14px; bottom: 14px; z-index: 2147483645;
+        display:flex; align-items:center;
         font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       }
       .ufh-auth-badge button {
-        appearance:none; border:1px solid rgba(255,255,255,.14); border-radius:999px;
-        padding: 7px 10px; cursor:pointer; background: rgba(255,255,255,.08); color:#fff; font-weight:700;
+        appearance:none; border:1px solid rgba(255,255,255,.16); border-radius:999px;
+        padding: 10px 14px; cursor:pointer; background: rgba(8,15,28,.92); color:#fff; font-weight:800;
+        box-shadow: 0 12px 30px rgba(0,0,0,.35);
       }
-      .ufh-auth-badge span { font-size: 12px; color:#dbe4f5; }
+      .ufh-auth-badge button:hover {
+        background: rgba(22,34,56,.98);
+      }
       .ufh-auth-spinner {
         display:inline-block; width:16px; height:16px; border-radius:50%;
         border:2px solid rgba(255,255,255,.25); border-top-color:#fff;
@@ -257,7 +257,7 @@
     if (STATE.userBadge) STATE.userBadge.remove();
     const badge = document.createElement('div');
     badge.className = 'ufh-auth-badge';
-    badge.innerHTML = `<span>${escapeHtml(getDisplayName(session))} • ${escapeHtml(session.user.email || '')}</span><button type="button">Logout</button>`;
+    badge.innerHTML = `<button type="button" aria-label="Logout">Logout</button>`;
     badge.querySelector('button').addEventListener('click', async function(){
       const client = await ensureClient();
       await client.auth.signOut();
