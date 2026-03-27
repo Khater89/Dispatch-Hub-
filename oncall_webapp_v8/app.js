@@ -157,7 +157,14 @@ function apiBase(){
   return String(window.API_BASE || '').replace(/\/+$/,'');
 }
 async function fetchJson(url){
-  const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  let headers = { 'Accept': 'application/json' };
+  if (window.UFHAuth) {
+    try{
+      await window.UFHAuth.requireSession();
+      headers = await window.UFHAuth.getAuthHeaders(headers);
+    }catch(e){}
+  }
+  const r = await fetch(url, { headers });
   if(!r.ok) throw new Error(`API error ${r.status}: ${await r.text()}`);
   return await r.json();
 }

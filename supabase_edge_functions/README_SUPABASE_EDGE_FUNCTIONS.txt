@@ -20,6 +20,9 @@ Quick steps (Supabase CLI):
    supabase secrets set CA_W2_TABLE=...
    # Optional (postal -> province mapping, can be large)
    supabase secrets set CA_POSTAL_TABLE=...
+   supabase secrets set ADMIN_TOKEN=CHANGE_THIS_TO_A_LONG_RANDOM_SECRET
+   supabase secrets set ADMIN_USERNAME=khater
+   supabase secrets set ADMIN_EMAILS=akhater@acuative.com
 5) Deploy:
    supabase functions deploy api
 

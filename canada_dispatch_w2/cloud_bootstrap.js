@@ -8,7 +8,12 @@
   window.CA_POSTAL_PROV = (window.CA_POSTAL_PROV && typeof window.CA_POSTAL_PROV === 'object') ? window.CA_POSTAL_PROV : {};
 
   async function getJson(url){
-    const r = await fetch(url, { method: 'GET' });
+    let headers = {};
+    if (window.UFHAuth) {
+      await window.UFHAuth.requireSession();
+      headers = await window.UFHAuth.getAuthHeaders(headers);
+    }
+    const r = await fetch(url, { method: 'GET', headers });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return await r.json();
   }

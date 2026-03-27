@@ -277,6 +277,17 @@ code{
   <link rel="stylesheet" href="../assets/glass.css">
   <script defer src="../assets/theme.js"></script>
 <script defer src="../assets/glass.js"></script>
+
+<script src="../assets/auth-config.js"></script>
+<script defer src="../assets/auth-client.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  if (window.UFHAuth) {
+    window.UFHAuth.init({ appName: "Unified Finder Hub \u2014 Flex", mountUserBadge: true });
+  }
+});
+</script>
+
 </head>
 
 <body>

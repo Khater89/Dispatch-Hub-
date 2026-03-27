@@ -7,6 +7,25 @@
   - `flex_webapp_v8` to load **Tier 2 Flex** Tech DB from the API when `API_BASE` is set.
 - Added `admin_upload.html` (simple upload page).
 
+## Owner Admin Lock
+This ZIP is now prepared for a single owner admin:
+- Username: `khater`
+- Email: `akhater@acuative.com`
+
+For Supabase Edge Functions, set these secrets before deploy:
+```
+supabase secrets set ADMIN_TOKEN=CHANGE_THIS_TO_A_LONG_RANDOM_SECRET
+supabase secrets set ADMIN_USERNAME=khater
+supabase secrets set ADMIN_EMAILS=akhater@acuative.com
+```
+
+The protected upload route now requires all 3 headers:
+- `x-admin-token`
+- `x-admin-user`
+- `x-admin-email`
+
+`admin_upload.html` already sends these values and is prefilled for the owner admin.
+
 ## 1) Deploy Backend (Render / Railway)
 1. Create a new Supabase project (Postgres).
 2. In `backend/.env` (or Render env vars) set:

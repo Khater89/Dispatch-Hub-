@@ -3,44 +3,117 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UFH Admin — Upload Excel to Cloud DB</title>
+  <title>UFH Admin — Cloud Upload & Access Control</title>
   <link rel="stylesheet" href="assets/glass.css">
   <script defer src="assets/glass.js"></script>
+  <script>(function(){try{var t=localStorage.getItem('dispatchhub-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();</script>
+  <link rel="stylesheet" href="assets/theme.css" />
+  <script defer src="assets/theme.js"></script>
+  <script src="assets/auth-config.js"></script>
+  <script defer src="assets/auth-client.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function(){
+    if (window.UFHAuth) window.UFHAuth.init({ appName: 'UFH Admin — Cloud Upload & Access', mountUserBadge: true });
+  });
+  </script>
   <style>
-body{font-family:Arial, sans-serif; margin:24px; max-width:920px;}
-    .card{border:1px solid #ddd; border-radius:12px; padding:16px; margin-bottom:14px;}
+    body{font-family:Arial, sans-serif; margin:24px; max-width:1120px;}
+    .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px;}
+    .card{border:1px solid #ddd; border-radius:14px; padding:16px; margin-bottom:14px; background:rgba(255,255,255,.88)}
     label{display:block; margin:10px 0 6px; font-weight:600;}
-    input,select,button{font-size:16px;}
-    input[type=text]{width:100%; padding:10px; border:1px solid #ccc; border-radius:8px;}
+    input,select,button,textarea{font-size:16px;}
+    input[type=text], input[type=email], textarea, select{width:100%; padding:10px; border:1px solid #ccc; border-radius:8px;}
     input[type=file]{width:100%;}
     button{padding:10px 14px; border-radius:10px; border:1px solid #999; cursor:pointer;}
     button.primary{background:#1f6feb; color:white; border-color:#1f6feb;}
     pre{background:#0b1020; color:#d7e0ff; padding:12px; border-radius:10px; overflow:auto;}
-    .muted{color:#555;}
+    .muted{color:#555; line-height:1.5}
+    .good{color:#166534; font-weight:700}
+    table{width:100%; border-collapse:collapse; margin-top:10px; font-size:14px;}
+    th,td{border-bottom:1px solid #e5e7eb; padding:8px; text-align:left; vertical-align:top;}
+    .pill{display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:700; background:#eef2ff; color:#3730a3;}
+    .warn{color:#92400e; font-weight:700}
   </style>
-
-  <script>(function(){try{var t=localStorage.getItem('dispatchhub-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();</script>
-  <link rel="stylesheet" href="assets/theme.css" />
-  <script defer src="assets/theme.js"></script>
 </head>
 <body>
-  <h1>UFH Admin — Upload Excel to Cloud DB</h1>
-  <p class="muted">This uploads an Excel file to your backend API, and creates <b>one table per sheet</b>.</p>
+  <h1>UFH Admin — Upload Excel & Access Control</h1>
+  <p class="muted">Owner-only page. Use it to upload Excel data, approve staff accounts, and reset a user device lock when someone changes browser/device.</p>
 
   <div class="card">
-    <label>API Base URL (Backend)</label>
-    <input id="apiBase" type="text" placeholder="https://your-backend.onrender.com" />
-    <label>Prefix (tables will be: prefix__sheetname)</label>
-    <input id="prefix" type="text" value="ars_technician" />
-    <label>Mode</label>
-    <select id="mode">
-      <option value="replace" selected>replace (drop & recreate)</option>
-      <option value="append">append</option>
-    </select>
-    <label>Excel File</label>
-    <input id="file" type="file" accept=".xlsx,.xls" />
-    <div style="margin-top:12px;">
-      <button class="primary" id="btnUpload">Upload</button>
+    <div class="muted"><b>Owner account:</b> <span class="good">akhater@acuative.com</span></div>
+    <div id="sessionHint" class="muted" style="margin-top:8px;">Waiting for login session…</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Cloud upload</h2>
+      <label>API Base URL (Backend)</label>
+      <input id="apiBase" type="text" placeholder="https://your-project.supabase.co/functions/v1/api" />
+      <label>Mode</label>
+      <select id="mode">
+        <option value="replace">replace (truncate then insert)</option>
+        <option value="upsert" selected>upsert (update/insert by tech_id)</option>
+      </select>
+      <label>Excel File</label>
+      <input id="file" type="file" accept=".xlsx,.xls" />
+      <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="primary" id="btnUpload">Upload</button>
+        <button id="btnPing" type="button">Ping /health</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Approve or update a user</h2>
+      <label>Work email</label>
+      <input id="accessEmail" type="email" placeholder="name@acuative.com" />
+      <label>Username (optional)</label>
+      <input id="accessUsername" type="text" placeholder="jdoe" />
+      <label>Role</label>
+      <select id="accessRole">
+        <option value="user" selected>user</option>
+        <option value="manager">manager</option>
+        <option value="admin">admin</option>
+      </select>
+      <label>Status</label>
+      <select id="accessActive">
+        <option value="true" selected>Active</option>
+        <option value="false">Blocked</option>
+      </select>
+      <label>Can self-sign up</label>
+      <select id="accessSignup">
+        <option value="true" selected>Yes</option>
+        <option value="false">No</option>
+      </select>
+      <label>Note</label>
+      <textarea id="accessNote" rows="3" placeholder="Team / shift / note"></textarea>
+      <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="primary" id="btnSaveAccess">Save access</button>
+        <button id="btnRefreshAccess" type="button">Refresh list</button>
+      </div>
+      <div class="muted" style="margin-top:10px;">Users can create their own account only if their email is already approved here and the signup hook is enabled.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Approved users & device locks</h2>
+    <div class="muted">One email = one locked browser/device on the Free plan. Use <b>Reset device</b> when someone changes device or clears browser storage.</div>
+    <div id="accessStatus" class="muted" style="margin-top:8px;">Not loaded yet.</div>
+    <div style="overflow:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>User / Role</th>
+            <th>Status</th>
+            <th>Device</th>
+            <th>Last seen</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="accessRows">
+          <tr><td colspan="6" class="muted">No data yet.</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -53,30 +126,162 @@ body{font-family:Arial, sans-serif; margin:24px; max-width:920px;}
 const $ = (id)=>document.getElementById(id);
 const statusEl = $('status');
 const outEl = $('out');
+const sessionHint = $('sessionHint');
+const accessStatusEl = $('accessStatus');
+const accessRowsEl = $('accessRows');
+const key = 'ufh-admin-api-base-v3';
+
+(function hydrateApiBase(){
+  try{
+    const saved = localStorage.getItem(key);
+    if (saved) $('apiBase').value = saved;
+    else if (window.UFH_AUTH_CONFIG && window.UFH_AUTH_CONFIG.apiBaseUrl) $('apiBase').value = window.UFH_AUTH_CONFIG.apiBaseUrl;
+    else if (window.UFH_AUTH_CONFIG && window.UFH_AUTH_CONFIG.supabaseUrl) $('apiBase').value = String(window.UFH_AUTH_CONFIG.supabaseUrl).replace(/\/+$/,'') + '/functions/v1/api';
+  }catch(_){ }
+})();
+
+$('apiBase').addEventListener('change', ()=>{ try{ localStorage.setItem(key, $('apiBase').value || ''); }catch(_){ } });
+
+window.addEventListener('ufh-auth-ready', function(ev){
+  const email = ev && ev.detail && ev.detail.user ? (ev.detail.user.email || '') : '';
+  const role = ev && ev.detail && ev.detail.authz && ev.detail.authz.user ? (ev.detail.authz.user.role || '') : '';
+  sessionHint.textContent = email ? ('Signed in as: ' + email + (role ? ' • ' + role : '')) : 'Login session ready.';
+  refreshAccessList().catch(()=>{});
+});
+
+async function authFetch(path, options){
+  if (!window.UFHAuth) throw new Error('Auth client is not loaded');
+  await window.UFHAuth.requireSession();
+  const headers = await window.UFHAuth.getAuthHeaders((options && options.headers) || {});
+  const opts = Object.assign({}, options || {}, { headers });
+  return fetch(String($('apiBase').value || '').replace(/\/+$/,'') + path, opts);
+}
+
+$('btnPing').addEventListener('click', async ()=>{
+  try{
+    const base = String($('apiBase').value||'').replace(/\/+$/,'');
+    if(!base) return alert('Enter API Base URL');
+    statusEl.textContent = 'Pinging...';
+    const r = await fetch(base + '/health', { method:'GET' });
+    const t = await r.text();
+    outEl.textContent = t;
+    statusEl.textContent = r.ok ? 'Health OK.' : ('HTTP ' + r.status);
+  }catch(err){
+    statusEl.textContent = 'Ping failed.';
+    outEl.textContent = String(err && err.message ? err.message : err);
+  }
+});
 
 $('btnUpload').addEventListener('click', async ()=>{
-  const base = String($('apiBase').value||'').replace(/\/+$/,'');
-  const prefix = String($('prefix').value||'dataset').trim();
-  const mode = $('mode').value;
-  const f = $('file').files?.[0];
-  if(!base) return alert('Enter API Base URL');
-  if(!f) return alert('Choose an Excel file');
-
-  statusEl.textContent = 'Uploading...';
-  outEl.textContent = '{}';
-
-  const fd = new FormData();
-  fd.append('file', f);
-
-  const url = `${base}/api/upload?prefix=${encodeURIComponent(prefix)}&mode=${encodeURIComponent(mode)}`;
-  const r = await fetch(url, { method:'POST', body: fd });
-  const t = await r.text();
   try{
-    outEl.textContent = JSON.stringify(JSON.parse(t), null, 2);
-  }catch(_){
-    outEl.textContent = t;
+    const base = String($('apiBase').value||'').replace(/\/+$/,'');
+    const mode = $('mode').value;
+    const f = $('file').files && $('file').files[0];
+    if(!base) return alert('Enter API Base URL');
+    if(!f) return alert('Choose an Excel file');
+    statusEl.textContent = 'Uploading...';
+    outEl.textContent = '{}';
+    const fd = new FormData();
+    fd.append('file', f);
+    const headers = await window.UFHAuth.getAuthHeaders();
+    const r = await fetch(base + '/admin/techdbs/upload?mode=' + encodeURIComponent(mode), { method:'POST', body: fd, headers });
+    const t = await r.text();
+    try { outEl.textContent = JSON.stringify(JSON.parse(t), null, 2); }
+    catch(_) { outEl.textContent = t; }
+    statusEl.textContent = r.ok ? 'Done.' : (r.status === 401 ? 'Unauthorized.' : 'Error.');
+  }catch(err){
+    statusEl.textContent = 'Upload failed.';
+    outEl.textContent = String(err && err.message ? err.message : err);
   }
-  statusEl.textContent = r.ok ? 'Done.' : 'Error.';
+});
+
+function rowHtml(item){
+  const active = item.is_active ? '<span class="pill">Active</span>' : '<span class="pill" style="background:#fee2e2;color:#991b1b;">Blocked</span>';
+  const signup = item.can_sign_up ? 'signup yes' : 'signup no';
+  const device = item.device_key ? `<div><b>Locked</b></div><div class="muted">${escapeHtml(item.device_name || item.device_key)}</div>` : '<span class="warn">No device bound yet</span>';
+  const lastSeen = item.last_seen_at ? new Date(item.last_seen_at).toLocaleString() : '—';
+  return `<tr>
+    <td><b>${escapeHtml(item.email || '')}</b><div class="muted">${escapeHtml(item.note || '')}</div></td>
+    <td>${escapeHtml(item.username || '')}<div class="muted">${escapeHtml(item.role || 'user')} • ${signup}</div></td>
+    <td>${active}</td>
+    <td>${device}</td>
+    <td>${escapeHtml(lastSeen)}</td>
+    <td>
+      <button type="button" data-reset="${escapeHtml(item.email || '')}">Reset device</button>
+    </td>
+  </tr>`;
+}
+
+function escapeHtml(s){ return String(s ?? '').replace(/[&<>"']/g, (c)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+async function refreshAccessList(){
+  try{
+    accessStatusEl.textContent = 'Loading approved users...';
+    const r = await authFetch('/admin/access/list', { method:'GET', headers:{ 'Accept':'application/json' } });
+    const data = await r.json();
+    if (!r.ok || !data.ok) throw new Error(data.reason || data.error || ('HTTP ' + r.status));
+    const rows = Array.isArray(data.rows) ? data.rows : [];
+    accessRowsEl.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<tr><td colspan="6" class="muted">No approved users yet.</td></tr>';
+    accessStatusEl.textContent = rows.length + ' user(s) loaded.';
+  }catch(err){
+    accessStatusEl.textContent = 'Failed to load users: ' + String(err && err.message ? err.message : err);
+    accessRowsEl.innerHTML = '<tr><td colspan="6" class="muted">Unable to load access list.</td></tr>';
+  }
+}
+
+$('btnRefreshAccess').addEventListener('click', ()=>refreshAccessList());
+
+$('btnSaveAccess').addEventListener('click', async ()=>{
+  try{
+    const email = String($('accessEmail').value || '').trim();
+    if (!email) return alert('Enter a work email');
+    const body = {
+      email,
+      username: String($('accessUsername').value || '').trim(),
+      role: $('accessRole').value,
+      is_active: $('accessActive').value === 'true',
+      can_sign_up: $('accessSignup').value === 'true',
+      note: String($('accessNote').value || '').trim()
+    };
+    statusEl.textContent = 'Saving access...';
+    const r = await authFetch('/admin/access/upsert', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    outEl.textContent = JSON.stringify(data, null, 2);
+    if (!r.ok || !data.ok) throw new Error(data.reason || data.error || ('HTTP ' + r.status));
+    statusEl.textContent = 'Access saved.';
+    await refreshAccessList();
+  }catch(err){
+    statusEl.textContent = 'Save failed.';
+    outEl.textContent = String(err && err.message ? err.message : err);
+  }
+});
+
+accessRowsEl.addEventListener('click', async (ev)=>{
+  const btn = ev.target && ev.target.closest && ev.target.closest('button[data-reset]');
+  if (!btn) return;
+  const email = btn.getAttribute('data-reset') || '';
+  if (!email) return;
+  if (!confirm('Reset locked device for ' + email + '?')) return;
+  try{
+    statusEl.textContent = 'Resetting device...';
+    const r = await authFetch('/admin/access/reset-device', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await r.json();
+    outEl.textContent = JSON.stringify(data, null, 2);
+    if (!r.ok || !data.ok) throw new Error(data.reason || data.error || ('HTTP ' + r.status));
+    statusEl.textContent = 'Device reset done.';
+    await refreshAccessList();
+  }catch(err){
+    statusEl.textContent = 'Device reset failed.';
+    outEl.textContent = String(err && err.message ? err.message : err);
+  }
 });
 </script>
 </body>

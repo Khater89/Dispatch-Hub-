@@ -229,6 +229,17 @@ body{
   <link rel="stylesheet" href="assets/glass.css">
   <script defer src="assets/theme.js"></script>
 <script defer src="assets/glass.js"></script>
+
+<script src="assets/auth-config.js"></script>
+<script defer src="assets/auth-client.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  if (window.UFHAuth) {
+    window.UFHAuth.init({ appName: "Unified Finder Hub", mountUserBadge: true });
+  }
+});
+</script>
+
 </head>
 <body>
  <div class="top-credit">
@@ -413,9 +424,9 @@ body{
         <input id="techdbExcel" type="file" accept=".xlsx,.xls" style="width:100%;" />
       </div>
       <div>
-        <label style="font-weight:600;">Admin Token</label>
-        <input id="techdbAdminToken" placeholder="ضع ADMIN_TOKEN (Secret)" style="width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:10px;" />
-        <div style="margin-top:6px;color:#666;font-size:12px;">لا تستخدم Service Role في الواجهة. استخدم ADMIN_TOKEN فقط.</div>
+        <label style="font-weight:600;">Owner Session</label>
+        <div id="techdbAuthHint" style="width:100%;padding:11px 12px;border:1px solid #ddd;border-radius:10px;background:#f8fafc;color:#334155;">Sign in with the owner account to enable upload.</div>
+        <div style="margin-top:6px;color:#666;font-size:12px;">Uses your Supabase login session automatically.</div>
       </div>
     </div>
 
@@ -437,7 +448,7 @@ body{
     const baseEl = document.getElementById('techdbApiBase');
     const modeEl = document.getElementById('techdbSyncMode');
     const fileEl = document.getElementById('techdbExcel');
-    const tokenEl = document.getElementById('techdbAdminToken');
+    const authHintEl = document.getElementById('techdbAuthHint');
     const doSyncBtn = document.getElementById('techdbDoSync');
     const pingBtn = document.getElementById('techdbPing');
 
@@ -447,6 +458,11 @@ body{
     btn?.addEventListener('click', showModal);
     closeBtn?.addEventListener('click', hideModal);
     modal?.addEventListener('click', (e)=>{ if (e.target === modal) hideModal(); });
+
+    window.addEventListener('ufh-auth-ready', (ev)=>{
+      const email = ev && ev.detail && ev.detail.user ? (ev.detail.user.email || '') : '';
+      if (authHintEl) authHintEl.textContent = email ? ('Signed in as: ' + email) : 'Owner session ready.';
+    });
 
     pingBtn?.addEventListener('click', async ()=>{
       try{
@@ -464,19 +480,20 @@ body{
       try{
         const base = String(baseEl.value||'').trim().replace(/\/+$/,'');
         const mode = String(modeEl.value||'upsert');
-        const token = String(tokenEl.value||'').trim();
         const f = fileEl.files && fileEl.files[0];
         if (!base) { out.textContent = '❌ ضع Base URL'; return; }
         if (!f) { out.textContent = '❌ اختار ملف Excel'; return; }
-        if (!token) { out.textContent = '❌ ضع ADMIN_TOKEN'; return; }
+        if (!window.UFHAuth) { out.textContent = '❌ Auth client not loaded'; return; }
 
+        await window.UFHAuth.requireSession();
         const fd = new FormData();
         fd.append('file', f);
         out.textContent = '⏳ Uploading & syncing...';
 
+        const headers = await window.UFHAuth.getAuthHeaders();
         const r = await fetch(base + '/admin/techdbs/upload?mode=' + encodeURIComponent(mode), {
           method: 'POST',
-          headers: { 'x-admin-token': token },
+          headers,
           body: fd
         });
         const t = await r.text();

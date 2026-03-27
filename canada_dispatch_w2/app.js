@@ -226,9 +226,14 @@
   }
 
   async function postJson(url, body){
+    let headers = { 'Content-Type': 'application/json' };
+    if (window.UFHAuth) {
+      await window.UFHAuth.requireSession();
+      headers = await window.UFHAuth.getAuthHeaders(headers);
+    }
     const r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body)
     });
 
