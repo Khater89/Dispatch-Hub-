@@ -95,19 +95,17 @@
       }
       .ufh-auth-status.error { border-color: rgba(248,113,113,.45); background: rgba(127,29,29,.22); color: #fecaca; }
       .ufh-auth-status.ok { border-color: rgba(74,222,128,.45); background: rgba(20,83,45,.22); color: #bbf7d0; }
-      .ufh-auth-owner { margin-top: 8px; color:#93c5fd; font-weight:700; font-size:13px; }
       .ufh-auth-badge {
         position: fixed; left: 14px; bottom: 14px; z-index: 2147483645;
-        display:flex; align-items:center;
+        display:flex; gap:10px; align-items:center;
+        padding: 8px; border-radius: 999px;
+        border: 1px solid rgba(255,255,255,.14); background: rgba(8,15,28,.88); color:#fff;
+        box-shadow: 0 12px 30px rgba(0,0,0,.35);
         font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       }
       .ufh-auth-badge button {
-        appearance:none; border:1px solid rgba(255,255,255,.16); border-radius:999px;
-        padding: 10px 14px; cursor:pointer; background: rgba(8,15,28,.92); color:#fff; font-weight:800;
-        box-shadow: 0 12px 30px rgba(0,0,0,.35);
-      }
-      .ufh-auth-badge button:hover {
-        background: rgba(22,34,56,.98);
+        appearance:none; border:1px solid rgba(255,255,255,.14); border-radius:999px;
+        padding: 7px 10px; cursor:pointer; background: rgba(255,255,255,.08); color:#fff; font-weight:700;
       }
       .ufh-auth-spinner {
         display:inline-block; width:16px; height:16px; border-radius:50%;
@@ -133,7 +131,6 @@
       <div class="ufh-auth-card">
         <h2>Sign in to continue</h2>
         <div id="ufh-auth-info" class="ufh-auth-muted"></div>
-        <div class="ufh-auth-owner">Owner-only access: ${escapeHtml((cfg().allowedEmails || []).join(', ')) || 'configured account only'}</div>
         <div class="ufh-auth-row">
           <div>
             <label for="ufh-auth-email">Email</label>
@@ -160,7 +157,7 @@
     STATE.passwordEl = wrap.querySelector('#ufh-auth-password');
 
     const c = cfg();
-    STATE.infoEl.textContent = `${c.appName} now starts with Supabase login. Use the owner account to open the app and protected tools.`;
+    STATE.infoEl.textContent = `${c.appName} now starts with Supabase login. Sign in with your approved account.`;
     if (c.allowedEmails[0] && !STATE.emailEl.value) STATE.emailEl.value = c.allowedEmails[0];
 
     wrap.querySelector('#ufh-auth-signin').addEventListener('click', signIn);
@@ -257,7 +254,7 @@
     if (STATE.userBadge) STATE.userBadge.remove();
     const badge = document.createElement('div');
     badge.className = 'ufh-auth-badge';
-    badge.innerHTML = `<button type="button" aria-label="Logout">Logout</button>`;
+    badge.innerHTML = `<button type="button">Logout</button>`;
     badge.querySelector('button').addEventListener('click', async function(){
       const client = await ensureClient();
       await client.auth.signOut();
