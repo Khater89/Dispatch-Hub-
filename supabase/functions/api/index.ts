@@ -4,6 +4,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
+import { INTL_SUPPLIERS_DB } from "./intl_suppliers_data.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -20,8 +21,12 @@ const CA_POSTAL_TABLE = Deno.env.get("CA_POSTAL_TABLE") || ""; // optional mappi
 // Optional
 const USA_W2_TABLE = Deno.env.get("USA_W2_TABLE") || "";
 
-// Admin token to protect write endpoints
-const ADMIN_TOKEN = Deno.env.get("ADMIN_TOKEN") || "";
+// Owner app/admin protection
+const ADMIN_USERNAME = (Deno.env.get("ADMIN_USERNAME") || "khater").trim();
+const ADMIN_EMAILS = (Deno.env.get("ADMIN_EMAILS") || "akhater@acuative.com")
+  .split(",")
+  .map((x) => x.trim().toLowerCase())
+  .filter(Boolean);
 
 // Allowed tables for /export/<table>
 const ALLOWED_TABLES = new Set(
@@ -34,7 +39,7 @@ function cors(origin: string | null) {
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     // IMPORTANT: include x-admin-token to avoid browser preflight failure (Failed to fetch)
     "Access-Control-Allow-Headers":
-      "content-type, authorization, apikey, x-client-info, x-admin-token",
+      "content-type, authorization, apikey, x-client-info, x-admin-token, x-admin-user, x-admin-email",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
   };
@@ -42,6 +47,47 @@ function cors(origin: string | null) {
 
 function getSupabase() {
   return createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+}
+
+function normalizeIdentity(v: string | null) {
+  return String(v || "").trim().toLowerCase();
+}
+
+
+function bearerToken(req: Request) {
+  const auth = req.headers.get("authorization") || "";
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1] : "";
+}
+
+async function getAllowedUser(req: Request, supabase: any) {
+  const token = bearerToken(req);
+  if (!token) return { ok: false, reason: "Missing bearer token" };
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data?.user) {
+    return { ok: false, reason: "Invalid or expired session" };
+  }
+
+  const email = normalizeIdentity(data.user.email || "");
+  if (ADMIN_EMAILS.length && !ADMIN_EMAILS.includes(email)) {
+    return { ok: false, reason: "User email not allowed" };
+  }
+
+  const meta = data.user.user_metadata || {};
+  const username = String(meta.username || meta.full_name || ADMIN_USERNAME || "").trim() || ADMIN_USERNAME;
+  return { ok: true, email, username, user: data.user };
+}
+
+async function requireAllowedUser(req: Request, supabase: any, origin: string | null) {
+  const auth = await getAllowedUser(req, supabase);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ ok: false, error: "Unauthorized", reason: auth.reason }), {
+      status: 401,
+      headers: { ...cors(origin), "Content-Type": "application/json" },
+    });
+  }
+  return auth;
 }
 
 // --- robust key picking (handles: "Tech ID" vs tech_id vs TECHID ... etc) ---
@@ -159,16 +205,19 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (p === "/intl/suppliers") {
+      const auth = await requireAllowedUser(req, supabase, origin);
+      if (auth instanceof Response) return auth;
+      return new Response(JSON.stringify({ ok: true, data: INTL_SUPPLIERS_DB }), {
+        headers: { ...cors(origin), "Content-Type": "application/json" },
+      });
+    }
+
     // --- ADMIN: Tech DBs Loader (Multi-Sheet) ---
     // POST /admin/techdbs/upload?mode=upsert|replace
     if (p === "/admin/techdbs/upload" && req.method === "POST") {
-      const token = req.headers.get("x-admin-token") || "";
-      if (!ADMIN_TOKEN || token !== ADMIN_TOKEN) {
-        return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...cors(origin), "Content-Type": "application/json" },
-        });
-      }
+      const adminCheck = await requireAllowedUser(req, supabase, origin);
+      if (adminCheck instanceof Response) return adminCheck;
 
       const mode = (url.searchParams.get("mode") || "upsert").toLowerCase();
 
@@ -184,7 +233,12 @@ Deno.serve(async (req) => {
       const buf = new Uint8Array(await f.arrayBuffer());
       const wb = XLSX.read(buf, { type: "array" });
 
-      const report: any = { ok: true, mode, results: [] as any[] };
+      const report: any = {
+        ok: true,
+        mode,
+        admin: { username: adminCheck.username, email: adminCheck.email },
+        results: [] as any[],
+      };
 
       for (const sheetName of wb.SheetNames) {
         const table = sheetToTable(sheetName);
@@ -243,6 +297,8 @@ Deno.serve(async (req) => {
 
     // --- ONCALL: techdb (AOA 9 columns) ---
     if (p === "/oncall/techdb") {
+      const auth = await requireAllowedUser(req, supabase, origin);
+      if (auth instanceof Response) return auth;
       const table = url.searchParams.get("table") || TECH_TABLE;
       const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 200000), 1), 200000);
 
@@ -271,6 +327,8 @@ Deno.serve(async (req) => {
 
     // --- ONCALL: zip db (AOA: zip, lat, lon, city, state) ---
     if (p === "/oncall/uszips") {
+      const auth = await requireAllowedUser(req, supabase, origin);
+      if (auth instanceof Response) return auth;
       const table = url.searchParams.get("table") || ZIP_TABLE;
       const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 200000), 1), 200000);
 
@@ -294,6 +352,8 @@ Deno.serve(async (req) => {
 
     // --- CANADA W2 techs (objects) ---
     if (p === "/canada/w2techdb") {
+      const auth = await requireAllowedUser(req, supabase, origin);
+      if (auth instanceof Response) return auth;
       const table = url.searchParams.get("table") || CA_W2_TABLE;
       const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 5000), 1), 50000);
 
@@ -318,6 +378,8 @@ Deno.serve(async (req) => {
 
     // --- CANADA postal->province mapping (optional table) ---
     if (p === "/canada/postalprov") {
+      const auth = await requireAllowedUser(req, supabase, origin);
+      if (auth instanceof Response) return auth;
       const table = url.searchParams.get("table") || CA_POSTAL_TABLE;
       if (!table) {
         return new Response(JSON.stringify({ ok: true, table: "", mapping: {}, disabled: true }), {
@@ -344,6 +406,8 @@ Deno.serve(async (req) => {
 
     // --- export AOA for Flex (and any allowed table) ---
     if (p.startsWith("/export/")) {
+      const auth = await requireAllowedUser(req, supabase, origin);
+      if (auth instanceof Response) return auth;
       const table = decodeURIComponent(p.split("/")[2] || "");
       if (ALLOWED_TABLES.size && !ALLOWED_TABLES.has(table)) {
         return new Response(JSON.stringify({ ok: false, error: "Table not allowed", table }), {

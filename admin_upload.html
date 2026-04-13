@@ -3,44 +3,57 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UFH Admin — Upload Excel to Cloud DB</title>
+  <title>UFH Admin — Cloud Upload</title>
   <link rel="stylesheet" href="assets/glass.css">
   <script defer src="assets/glass.js"></script>
+  <script>(function(){try{var t=localStorage.getItem('dispatchhub-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();</script>
+  <link rel="stylesheet" href="assets/theme.css" />
+  <script defer src="assets/theme.js"></script>
+  <script src="assets/auth-config.js"></script>
+  <script defer src="assets/auth-client.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function(){
+    if (window.UFHAuth) {
+      window.UFHAuth.init({ appName: 'UFH Admin — Cloud Upload', mountUserBadge: true });
+    }
+  });
+  </script>
   <style>
-body{font-family:Arial, sans-serif; margin:24px; max-width:920px;}
-    .card{border:1px solid #ddd; border-radius:12px; padding:16px; margin-bottom:14px;}
+    body{font-family:Arial, sans-serif; margin:24px; max-width:940px;}
+    .card{border:1px solid #ddd; border-radius:14px; padding:16px; margin-bottom:14px; background:rgba(255,255,255,.88)}
     label{display:block; margin:10px 0 6px; font-weight:600;}
     input,select,button{font-size:16px;}
-    input[type=text]{width:100%; padding:10px; border:1px solid #ccc; border-radius:8px;}
+    input[type=text], input[type=email]{width:100%; padding:10px; border:1px solid #ccc; border-radius:8px;}
     input[type=file]{width:100%;}
     button{padding:10px 14px; border-radius:10px; border:1px solid #999; cursor:pointer;}
     button.primary{background:#1f6feb; color:white; border-color:#1f6feb;}
     pre{background:#0b1020; color:#d7e0ff; padding:12px; border-radius:10px; overflow:auto;}
-    .muted{color:#555;}
+    .muted{color:#555; line-height:1.5}
+    .good{color:#166534; font-weight:700}
   </style>
-
-  <script>(function(){try{var t=localStorage.getItem('dispatchhub-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();</script>
-  <link rel="stylesheet" href="assets/theme.css" />
-  <script defer src="assets/theme.js"></script>
 </head>
 <body>
   <h1>UFH Admin — Upload Excel to Cloud DB</h1>
-  <p class="muted">This uploads an Excel file to your backend API, and creates <b>one table per sheet</b>.</p>
+  <p class="muted">This page now uses <b>Supabase login</b>. Sign in as the owner account, then upload your Excel file. No manual admin token field is required anymore.</p>
+
+  <div class="card">
+    <div class="muted"><b>Owner account:</b> <span class="good">akhater@acuative.com</span></div>
+    <div id="sessionHint" class="muted" style="margin-top:8px;">Waiting for login session…</div>
+  </div>
 
   <div class="card">
     <label>API Base URL (Backend)</label>
-    <input id="apiBase" type="text" placeholder="https://your-backend.onrender.com" />
-    <label>Prefix (tables will be: prefix__sheetname)</label>
-    <input id="prefix" type="text" value="ars_technician" />
+    <input id="apiBase" type="text" placeholder="https://your-project.supabase.co/functions/v1/api" />
     <label>Mode</label>
     <select id="mode">
-      <option value="replace" selected>replace (drop & recreate)</option>
-      <option value="append">append</option>
+      <option value="replace">replace (truncate then insert)</option>
+      <option value="upsert" selected>upsert (update/insert by tech_id)</option>
     </select>
     <label>Excel File</label>
     <input id="file" type="file" accept=".xlsx,.xls" />
     <div style="margin-top:12px;">
       <button class="primary" id="btnUpload">Upload</button>
+      <button id="btnPing" type="button">Ping /health</button>
     </div>
   </div>
 
@@ -53,30 +66,74 @@ body{font-family:Arial, sans-serif; margin:24px; max-width:920px;}
 const $ = (id)=>document.getElementById(id);
 const statusEl = $('status');
 const outEl = $('out');
+const sessionHint = $('sessionHint');
+const key = 'ufh-admin-api-base-v2';
+
+(function hydrateApiBase(){
+  try{
+    const saved = localStorage.getItem(key);
+    if (saved) $('apiBase').value = saved;
+    else if (window.UFH_AUTH_CONFIG && window.UFH_AUTH_CONFIG.supabaseUrl) {
+      $('apiBase').value = String(window.UFH_AUTH_CONFIG.supabaseUrl).replace(/\/+$/,'') + '/functions/v1/api';
+    }
+  }catch(_){}
+})();
+
+$('apiBase').addEventListener('change', ()=>{
+  try{ localStorage.setItem(key, $('apiBase').value || ''); }catch(_){}
+});
+
+window.addEventListener('ufh-auth-ready', function(ev){
+  const email = ev && ev.detail && ev.detail.user ? (ev.detail.user.email || '') : '';
+  sessionHint.textContent = email ? ('Signed in as: ' + email) : 'Login session ready.';
+});
+
+$('btnPing').addEventListener('click', async ()=>{
+  try{
+    const base = String($('apiBase').value||'').replace(/\/+$/,'');
+    if(!base) return alert('Enter API Base URL');
+    statusEl.textContent = 'Pinging...';
+    const r = await fetch(base + '/health', { method:'GET' });
+    const t = await r.text();
+    outEl.textContent = t;
+    statusEl.textContent = r.ok ? 'Health OK.' : ('HTTP ' + r.status);
+  }catch(err){
+    statusEl.textContent = 'Ping failed.';
+    outEl.textContent = String(err && err.message ? err.message : err);
+  }
+});
 
 $('btnUpload').addEventListener('click', async ()=>{
-  const base = String($('apiBase').value||'').replace(/\/+$/,'');
-  const prefix = String($('prefix').value||'dataset').trim();
-  const mode = $('mode').value;
-  const f = $('file').files?.[0];
-  if(!base) return alert('Enter API Base URL');
-  if(!f) return alert('Choose an Excel file');
-
-  statusEl.textContent = 'Uploading...';
-  outEl.textContent = '{}';
-
-  const fd = new FormData();
-  fd.append('file', f);
-
-  const url = `${base}/api/upload?prefix=${encodeURIComponent(prefix)}&mode=${encodeURIComponent(mode)}`;
-  const r = await fetch(url, { method:'POST', body: fd });
-  const t = await r.text();
   try{
-    outEl.textContent = JSON.stringify(JSON.parse(t), null, 2);
-  }catch(_){
-    outEl.textContent = t;
+    const base = String($('apiBase').value||'').replace(/\/+$/,'');
+    const mode = $('mode').value;
+    const f = $('file').files && $('file').files[0];
+    if(!base) return alert('Enter API Base URL');
+    if(!f) return alert('Choose an Excel file');
+    if (!window.UFHAuth) throw new Error('Auth client is not loaded');
+    await window.UFHAuth.requireSession();
+
+    statusEl.textContent = 'Uploading...';
+    outEl.textContent = '{}';
+
+    const fd = new FormData();
+    fd.append('file', f);
+
+    const headers = await window.UFHAuth.getAuthHeaders();
+    const r = await fetch(base + '/admin/techdbs/upload?mode=' + encodeURIComponent(mode), {
+      method:'POST',
+      body: fd,
+      headers
+    });
+
+    const t = await r.text();
+    try { outEl.textContent = JSON.stringify(JSON.parse(t), null, 2); }
+    catch(_) { outEl.textContent = t; }
+    statusEl.textContent = r.ok ? 'Done.' : (r.status === 401 ? 'Unauthorized.' : 'Error.');
+  }catch(err){
+    statusEl.textContent = 'Upload failed.';
+    outEl.textContent = String(err && err.message ? err.message : err);
   }
-  statusEl.textContent = r.ok ? 'Done.' : 'Error.';
 });
 </script>
 </body>
