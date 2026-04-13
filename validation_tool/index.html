@@ -1,266 +1,501 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Audit & Validation</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <title>Audit & Validation — Field Nation vs IE</title>
+
+  <!-- SheetJS primary + fallback -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" onerror="window.__xlsxFail=true"></script>
   <script>if(window.__xlsxFail||typeof XLSX==='undefined')document.write('<scr'+'ipt src="https://unpkg.com/xlsx@0.20.3/dist/xlsx.full.min.js"><\/scr'+'ipt>');</script>
+
+  <!-- Chart.js primary + fallback -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" onerror="window.__chartFail=true"></script>
   <script>if(window.__chartFail||typeof Chart==='undefined')document.write('<scr'+'ipt src="https://unpkg.com/chart.js@4.4.2/dist/chart.umd.min.js"><\/scr'+'ipt>');</script>
+
+  <!-- jsPDF + fallback -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onerror="window.__jsPDFFail=true"></script>
   <script>if(window.__jsPDFFail||typeof window.jspdf==='undefined')document.write('<scr'+'ipt src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"><\/scr'+'ipt>');</script>
+
+  <!-- html2canvas + fallback -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" onerror="window.__h2cFail=true"></script>
   <script>if(window.__h2cFail||typeof html2canvas==='undefined')document.write('<scr'+'ipt src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"><\/scr'+'ipt>');</script>
-  <script>
-    (function(){
-      try{
-        var t=null;
-        try{t=window.parent&&window.parent!==window?window.parent.document.documentElement.getAttribute('data-theme'):null;}catch(e){}
-        if(!t)t=localStorage.getItem('dispatch-theme');
-        if(t==='dark')document.documentElement.setAttribute('data-theme','dark');
-      }catch(e){}
-    })();
-  </script>
+
   <style>
-  :root{
-    --fn:#F97316;--fn-10:rgba(249,115,22,.10);--fn-20:rgba(249,115,22,.20);--fn-dark:#C2410C;
-    --ie:#2563EB;--ie-10:rgba(37,99,235,.10);--ie-20:rgba(37,99,235,.20);--ie-dark:#1D4ED8;
-    --ok:#22c55e;--ok-10:rgba(34,197,94,.10);--ok-txt:#166534;
-    --err:#ef4444;--err-10:rgba(239,68,68,.10);--err-txt:#991b1b;
-    --warn:#f59e0b;--warn-10:rgba(245,158,11,.10);--warn-txt:#92400e;
-    --cor:#8b5cf6;--cor-10:rgba(139,92,246,.10);--cor-txt:#5b21b6;
-    --bg:#F0F2F5;--surface:#FFFFFF;--surface2:#F7F8FA;--surface3:#ECEEF2;
-    --text:#0F172A;--text2:#475569;--text3:#94A3B8;
-    --border:rgba(15,23,42,.10);--border2:rgba(15,23,42,.05);
-    --sh:0 1px 3px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.04);
-    --shm:0 4px 16px rgba(15,23,42,.10);--shl:0 12px 40px rgba(15,23,42,.14);
-    --r4:4px;--r8:8px;--r12:12px;--r16:16px;--rf:999px;
-    --ease:cubic-bezier(.16,1,.3,1);--t150:150ms var(--ease);--t250:250ms var(--ease);
-  }
-  [data-theme="dark"]{
-    --bg:#0B1220;--surface:rgba(255,255,255,.05);--surface2:rgba(255,255,255,.03);--surface3:rgba(255,255,255,.08);
-    --text:#E5E7EB;--text2:#94A3B8;--text3:#475569;
-    --border:rgba(255,255,255,.10);--border2:rgba(255,255,255,.04);
-    --sh:0 1px 3px rgba(0,0,0,.3);--shm:0 4px 16px rgba(0,0,0,.4);--shl:0 12px 40px rgba(0,0,0,.5);
-    --fn-dark:#fdba74;--ie-dark:#93c5fd;
-    --ok-txt:#4ade80;--err-txt:#f87171;--warn-txt:#fbbf24;--cor-txt:#a78bfa;
-  }
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'DM Sans',system-ui,sans-serif;font-size:13px;line-height:1.5;color:var(--text);background:var(--bg);min-height:100vh;transition:background .4s,color .4s}
-  [data-theme="dark"] body{background:radial-gradient(800px 400px at 10% 0%,rgba(37,99,235,.08),transparent 60%),radial-gradient(600px 400px at 90% 0%,rgba(249,115,22,.06),transparent 55%),#0B1220}
-  .page{max-width:1600px;margin:0 auto;padding:16px 20px 60px}
-  .book-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r16);box-shadow:var(--sh);backdrop-filter:blur(12px);flex-wrap:wrap}
-  .book-title{display:flex;align-items:center;gap:10px}
-  .book-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--fn),var(--ie));border-radius:var(--r8);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
-  .book-name{font-size:15px;font-weight:700;color:var(--text)}
-  .book-sub{font-size:11px;color:var(--text3)}
-  #ban{padding:10px 14px;border-radius:var(--r8);margin-bottom:12px;font-size:12px;font-weight:500;display:none;line-height:1.5}
-  #ban.s{display:block;background:var(--err-10);border:1px solid rgba(239,68,68,.25);color:var(--err-txt)}
-  #ban.w{display:block;background:var(--warn-10);border:1px solid rgba(245,158,11,.25);color:var(--warn-txt)}
-  #dbg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
-  #dbg.h{display:none}
-  .dbox{background:var(--surface);border:1px solid var(--border);border-radius:var(--r16);padding:28px;max-width:500px;width:100%;box-shadow:var(--shl)}
-  .dbox h2{font-size:16px;color:var(--fn);margin-bottom:12px}
-  .dbox p{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:10px}
-  .dbox pre{background:var(--surface2);color:var(--ie-dark);padding:10px;border-radius:var(--r8);font-family:'DM Mono',monospace;font-size:10px;overflow:auto;max-height:160px;white-space:pre-wrap;margin-bottom:12px;border:1px solid var(--border)}
-  .dcl{padding:8px 18px;border:none;border-radius:var(--r8);background:var(--fn);color:#fff;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer}
-  #pdfOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px}
-  #pdfOv.h{display:none}
-  .pdfSpin{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--fn);border-radius:50%;animation:spin .7s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .pdfLbl{font-size:13px;color:var(--text2)}
-  .book-tabs{display:flex;gap:2px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r12);padding:4px;box-shadow:var(--sh)}
-  .btab{flex:1;padding:8px 12px;border:none;border-radius:var(--r8);background:transparent;color:var(--text2);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:all var(--t150);text-align:center;display:flex;align-items:center;justify-content:center;gap:6px}
-  .btab:hover{background:var(--surface3);color:var(--text)}
-  .btab.active{background:var(--text);color:#fff;box-shadow:var(--sh)}
-  [data-theme="dark"] .btab.active{background:rgba(255,255,255,.12)}
-  .btab.active.audit-tab{background:linear-gradient(135deg,var(--fn),var(--ie));box-shadow:0 2px 12px rgba(249,115,22,.3)}
-  .btab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:var(--rf);background:rgba(255,255,255,.2);color:inherit;font-size:10px;font-weight:700;font-family:'DM Mono',monospace}
-  .btab:not(.active) .btab-badge{background:var(--fn-10);color:var(--fn-dark)}
-  [data-theme="dark"] .btab:not(.active) .btab-badge{color:#fdba74}
-  .tab-panel{display:none}
-  .tab-panel.active{display:block}
-  .dropzone{display:block;border:2px dashed var(--border);border-radius:var(--r16);background:linear-gradient(135deg,var(--ie-10),var(--fn-10));padding:44px 28px;text-align:center;cursor:pointer;transition:all var(--t250);margin-bottom:16px}
-  .dropzone:hover,.dropzone.dr{border-color:var(--fn);transform:translateY(-2px);box-shadow:var(--shl),0 0 0 4px var(--fn-10)}
-  .dropzone input{display:none}
-  .dz-icon{font-size:40px;margin-bottom:10px;display:block}
-  .dz-title{font-size:18px;font-weight:700;margin-bottom:6px}
-  .dz-sub{color:var(--text2);font-size:12px}
-  .dz-sub strong{color:var(--text)}
-  .file-strip{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-  .file-chip{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--rf);background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--text2);box-shadow:var(--sh)}
-  .file-chip strong{color:var(--text);font-weight:600}
-  .preview-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r12);overflow:hidden;margin-bottom:16px;box-shadow:var(--sh)}
-  .preview-card-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border2);font-size:11px;font-weight:600;color:var(--text2)}
-  .preview-scroll{overflow:auto;max-height:200px}
-  .preview-scroll table{width:100%;border-collapse:collapse;font-size:11px}
-  .preview-scroll th{background:var(--surface2);color:var(--text3);padding:6px 10px;text-align:left;white-space:nowrap;font-weight:600;font-size:10px;border-bottom:1px solid var(--border);position:sticky;top:0;font-family:'DM Mono',monospace}
-  .preview-scroll td{padding:5px 10px;border-bottom:1px solid var(--border2);white-space:nowrap;font-family:'DM Mono',monospace;color:var(--text)}
-  .preview-scroll tr:hover td{background:var(--surface2)}
-  .start-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 28px;border:none;border-radius:var(--r12);background:linear-gradient(135deg,var(--fn),var(--ie));color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all var(--t250);box-shadow:0 4px 16px rgba(249,115,22,.25)}
-  .start-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(249,115,22,.35)}
-  .bento{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
-  .bento-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r12);padding:14px 15px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:box-shadow var(--t150),transform var(--t150)}
-  .bento-card:hover{box-shadow:var(--shm);transform:translateY(-1px)}
-  .bento-card::before{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
-  .bc-total::before{background:var(--text3)}.bc-match::before{background:var(--ok)}.bc-cor::before{background:var(--cor)}.bc-err::before{background:var(--err)}.bc-exc::before{background:var(--warn)}.bc-rate::before{background:linear-gradient(90deg,var(--fn),var(--ie))}
-  .bc-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:6px}
-  .bc-val{font-size:26px;font-weight:700;font-family:'DM Mono',monospace;line-height:1;color:var(--text)}
-  .bc-match .bc-val{color:var(--ok-txt)}.bc-cor .bc-val{color:var(--cor-txt)}.bc-err .bc-val{color:var(--err-txt)}.bc-exc .bc-val{color:var(--warn-txt)}
-  .bc-sub{font-size:10px;color:var(--text3);margin-top:3px}
-  .prog-wrap{margin-bottom:14px}
-  .prog-hd{display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px}
-  .prog-track{height:6px;background:var(--surface3);border-radius:var(--rf);overflow:hidden}
-  .prog-bar{height:100%;border-radius:var(--rf);background:linear-gradient(90deg,var(--fn),var(--ie));transition:width .4s var(--ease)}
-  .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:16px}
-  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r12);padding:16px;box-shadow:var(--sh)}
-  .chart-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:12px}
-  .chart-box{position:relative;height:190px}
-  .toolbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r12);padding:14px 16px;box-shadow:var(--sh);margin-bottom:12px}
-  .trow{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:8px}
-  .trow:last-child{margin-bottom:0}
-  .fg{display:flex;flex-direction:column;gap:3px}
-  .fg label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)}
-  .fg input,.fg select{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r8);font-family:inherit;font-size:12px;color:var(--text);background:var(--surface2);outline:none;transition:border-color var(--t150),box-shadow var(--t150)}
-  .fg input:focus,.fg select:focus{border-color:var(--ie);box-shadow:0 0 0 3px var(--ie-10)}
-  .fg-search{flex:1;min-width:180px}
-  .scope-chip{padding:7px 12px;border-radius:var(--r8);font-size:11px;font-weight:600;color:var(--text3);background:var(--surface2);border:1px solid var(--border);white-space:nowrap;font-family:'DM Mono',monospace}
-  .filter-note{font-size:10px;color:var(--text3);margin-top:8px;line-height:1.6}
-  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border);border-radius:var(--r8);background:var(--surface);color:var(--text2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all var(--t150);white-space:nowrap}
-  .btn:hover{background:var(--surface3);color:var(--text)}
-  .btn-primary{background:var(--text);color:#fff;border-color:transparent;box-shadow:var(--sh)}
-  .btn-primary:hover{opacity:.9;color:#fff}
-  [data-theme="dark"] .btn-primary{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.1)}
-  .btn-fn{background:linear-gradient(135deg,var(--fn),var(--fn-dark));color:#fff;border-color:transparent;box-shadow:0 2px 8px var(--fn-20)}
-  .btn-fn:hover{box-shadow:0 4px 16px var(--fn-20);transform:translateY(-1px);color:#fff}
-  .table-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r12);box-shadow:var(--sh);overflow:hidden}
-  .tw{overflow:auto;max-height:60vh}
-  table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
-  thead th{background:var(--surface2);color:var(--text3);padding:8px 10px;text-align:left;white-space:nowrap;font-weight:600;font-size:10px;letter-spacing:.03em;border-bottom:1px solid var(--border);border-right:1px solid var(--border2)}
-  thead tr.gr th{position:sticky;top:0;z-index:4;text-align:center;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;border-bottom:1px solid var(--border);color:#fff}
-  thead tr.cr th{position:sticky;top:31px;z-index:3}
-  .gc{background:var(--text)!important}.gi{background:var(--ie)!important}.gf{background:var(--fn)!important}.gv{background:#0f766e!important}
-  tbody td{padding:8px 10px;border-bottom:1px solid var(--border2);vertical-align:middle;white-space:nowrap;color:var(--text);transition:background var(--t150)}
-  tbody tr:last-child td{border-bottom:none}
-  tbody tr.rm td{background:rgba(34,197,94,.04)}
-  tbody tr.re td{background:rgba(239,68,68,.05)}
-  tbody tr.rx td{background:rgba(245,158,11,.05)}
-  tbody tr.rc td{background:rgba(139,92,246,.05)}
-  tbody tr:hover td{background:var(--surface2)!important}
-  td.mm{background:rgba(239,68,68,.09)!important;color:var(--err-txt)!important;font-weight:600}
-  .pill{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:var(--rf);font-size:10.5px;font-weight:600;white-space:nowrap;border:1px solid}
-  .pill.ok{background:rgba(34,197,94,.1);color:var(--ok-txt);border-color:rgba(34,197,94,.25)}
-  .pill.er{background:rgba(239,68,68,.1);color:var(--err-txt);border-color:rgba(239,68,68,.25)}
-  .pill.wn{background:rgba(245,158,11,.1);color:var(--warn-txt);border-color:rgba(245,158,11,.25)}
-  .pill.co{background:rgba(139,92,246,.1);color:var(--cor-txt);border-color:rgba(139,92,246,.25)}
-  .pdot{width:4px;height:4px;border-radius:50%;background:currentColor}
-  .cbtn{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border:1px solid var(--border);border-radius:var(--rf);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all var(--t250);min-width:86px;justify-content:center;background:var(--surface2);color:var(--text2)}
-  .cbtn.mk:hover{background:var(--text);color:#fff;border-color:transparent;transform:scale(1.04);box-shadow:var(--sh)}
-  .cbtn.dn{background:rgba(34,197,94,.1);color:var(--ok-txt);border-color:rgba(34,197,94,.25);cursor:default}
-  .cbtn.dn::before{content:'\2713 '}
-  .dcl2,.ncl{max-width:220px;white-space:normal;line-height:1.4;font-size:10px;color:var(--text2)}
-  .emp{text-align:center;padding:48px;color:var(--text3);font-weight:500;font-size:13px}
-  .mn{font-family:'DM Mono',monospace;font-size:11px}
-  .h{display:none!important}
-  .report-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r16);padding:28px;max-width:520px;box-shadow:var(--sh)}
-  .report-card h2{font-size:16px;font-weight:700;margin-bottom:10px}
-  .report-card p{font-size:12px;color:var(--text2);line-height:1.8;margin-bottom:20px}
-  .report-card ul{font-size:12px;color:var(--text2);padding-left:18px;margin-bottom:20px;line-height:2}
-  .report-date-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-  .section-divider{height:1px;background:var(--border);margin:14px 0}
-  @media(max-width:900px){.charts-grid{grid-template-columns:1fr 1fr}}
-  @media(max-width:600px){.page{padding:10px 12px 40px}.charts-grid{grid-template-columns:1fr}.bento{grid-template-columns:repeat(2,1fr)}.trow{flex-direction:column}.btab span:not(.btab-badge){display:none}}
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    /* ─── RESET & TOKENS ─── */
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --fn:#f97316;--fn-dark:#c2410c;--fn-soft:#fff7ed;--fn-border:#fed7aa;
+      --ie:#3b82f6;--ie-dark:#1d4ed8;--ie-soft:#eff6ff;--ie-border:#bfdbfe;
+      --ok:#22c55e;--ok-soft:#dcfce7;--ok-txt:#15803d;
+      --err:#ef4444;--err-soft:#fee2e2;--err-txt:#b91c1c;
+      --warn:#f59e0b;--warn-soft:#fef3c7;--warn-txt:#92400e;
+      --cor:#8b5cf6;--cor-soft:#ede9fe;--cor-txt:#6d28d9;
+      /* match hub dark theme */
+      --bg:#0b1220;--surface:rgba(255,255,255,0.05);--surface2:rgba(255,255,255,0.09);
+      --text:#e5e7eb;--text2:#a7b0c0;--text3:#64748b;
+      --border:rgba(255,255,255,0.12);--border2:rgba(255,255,255,0.07);
+      --radius:14px;--radius-sm:9px;--radius-xs:6px;
+      --sh:0 1px 3px rgba(0,0,0,.3),0 1px 2px rgba(0,0,0,.2);
+      --shm:0 4px 20px rgba(0,0,0,.4);
+      --shl:0 12px 48px rgba(0,0,0,.5);
+    }
+
+    body{
+      font-family:'Space Grotesk',system-ui,sans-serif;
+      background:radial-gradient(1200px 600px at 10% 0%,rgba(96,165,250,.18),transparent 60%),
+                 radial-gradient(900px 500px at 90% 10%,rgba(52,211,153,.14),transparent 55%),
+                 linear-gradient(180deg,#0b1220,#0f1b33);
+      color:var(--text);min-height:100vh;font-size:13px;line-height:1.5;
+    }
+
+    /* ─── PAGE WRAPPER ─── */
+    .page{max-width:1760px;margin:0 auto;padding:14px 18px 56px}
+
+    /* ─── TOP BAR ─── */
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:12px 16px;margin-bottom:14px;
+      background:rgba(255,255,255,0.05);
+      border:1px solid var(--border);border-radius:var(--radius);
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      box-shadow:var(--shm);flex-wrap:wrap;
+    }
+    .topbar-left{display:flex;align-items:center;gap:12px}
+    .tool-icon{
+      width:36px;height:36px;
+      background:linear-gradient(135deg,var(--fn),var(--ie));
+      border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;
+    }
+    .tool-name{font-weight:800;font-size:15px;color:var(--text)}
+    .tool-sub{font-size:11px;color:var(--text3)}
+    .hbdgs{display:flex;gap:7px;flex-shrink:0}
+    .hbdg{
+      padding:4px 11px;border-radius:999px;font-size:11px;font-weight:700;
+      display:flex;align-items:center;gap:5px;border:1px solid;
+    }
+    .hbdg.ie{background:rgba(59,130,246,.12);color:#93c5fd;border-color:rgba(59,130,246,.3)}
+    .hbdg.fn{background:rgba(249,115,22,.12);color:#fdba74;border-color:rgba(249,115,22,.3)}
+    .bdot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+    /* ─── BANNER / DEBUG ─── */
+    #ban{
+      padding:10px 14px;font-weight:600;font-size:12px;
+      background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);
+      color:#fca5a5;border-radius:var(--radius);margin-bottom:12px;display:none;
+    }
+    #ban.s{display:block}
+    #ban.w{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d}
+    #dbg{
+      position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;
+      display:flex;align-items:center;justify-content:center;padding:20px;
+    }
+    #dbg.h{display:none}
+    .dbox{
+      background:#0f172a;border:1px solid rgba(255,255,255,.15);
+      border-radius:var(--radius);padding:28px;max-width:520px;width:100%
+    }
+    .dbox h2{color:var(--fn);font-size:17px;margin-bottom:12px}
+    .dbox p{color:#94a3b8;font-size:12px;line-height:1.7;margin-bottom:10px}
+    .dbox pre{
+      background:rgba(0,0,0,.6);color:#7dd3fc;padding:10px;
+      border-radius:var(--radius-sm);font-size:10px;overflow:auto;max-height:180px;
+      white-space:pre-wrap;margin-bottom:12px;
+    }
+    .dcl{
+      background:var(--fn);color:#fff;border:none;padding:8px 16px;
+      border-radius:var(--radius-sm);font-weight:700;cursor:pointer;font-size:12px;
+    }
+
+    /* ─── PDF OVERLAY ─── */
+    #pdfOv{
+      position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9998;
+      display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;
+    }
+    #pdfOv.h{display:none}
+    .spin{
+      width:42px;height:42px;border:4px solid rgba(255,255,255,.15);
+      border-top-color:var(--fn);border-radius:50%;animation:spin .8s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spin-lbl{color:#fff;font-weight:700;font-size:13px}
+
+    /* ─── SUB-TABS ─── */
+    .subtabs{
+      display:flex;gap:6px;margin-bottom:14px;
+      background:rgba(255,255,255,.04);border:1px solid var(--border);
+      border-radius:var(--radius);padding:6px;
+    }
+    .stab{
+      flex:1;padding:8px 12px;border-radius:var(--radius-sm);
+      border:none;background:transparent;color:var(--text2);
+      font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+      transition:all .2s;text-align:center;
+    }
+    .stab:hover{background:rgba(255,255,255,.06);color:var(--text)}
+    .stab.active{
+      background:linear-gradient(135deg,rgba(96,165,250,.2),rgba(52,211,153,.12));
+      border:1px solid rgba(96,165,250,.35);color:#93c5fd;
+    }
+    .stab-num{
+      display:inline-block;background:rgba(255,255,255,.1);
+      border-radius:999px;padding:1px 7px;font-size:10px;margin-left:4px;
+    }
+    .stab.active .stab-num{background:rgba(96,165,250,.3);color:#93c5fd}
+
+    /* ─── TAB PANELS ─── */
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+
+    /* ─── UPLOAD PANEL ─── */
+    .dropzone{
+      border:2px dashed var(--border);border-radius:var(--radius);
+      background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(249,115,22,.06));
+      padding:36px 24px;text-align:center;cursor:pointer;
+      transition:all .2s;margin-bottom:14px;display:block;
+    }
+    .dropzone:hover,.dropzone.dr{
+      border-color:var(--fn);transform:translateY(-2px);box-shadow:var(--shl);
+    }
+    .dropzone input{display:none}
+    .dzi{font-size:34px;margin-bottom:8px}
+    .dzt{font-size:17px;font-weight:800;margin-bottom:5px;color:var(--text)}
+    .dzs{color:var(--text2);font-size:12px}
+
+    /* preview table */
+    .preview-wrap{
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);overflow:hidden;margin-bottom:14px;
+    }
+    .preview-hd{
+      padding:10px 14px;border-bottom:1px solid var(--border);
+      font-size:11px;font-weight:700;color:var(--text2);
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .preview-scroll{overflow:auto;max-height:220px}
+    .preview-scroll table{
+      width:100%;border-collapse:collapse;font-size:11px;
+      font-family:'JetBrains Mono',monospace;
+    }
+    .preview-scroll th{
+      background:rgba(255,255,255,.06);color:var(--text2);
+      padding:6px 10px;text-align:left;white-space:nowrap;
+      font-weight:600;font-size:10px;border-bottom:1px solid var(--border);
+      position:sticky;top:0;
+    }
+    .preview-scroll td{
+      padding:5px 10px;border-bottom:1px solid var(--border2);
+      white-space:nowrap;color:var(--text);
+    }
+    .preview-scroll tr:last-child td{border-bottom:none}
+    .preview-scroll tr:hover td{background:rgba(255,255,255,.03)}
+
+    /* file meta */
+    .file-meta{
+      display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;
+    }
+    .fmeta-chip{
+      padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;
+      background:rgba(255,255,255,.07);border:1px solid var(--border);color:var(--text2);
+      display:flex;align-items:center;gap:6px;
+    }
+    .fmeta-chip b{color:var(--text)}
+    .start-btn{
+      margin-top:6px;padding:10px 24px;border:none;border-radius:var(--radius-sm);
+      background:linear-gradient(135deg,var(--ie),var(--fn));
+      color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;
+      transition:all .2s;box-shadow:0 4px 16px rgba(59,130,246,.3);
+    }
+    .start-btn:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(249,115,22,.4)}
+
+    /* ─── BENTO STATS GRID ─── */
+    .bento{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+      gap:10px;margin-bottom:14px;
+    }
+    .bento-card{
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);padding:14px 15px;
+      position:relative;overflow:hidden;transition:box-shadow .2s;
+    }
+    .bento-card:hover{box-shadow:var(--shm)}
+    .bento-card::after{
+      content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+    }
+    .bc-total::after{background:rgba(255,255,255,.2)}
+    .bc-matched::after{background:var(--ok)}
+    .bc-cor::after{background:var(--cor)}
+    .bc-err::after{background:var(--err)}
+    .bc-exc::after{background:var(--warn)}
+    .bc-rate::after{background:linear-gradient(90deg,var(--ie),var(--fn))}
+    .bc-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:6px}
+    .bc-val{font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1;color:var(--text)}
+    .bc-matched .bc-val{color:var(--ok-txt)}
+    .bc-cor .bc-val{color:var(--cor-txt)}
+    .bc-err .bc-val{color:var(--err-txt)}
+    .bc-exc .bc-val{color:var(--warn-txt)}
+    .bc-sub{font-size:10px;color:var(--text3);margin-top:3px}
+
+    /* progress */
+    .prog-wrap{margin-bottom:14px}
+    .prog-hd{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:5px}
+    .prog-track{height:6px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden}
+    .prog-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--ie),var(--fn));transition:width .4s}
+
+    /* ─── CHARTS ─── */
+    .charts-grid{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+      gap:12px;margin-bottom:14px;
+    }
+    .chart-card{
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);padding:16px;
+    }
+    .chart-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:12px}
+    .chart-box{position:relative;height:190px}
+
+    /* ─── TOOLBAR ─── */
+    .toolbar-panel{
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;
+    }
+    .trow{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:9px}
+    .trow:last-child{margin-bottom:0}
+    .fg{display:flex;flex-direction:column;gap:4px}
+    .fg label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)}
+    .fg input,.fg select{
+      padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);
+      font-family:inherit;font-size:12px;color:var(--text);
+      background:rgba(255,255,255,.06);outline:none;transition:border-color .15s;
+    }
+    .fg input:focus,.fg select:focus{border-color:var(--ie)}
+    .fg select option{background:#1e293b;color:var(--text)}
+    .fg-search{flex:1;min-width:180px}
+    .scope-tag{
+      font-size:11px;font-weight:700;color:var(--text3);
+      padding:7px 12px;background:rgba(255,255,255,.06);
+      border-radius:var(--radius-sm);white-space:nowrap;border:1px solid var(--border);
+    }
+
+    /* ─── BUTTONS ─── */
+    .btn{
+      padding:7px 13px;border:none;border-radius:var(--radius-sm);
+      font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+      transition:all .15s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
+    }
+    .btn:hover{transform:translateY(-1px);box-shadow:var(--shm)}
+    .btn-dark{background:rgba(255,255,255,.1);color:var(--text);border:1px solid var(--border)}
+    .btn-ie{background:rgba(59,130,246,.25);color:#93c5fd;border:1px solid rgba(59,130,246,.4)}
+    .btn-fn{background:rgba(249,115,22,.25);color:#fdba74;border:1px solid rgba(249,115,22,.4)}
+    .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
+
+    /* ─── TABLE ─── */
+    .table-panel{
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);overflow:hidden;
+    }
+    .tw{overflow:auto;max-height:62vh}
+    table{width:100%;border-collapse:separate;border-spacing:0;font-size:11.5px}
+
+    thead th{
+      background:rgba(15,23,42,.9);color:rgba(255,255,255,.7);
+      padding:7px 9px;text-align:left;white-space:nowrap;
+      font-weight:600;font-size:10px;letter-spacing:.03em;
+      border-right:1px solid rgba(255,255,255,.04);
+    }
+    thead tr.gr th{position:sticky;top:0;z-index:4;text-align:center;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:6px 9px;border-bottom:1px solid rgba(255,255,255,.06)}
+    thead tr.cr th{position:sticky;top:31px;z-index:3}
+    .gc{background:#1e293b!important}
+    .gi{background:rgba(29,78,216,.9)!important}
+    .gf{background:rgba(194,65,12,.9)!important}
+    .gv{background:rgba(15,118,110,.9)!important}
+
+    tbody td{
+      padding:7px 9px;border-bottom:1px solid rgba(255,255,255,.04);
+      vertical-align:middle;white-space:nowrap;color:var(--text);
+    }
+    tbody tr:last-child td{border-bottom:none}
+    tbody tr{transition:background .1s}
+    tbody tr:hover{background:rgba(255,255,255,.03)!important}
+
+    tbody tr.rm{background:rgba(34,197,94,.05)}
+    tbody tr.re{background:rgba(239,68,68,.07)}
+    tbody tr.rx{background:rgba(245,158,11,.05)}
+    tbody tr.rc{background:rgba(139,92,246,.06)}
+    td.mm{background:rgba(239,68,68,.18)!important;color:#fca5a5;font-weight:700}
+
+    /* pills */
+    .pill{
+      display:inline-flex;align-items:center;gap:3px;
+      padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap;
+    }
+    .pill.ok{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.3)}
+    .pill.er{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)}
+    .pill.wn{background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3)}
+    .pill.co{background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3)}
+    .pdot{width:4px;height:4px;border-radius:50%;background:currentColor}
+
+    /* correct button — sleek toggle */
+    .cbtn{
+      padding:4px 10px;border:none;border-radius:var(--radius-xs);
+      font-family:inherit;font-size:10.5px;font-weight:700;cursor:pointer;
+      transition:all .25s cubic-bezier(.34,1.56,.64,1);
+      display:inline-flex;align-items:center;gap:4px;min-width:80px;justify-content:center;
+    }
+    .cbtn.mk{
+      background:rgba(255,255,255,.1);color:var(--text2);border:1px solid var(--border);
+    }
+    .cbtn.mk:hover{background:rgba(255,255,255,.16);color:var(--text);transform:scale(1.04)}
+    .cbtn.dn{
+      background:rgba(139,92,246,.2);color:#a78bfa;border:1px solid rgba(139,92,246,.35);
+      cursor:default;transform:scale(1);
+    }
+    .cbtn.dn::before{content:'✓ '}
+
+    .dcl2,.ncl{max-width:220px;white-space:normal;line-height:1.4;font-size:10px;color:var(--text2)}
+    .emp{text-align:center;padding:40px;color:var(--text3);font-weight:600}
+    .mn{font-family:'JetBrains Mono',monospace;font-size:10.5px}
+    .h{display:none!important}
+
+    @media(max-width:1000px){.charts-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:640px){
+      .page{padding:10px 10px 40px}
+      .charts-grid{grid-template-columns:1fr}
+      .bento{grid-template-columns:repeat(2,1fr)}
+      .trow{flex-direction:column}
+    }
   </style>
 </head>
 <body>
 
-<div id="pdfOv" class="h"><div class="pdfSpin"></div><div class="pdfLbl">Generating Executive Report PDF…</div></div>
+<!-- PDF OVERLAY -->
+<div id="pdfOv" class="h">
+  <div class="spin"></div>
+  <div class="spin-lbl">Generating Management Report PDF…</div>
+</div>
 
+<!-- DEBUG -->
 <div id="dbg" class="h">
   <div class="dbox">
-    <h2>⚠ Error Detected</h2>
-    <p id="dbgMsg"></p>
+    <h2>⚠ Production Error</h2>
+    <p id="dbgMsg">An error occurred.</p>
     <pre id="dbgStack"></pre>
-    <p style="font-size:11px;color:var(--text3)">Use Chrome or Edge. Disable ad-blockers. File must have a <strong>Report</strong> sheet with Assigned Company = "Field Nation".</p>
-    <button class="dcl" onclick="document.getElementById('dbg').classList.add('h')">Dismiss</button>
+    <p style="font-size:11px;color:#64748b">Use Chrome/Edge. Disable ad-blockers. Ensure the file has a <strong>Report</strong> sheet with Assigned Company = "Field Nation".</p>
+    <button class="dcl" onclick="document.getElementById('dbg').classList.add('h')">✕ Dismiss</button>
   </div>
 </div>
 
 <div class="page">
-  <div class="book-header">
-    <div class="book-title">
-      <div class="book-icon">🔍</div>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="tool-icon">🔍</div>
       <div>
-        <div class="book-name">Audit & Validation Book</div>
-        <div class="book-sub">Field Nation × Internal Entity — Side-by-Side Audit</div>
+        <div class="tool-name">Audit & Validation</div>
+        <div class="tool-sub">Field Nation × Internal Entity — Side-by-Side Audit</div>
       </div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <span style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;background:var(--ie-10);color:var(--ie-dark);border:1px solid var(--ie-20)"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>IE = Blue</span>
-      <span style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;background:var(--fn-10);color:var(--fn-dark);border:1px solid var(--fn-20)"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>FN = Orange</span>
+    <div class="hbdgs">
+      <span class="hbdg ie"><span class="bdot ie"></span>IE = Blue</span>
+      <span class="hbdg fn"><span class="bdot fn"></span>FN = Orange</span>
     </div>
   </div>
 
+  <!-- RUNTIME BANNER -->
   <div id="ban"></div>
 
-  <div class="book-tabs" role="tablist">
-    <button class="btab active" data-tab="upload" role="tab"><span>📂</span><span>Upload</span><span class="btab-badge" id="tn-upload" style="display:none"></span></button>
-    <button class="btab audit-tab" data-tab="audit" role="tab"><span>🔍</span><span>Audit</span><span class="btab-badge" id="tn-audit">0</span></button>
-    <button class="btab" data-tab="analytics" role="tab"><span>📊</span><span>Analytics</span></button>
-    <button class="btab" data-tab="report" role="tab"><span>📄</span><span>Report</span></button>
+  <!-- SUB-TABS -->
+  <div class="subtabs" role="tablist">
+    <button class="stab active" data-tab="upload" role="tab">📂 Upload<span class="stab-num" id="tn-upload">—</span></button>
+    <button class="stab" data-tab="audit" role="tab">🔍 Audit<span class="stab-num" id="tn-audit">0</span></button>
+    <button class="stab" data-tab="analytics" role="tab">📊 Analytics<span class="stab-num" id="tn-analytics">—</span></button>
+    <button class="stab" data-tab="report" role="tab">📄 Report</button>
   </div>
 
+  <!-- ══ TAB: UPLOAD ══ -->
   <div class="tab-panel active" id="tab-upload">
     <label class="dropzone" id="dropzone">
       <input type="file" id="fileInput" accept=".xlsx,.xls"/>
-      <span class="dz-icon">📂</span>
-      <div class="dz-title">Drop your Excel workbook here</div>
-      <div class="dz-sub">Or click to browse &nbsp;·&nbsp; Expects a <strong>Report</strong> sheet with Field Nation rows</div>
+      <div class="dzi">📂</div>
+      <div class="dzt">Drag & drop your Excel workbook here</div>
+      <div class="dzs">Or click to browse &nbsp;·&nbsp; Expects a <strong>Report</strong> sheet · Field Nation rows only</div>
     </label>
-    <div id="fileStrip" class="file-strip h"></div>
-    <div id="previewCard" class="preview-card h">
-      <div class="preview-card-hd"><span>File Preview — first rows</span><span id="previewCount" style="color:var(--text3);font-family:'DM Mono',monospace"></span></div>
+
+    <div id="fileMeta" class="file-meta h"></div>
+    <div id="previewWrap" class="preview-wrap h">
+      <div class="preview-hd">
+        <span>File Preview — first 10 rows</span>
+        <span id="previewCount" style="color:var(--text3)"></span>
+      </div>
       <div class="preview-scroll"><table id="previewTable"></table></div>
     </div>
-    <button class="start-btn h" id="startBtn"><span>▶</span> Start Audit</button>
+    <button class="start-btn h" id="startBtn">▶ Start Audit</button>
   </div>
 
+  <!-- ══ TAB: AUDIT ══ -->
   <div class="tab-panel" id="tab-audit">
-    <div class="toolbar">
+    <!-- Toolbar -->
+    <div class="toolbar-panel" id="tbp">
       <div class="trow">
-        <div class="fg fg-search"><label>Search</label><input type="text" id="srch" placeholder="Ticket number, technician name…"/></div>
+        <div class="fg fg-search"><label>Search</label><input type="text" id="srch" placeholder="Ticket, name…"/></div>
         <div class="fg"><label>Ticket Type</label><select id="typeF"><option value="all">All Types</option></select></div>
-        <div class="fg"><label>Status</label><select id="statF"><option value="all">All Rows</option><option value="errors">Errors Only</option><option value="corrected">Corrected Only</option><option value="matched">Matched Only</option><option value="exception">Exception Matches</option></select></div>
+        <div class="fg"><label>Status</label>
+          <select id="statF">
+            <option value="all">All Rows</option>
+            <option value="errors">Errors Only</option>
+            <option value="corrected">Corrected Only</option>
+            <option value="matched">Matched Only</option>
+            <option value="exception">Exception Matches</option>
+          </select>
+        </div>
         <div class="fg"><label>Specific Date</label><input type="date" id="specD"/></div>
         <div class="fg"><label>From Date</label><input type="date" id="fromD"/></div>
         <div class="fg"><label>To Date</label><input type="date" id="toD"/></div>
-        <div class="scope-chip" id="stag">—</div>
+        <div class="scope-tag" id="stag">—</div>
       </div>
       <div class="trow">
-        <button class="btn btn-primary" id="applyBtn">🔍 Apply Filters</button>
-        <button class="btn" id="clearBtn">✕ Clear</button>
+        <button class="btn btn-dark" id="applyBtn">🔍 Apply</button>
+        <button class="btn btn-ghost" id="clearBtn">✕ Clear</button>
         <button class="btn btn-fn" id="pdfBtn">📄 Export PDF</button>
       </div>
-      <div class="filter-note">📅 Date filter uses <strong>FN Scheduled Date</strong> first, then IE Due Date as fallback. &nbsp;·&nbsp; ⚡ ITD tickets always pass date validation.</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:8px">
+        📅 Date filter uses <strong>FN Scheduled Date</strong> first, then IE Due Date as fallback.&nbsp;·&nbsp;⚡ ITD tickets always pass date validation.
+      </div>
     </div>
-    <div class="table-panel"><div class="tw">
-      <table>
-        <thead>
-          <tr class="gr"><th class="gc" colspan="5">Core</th><th class="gi" colspan="5">Internal Entity (IE)</th><th class="gf" colspan="4">Field Nation (FN)</th><th class="gv" colspan="9">Validation & Tracking</th></tr>
-          <tr class="cr"><th>Row#</th><th>Ticket</th><th>Type</th><th>Company</th><th>Date</th><th>IE&amp;FN Status</th><th>IE FE Name</th><th>IE Due Date</th><th>IE Due Time</th><th>IE Scheduled</th><th>FN Status</th><th>FN FE Name</th><th>FN Sched. Date</th><th>FN Sched. Time</th><th>Status✓</th><th>Date✓</th><th>Time✓</th><th>Name✓</th><th>Exception</th><th>Result</th><th>Details</th><th>Note</th><th>Action</th></tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div></div>
+
+    <!-- Table -->
+    <div class="table-panel" id="tbl">
+      <div class="tw">
+        <table>
+          <thead>
+            <tr class="gr">
+              <th class="gc" colspan="5">Core</th>
+              <th class="gi" colspan="5">Internal Entity (IE)</th>
+              <th class="gf" colspan="4">Field Nation (FN)</th>
+              <th class="gv" colspan="9">Validation & Tracking</th>
+            </tr>
+            <tr class="cr">
+              <th>Row#</th><th>Ticket</th><th>Type</th><th>Company</th><th>Filter Date</th>
+              <th>IE&FN Status</th><th>IE FE Name</th><th>IE Due Date</th><th>IE Due Time</th><th>IE Scheduled</th>
+              <th>FN Status</th><th>FN FE Name</th><th>FN Sched. Date</th><th>FN Sched. Time</th>
+              <th>Status✓</th><th>Date✓</th><th>Time✓</th><th>Name✓</th><th>Exception</th><th>Result</th><th>Details</th><th>Note</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
+  <!-- ══ TAB: ANALYTICS ══ -->
   <div class="tab-panel" id="tab-analytics">
     <div class="bento" id="bento"></div>
     <div class="prog-wrap">
-      <div class="prog-hd"><span>Completion Rate</span><span id="plbl" style="font-family:'DM Mono',monospace">0%</span></div>
+      <div class="prog-hd"><span>Completion Rate</span><span id="plbl">0%</span></div>
       <div class="prog-track"><div class="prog-bar" id="pbar" style="width:0%"></div></div>
     </div>
     <div class="charts-grid">
@@ -268,32 +503,35 @@
       <div class="chart-card"><div class="chart-title">Error Breakdown</div><div class="chart-box"><canvas id="cBar"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">Ticket Type Distribution</div><div class="chart-box"><canvas id="cType"></canvas></div></div>
     </div>
-    <p style="font-size:11px;color:var(--text3)">Analytics update in real time as you apply filters in the Audit tab.</p>
+    <div style="font-size:11px;color:var(--text3)">Charts update in real time as you apply filters in the Audit tab.</div>
   </div>
 
+  <!-- ══ TAB: REPORT ══ -->
   <div class="tab-panel" id="tab-report">
-    <div class="report-card">
-      <h2>📄 Executive Management Report</h2>
-      <p>Generate a professional A4 PDF for management review.</p>
-      <ul>
-        <li>Executive KPI Dashboard with accuracy rates</li>
-        <li>3 embedded analytics charts</li>
-        <li>Period-based statistics</li>
-        <li>Anomaly details table</li>
-        <li>Page footers with timestamps</li>
-      </ul>
-      <div class="section-divider"></div>
-      <p style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">Reporting Period (optional)</p>
-      <div class="report-date-grid">
-        <div class="fg"><label>Specific Date</label><input type="date" id="rSpecD"/></div>
-        <div class="fg"><label>From Date</label><input type="date" id="rFromD"/></div>
-        <div class="fg"><label>To Date</label><input type="date" id="rToD"/></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:540px">
+      <h2 style="font-size:16px;font-weight:800;margin-bottom:10px;color:var(--text)">Management PDF Report</h2>
+      <p style="color:var(--text2);font-size:12px;line-height:1.7;margin-bottom:18px">
+        Generates a professional A4 PDF containing:<br>
+        • Executive KPI Dashboard (based on selected date period)<br>
+        • 3 embedded charts (Results, Errors, Ticket Types)<br>
+        • Anomaly details table (errors, corrections, exceptions)<br>
+        • Reporting period context & full-file comparison row<br>
+        • Page footers with timestamp & page numbers
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Date Period for Report</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div class="fg"><label>Specific Date</label><input type="date" id="rSpecD" style="min-width:0"/></div>
+          <div class="fg"><label>From Date</label><input type="date" id="rFromD" style="min-width:0"/></div>
+          <div class="fg"><label>To Date</label><input type="date" id="rToD" style="min-width:0"/></div>
+        </div>
+        <div style="font-size:10px;color:var(--text3)">Leave blank to include all data.</div>
       </div>
-      <p style="font-size:10px;color:var(--text3);margin-bottom:20px">Leave blank to include all data.</p>
-      <button class="btn btn-fn" id="pdfBtn2" style="padding:11px 28px;font-size:13px">📄 Generate Executive Report</button>
+      <button class="btn btn-fn" id="pdfBtn2" style="padding:10px 24px;font-size:13px">📄 Generate Management PDF</button>
     </div>
   </div>
-</div>
+
+</div><!-- /page -->
 
 <script>
 'use strict';
@@ -310,7 +548,7 @@ const $=id=>document.getElementById(id);
 const E={
   ban:$('ban'),dbg:$('dbg'),dbgMsg:$('dbgMsg'),dbgStk:$('dbgStack'),
   dz:$('dropzone'),fi:$('fileInput'),
-  fmeta:$('fileStrip'),prev:$('previewCard'),prevTbl:$('previewTable'),prevCnt:$('previewCount'),
+  fmeta:$('fileMeta'),prev:$('previewWrap'),prevTbl:$('previewTable'),prevCnt:$('previewCount'),
   startBtn:$('startBtn'),
   bento:$('bento'),pb:$('pbar'),pl:$('plbl'),
   tbody:$('tbody'),
@@ -922,20 +1160,6 @@ function init(){
 
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
 else init();
-
-
-/* ─── Dark mode sync from hub parent ─── */
-function syncTheme(){
-  try{
-    var t=window.parent&&window.parent!==window?window.parent.document.documentElement.getAttribute('data-theme'):null;
-    if(t&&document.documentElement.getAttribute('data-theme')!==t){
-      document.documentElement.setAttribute('data-theme',t);
-      // Re-render charts with new theme colors
-      if(typeof S!=='undefined'&&S.filtered&&S.filtered.length) renderCharts(S.filtered);
-    }
-  }catch(e){}
-}
-setInterval(syncTheme,800);
 </script>
 </body>
 </html>
