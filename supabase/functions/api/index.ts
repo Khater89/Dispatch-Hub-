@@ -20,8 +20,13 @@ const CA_POSTAL_TABLE = Deno.env.get("CA_POSTAL_TABLE") || ""; // optional mappi
 // Optional
 const USA_W2_TABLE = Deno.env.get("USA_W2_TABLE") || "";
 
-// Admin token to protect write endpoints
+// Owner admin protection for write endpoints
 const ADMIN_TOKEN = Deno.env.get("ADMIN_TOKEN") || "";
+const ADMIN_USERNAME = (Deno.env.get("ADMIN_USERNAME") || "khater").trim().toLowerCase();
+const ADMIN_EMAILS = (Deno.env.get("ADMIN_EMAILS") || "akhater@acuative.com")
+  .split(",")
+  .map((x) => x.trim().toLowerCase())
+  .filter(Boolean);
 
 // Allowed tables for /export/<table>
 const ALLOWED_TABLES = new Set(
@@ -34,7 +39,7 @@ function cors(origin: string | null) {
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     // IMPORTANT: include x-admin-token to avoid browser preflight failure (Failed to fetch)
     "Access-Control-Allow-Headers":
-      "content-type, authorization, apikey, x-client-info, x-admin-token",
+      "content-type, authorization, apikey, x-client-info, x-admin-token, x-admin-user, x-admin-email",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
   };
@@ -42,6 +47,27 @@ function cors(origin: string | null) {
 
 function getSupabase() {
   return createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+}
+
+function normalizeIdentity(v: string | null) {
+  return String(v || "").trim().toLowerCase();
+}
+
+function isAllowedAdmin(req: Request) {
+  const token = req.headers.get("x-admin-token") || "";
+  const username = normalizeIdentity(req.headers.get("x-admin-user"));
+  const email = normalizeIdentity(req.headers.get("x-admin-email"));
+
+  if (!ADMIN_TOKEN || token !== ADMIN_TOKEN) {
+    return { ok: false, reason: "Invalid admin token" };
+  }
+  if (ADMIN_USERNAME && username !== ADMIN_USERNAME) {
+    return { ok: false, reason: "Admin username not allowed" };
+  }
+  if (ADMIN_EMAILS.length && !ADMIN_EMAILS.includes(email)) {
+    return { ok: false, reason: "Admin email not allowed" };
+  }
+  return { ok: true, username, email };
 }
 
 // --- robust key picking (handles: "Tech ID" vs tech_id vs TECHID ... etc) ---
@@ -162,9 +188,9 @@ Deno.serve(async (req) => {
     // --- ADMIN: Tech DBs Loader (Multi-Sheet) ---
     // POST /admin/techdbs/upload?mode=upsert|replace
     if (p === "/admin/techdbs/upload" && req.method === "POST") {
-      const token = req.headers.get("x-admin-token") || "";
-      if (!ADMIN_TOKEN || token !== ADMIN_TOKEN) {
-        return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+      const adminCheck = isAllowedAdmin(req);
+      if (!adminCheck.ok) {
+        return new Response(JSON.stringify({ ok: false, error: "Unauthorized", reason: adminCheck.reason }), {
           status: 401,
           headers: { ...cors(origin), "Content-Type": "application/json" },
         });
@@ -184,7 +210,12 @@ Deno.serve(async (req) => {
       const buf = new Uint8Array(await f.arrayBuffer());
       const wb = XLSX.read(buf, { type: "array" });
 
-      const report: any = { ok: true, mode, results: [] as any[] };
+      const report: any = {
+        ok: true,
+        mode,
+        admin: { username: adminCheck.username, email: adminCheck.email },
+        results: [] as any[],
+      };
 
       for (const sheetName of wb.SheetNames) {
         const table = sheetToTable(sheetName);
