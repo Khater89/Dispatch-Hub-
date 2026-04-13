@@ -4,7 +4,6 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
-import { INTL_SUPPLIERS_DB } from "./intl_suppliers_data.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -21,8 +20,9 @@ const CA_POSTAL_TABLE = Deno.env.get("CA_POSTAL_TABLE") || ""; // optional mappi
 // Optional
 const USA_W2_TABLE = Deno.env.get("USA_W2_TABLE") || "";
 
-// Owner app/admin protection
-const ADMIN_USERNAME = (Deno.env.get("ADMIN_USERNAME") || "khater").trim();
+// Owner admin protection for write endpoints
+const ADMIN_TOKEN = Deno.env.get("ADMIN_TOKEN") || "";
+const ADMIN_USERNAME = (Deno.env.get("ADMIN_USERNAME") || "khater").trim().toLowerCase();
 const ADMIN_EMAILS = (Deno.env.get("ADMIN_EMAILS") || "akhater@acuative.com")
   .split(",")
   .map((x) => x.trim().toLowerCase())
@@ -53,41 +53,21 @@ function normalizeIdentity(v: string | null) {
   return String(v || "").trim().toLowerCase();
 }
 
+function isAllowedAdmin(req: Request) {
+  const token = req.headers.get("x-admin-token") || "";
+  const username = normalizeIdentity(req.headers.get("x-admin-user"));
+  const email = normalizeIdentity(req.headers.get("x-admin-email"));
 
-function bearerToken(req: Request) {
-  const auth = req.headers.get("authorization") || "";
-  const m = auth.match(/^Bearer\s+(.+)$/i);
-  return m ? m[1] : "";
-}
-
-async function getAllowedUser(req: Request, supabase: any) {
-  const token = bearerToken(req);
-  if (!token) return { ok: false, reason: "Missing bearer token" };
-
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) {
-    return { ok: false, reason: "Invalid or expired session" };
+  if (!ADMIN_TOKEN || token !== ADMIN_TOKEN) {
+    return { ok: false, reason: "Invalid admin token" };
   }
-
-  const email = normalizeIdentity(data.user.email || "");
+  if (ADMIN_USERNAME && username !== ADMIN_USERNAME) {
+    return { ok: false, reason: "Admin username not allowed" };
+  }
   if (ADMIN_EMAILS.length && !ADMIN_EMAILS.includes(email)) {
-    return { ok: false, reason: "User email not allowed" };
+    return { ok: false, reason: "Admin email not allowed" };
   }
-
-  const meta = data.user.user_metadata || {};
-  const username = String(meta.username || meta.full_name || ADMIN_USERNAME || "").trim() || ADMIN_USERNAME;
-  return { ok: true, email, username, user: data.user };
-}
-
-async function requireAllowedUser(req: Request, supabase: any, origin: string | null) {
-  const auth = await getAllowedUser(req, supabase);
-  if (!auth.ok) {
-    return new Response(JSON.stringify({ ok: false, error: "Unauthorized", reason: auth.reason }), {
-      status: 401,
-      headers: { ...cors(origin), "Content-Type": "application/json" },
-    });
-  }
-  return auth;
+  return { ok: true, username, email };
 }
 
 // --- robust key picking (handles: "Tech ID" vs tech_id vs TECHID ... etc) ---
@@ -205,19 +185,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (p === "/intl/suppliers") {
-      const auth = await requireAllowedUser(req, supabase, origin);
-      if (auth instanceof Response) return auth;
-      return new Response(JSON.stringify({ ok: true, data: INTL_SUPPLIERS_DB }), {
-        headers: { ...cors(origin), "Content-Type": "application/json" },
-      });
-    }
-
     // --- ADMIN: Tech DBs Loader (Multi-Sheet) ---
     // POST /admin/techdbs/upload?mode=upsert|replace
     if (p === "/admin/techdbs/upload" && req.method === "POST") {
-      const adminCheck = await requireAllowedUser(req, supabase, origin);
-      if (adminCheck instanceof Response) return adminCheck;
+      const adminCheck = isAllowedAdmin(req);
+      if (!adminCheck.ok) {
+        return new Response(JSON.stringify({ ok: false, error: "Unauthorized", reason: adminCheck.reason }), {
+          status: 401,
+          headers: { ...cors(origin), "Content-Type": "application/json" },
+        });
+      }
 
       const mode = (url.searchParams.get("mode") || "upsert").toLowerCase();
 
@@ -297,8 +274,6 @@ Deno.serve(async (req) => {
 
     // --- ONCALL: techdb (AOA 9 columns) ---
     if (p === "/oncall/techdb") {
-      const auth = await requireAllowedUser(req, supabase, origin);
-      if (auth instanceof Response) return auth;
       const table = url.searchParams.get("table") || TECH_TABLE;
       const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 200000), 1), 200000);
 
@@ -327,8 +302,6 @@ Deno.serve(async (req) => {
 
     // --- ONCALL: zip db (AOA: zip, lat, lon, city, state) ---
     if (p === "/oncall/uszips") {
-      const auth = await requireAllowedUser(req, supabase, origin);
-      if (auth instanceof Response) return auth;
       const table = url.searchParams.get("table") || ZIP_TABLE;
       const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 200000), 1), 200000);
 
@@ -352,8 +325,6 @@ Deno.serve(async (req) => {
 
     // --- CANADA W2 techs (objects) ---
     if (p === "/canada/w2techdb") {
-      const auth = await requireAllowedUser(req, supabase, origin);
-      if (auth instanceof Response) return auth;
       const table = url.searchParams.get("table") || CA_W2_TABLE;
       const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 5000), 1), 50000);
 
@@ -378,8 +349,6 @@ Deno.serve(async (req) => {
 
     // --- CANADA postal->province mapping (optional table) ---
     if (p === "/canada/postalprov") {
-      const auth = await requireAllowedUser(req, supabase, origin);
-      if (auth instanceof Response) return auth;
       const table = url.searchParams.get("table") || CA_POSTAL_TABLE;
       if (!table) {
         return new Response(JSON.stringify({ ok: true, table: "", mapping: {}, disabled: true }), {
@@ -406,8 +375,6 @@ Deno.serve(async (req) => {
 
     // --- export AOA for Flex (and any allowed table) ---
     if (p.startsWith("/export/")) {
-      const auth = await requireAllowedUser(req, supabase, origin);
-      if (auth instanceof Response) return auth;
       const table = decodeURIComponent(p.split("/")[2] || "");
       if (ALLOWED_TABLES.size && !ALLOWED_TABLES.has(table)) {
         return new Response(JSON.stringify({ ok: false, error: "Table not allowed", table }), {
