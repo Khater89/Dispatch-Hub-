@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Audit & Validation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" onerror="window.__xlsxFail=true"></script>
+  <script>if(window.__xlsxFail||typeof XLSX==='undefined')document.write('<scr'+'ipt src="https://unpkg.com/xlsx@0.20.3/dist/xlsx.full.min.js"><\/scr'+'ipt>');</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" onerror="window.__chartFail=true"></script>
+  <script>if(window.__chartFail||typeof Chart==='undefined')document.write('<scr'+'ipt src="https://unpkg.com/chart.js@4.4.2/dist/chart.umd.min.js"><\/scr'+'ipt>');</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onerror="window.__jsPDFFail=true"></script>
+  <script>if(window.__jsPDFFail||typeof window.jspdf==='undefined')document.write('<scr'+'ipt src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"><\/scr'+'ipt>');</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" onerror="window.__h2cFail=true"></script>
+  <script>if(window.__h2cFail||typeof html2canvas==='undefined')document.write('<scr'+'ipt src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"><\/scr'+'ipt>');</script>
+  <script>
+    (function(){
+      try{
+        var t=null;
+        try{t=window.parent&&window.parent!==window?window.parent.document.documentElement.getAttribute('data-theme'):null;}catch(e){}
+        if(!t)t=localStorage.getItem('dispatch-theme');
+        if(t==='dark')document.documentElement.setAttribute('data-theme','dark');
+      }catch(e){}
+    })();
+  </script>
+  <style>
+  :root{
+    --fn:#F97316;--fn-10:rgba(249,115,22,.10);--fn-20:rgba(249,115,22,.20);--fn-dark:#C2410C;
+    --ie:#2563EB;--ie-10:rgba(37,99,235,.10);--ie-20:rgba(37,99,235,.20);--ie-dark:#1D4ED8;
+    --ok:#22c55e;--ok-10:rgba(34,197,94,.10);--ok-txt:#166534;
+    --err:#ef4444;--err-10:rgba(239,68,68,.10);--err-txt:#991b1b;
+    --warn:#f59e0b;--warn-10:rgba(245,158,11,.10);--warn-txt:#92400e;
+    --cor:#8b5cf6;--cor-10:rgba(139,92,246,.10);--cor-txt:#5b21b6;
+    --bg:#F0F2F5;--surface:#FFFFFF;--surface2:#F7F8FA;--surface3:#ECEEF2;
+    --text:#0F172A;--text2:#475569;--text3:#94A3B8;
+    --border:rgba(15,23,42,.10);--border2:rgba(15,23,42,.05);
+    --sh:0 1px 3px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.04);
+    --shm:0 4px 16px rgba(15,23,42,.10);--shl:0 12px 40px rgba(15,23,42,.14);
+    --r4:4px;--r8:8px;--r12:12px;--r16:16px;--rf:999px;
+    --ease:cubic-bezier(.16,1,.3,1);--t150:150ms var(--ease);--t250:250ms var(--ease);
+  }
+  [data-theme="dark"]{
+    --bg:#0B1220;--surface:rgba(255,255,255,.05);--surface2:rgba(255,255,255,.03);--surface3:rgba(255,255,255,.08);
+    --text:#E5E7EB;--text2:#94A3B8;--text3:#475569;
+    --border:rgba(255,255,255,.10);--border2:rgba(255,255,255,.04);
+    --sh:0 1px 3px rgba(0,0,0,.3);--shm:0 4px 16px rgba(0,0,0,.4);--shl:0 12px 40px rgba(0,0,0,.5);
+    --fn-dark:#fdba74;--ie-dark:#93c5fd;
+    --ok-txt:#4ade80;--err-txt:#f87171;--warn-txt:#fbbf24;--cor-txt:#a78bfa;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',system-ui,sans-serif;font-size:13px;line-height:1.5;color:var(--text);background:var(--bg);min-height:100vh;transition:background .4s,color .4s}
+  [data-theme="dark"] body{background:radial-gradient(800px 400px at 10% 0%,rgba(37,99,235,.08),transparent 60%),radial-gradient(600px 400px at 90% 0%,rgba(249,115,22,.06),transparent 55%),#0B1220}
+  .page{max-width:1600px;margin:0 auto;padding:16px 20px 60px}
+  .book-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r16);box-shadow:var(--sh);backdrop-filter:blur(12px);flex-wrap:wrap}
+  .book-title{display:flex;align-items:center;gap:10px}
+  .book-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--fn),var(--ie));border-radius:var(--r8);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .book-name{font-size:15px;font-weight:700;color:var(--text)}
+  .book-sub{font-size:11px;color:var(--text3)}
+  #ban{padding:10px 14px;border-radius:var(--r8);margin-bottom:12px;font-size:12px;font-weight:500;display:none;line-height:1.5}
+  #ban.s{display:block;background:var(--err-10);border:1px solid rgba(239,68,68,.25);color:var(--err-txt)}
+  #ban.w{display:block;background:var(--warn-10);border:1px solid rgba(245,158,11,.25);color:var(--warn-txt)}
+  #dbg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+  #dbg.h{display:none}
+  .dbox{background:var(--surface);border:1px solid var(--border);border-radius:var(--r16);padding:28px;max-width:500px;width:100%;box-shadow:var(--shl)}
+  .dbox h2{font-size:16px;color:var(--fn);margin-bottom:12px}
+  .dbox p{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:10px}
+  .dbox pre{background:var(--surface2);color:var(--ie-dark);padding:10px;border-radius:var(--r8);font-family:'DM Mono',monospace;font-size:10px;overflow:auto;max-height:160px;white-space:pre-wrap;margin-bottom:12px;border:1px solid var(--border)}
+  .dcl{padding:8px 18px;border:none;border-radius:var(--r8);background:var(--fn);color:#fff;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer}
+  #pdfOv{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+  #pdfOv.h{display:none}
+  .pdfSpin{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--fn);border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .pdfLbl{font-size:13px;color:var(--text2)}
+  .book-tabs{display:flex;gap:2px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r12);padding:4px;box-shadow:var(--sh)}
+  .btab{flex:1;padding:8px 12px;border:none;border-radius:var(--r8);background:transparent;color:var(--text2);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:all var(--t150);text-align:center;display:flex;align-items:center;justify-content:center;gap:6px}
+  .btab:hover{background:var(--surface3);color:var(--text)}
+  .btab.active{background:var(--text);color:#fff;box-shadow:var(--sh)}
+  [data-theme="dark"] .btab.active{background:rgba(255,255,255,.12)}
+  .btab.active.audit-tab{background:linear-gradient(135deg,var(--fn),var(--ie));box-shadow:0 2px 12px rgba(249,115,22,.3)}
+  .btab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:var(--rf);background:rgba(255,255,255,.2);color:inherit;font-size:10px;font-weight:700;font-family:'DM Mono',monospace}
+  .btab:not(.active) .btab-badge{background:var(--fn-10);color:var(--fn-dark)}
+  [data-theme="dark"] .btab:not(.active) .btab-badge{color:#fdba74}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+  .dropzone{display:block;border:2px dashed var(--border);border-radius:var(--r16);background:linear-gradient(135deg,var(--ie-10),var(--fn-10));padding:44px 28px;text-align:center;cursor:pointer;transition:all var(--t250);margin-bottom:16px}
+  .dropzone:hover,.dropzone.dr{border-color:var(--fn);transform:translateY(-2px);box-shadow:var(--shl),0 0 0 4px var(--fn-10)}
+  .dropzone input{display:none}
+  .dz-icon{font-size:40px;margin-bottom:10px;display:block}
+  .dz-title{font-size:18px;font-weight:700;margin-bottom:6px}
+  .dz-sub{color:var(--text2);font-size:12px}
+  .dz-sub strong{color:var(--text)}
+  .file-strip{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .file-chip{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--rf);background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--text2);box-shadow:var(--sh)}
+  .file-chip strong{color:var(--text);font-weight:600}
+  .preview-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r12);overflow:hidden;margin-bottom:16px;box-shadow:var(--sh)}
+  .preview-card-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border2);font-size:11px;font-weight:600;color:var(--text2)}
+  .preview-scroll{overflow:auto;max-height:200px}
+  .preview-scroll table{width:100%;border-collapse:collapse;font-size:11px}
+  .preview-scroll th{background:var(--surface2);color:var(--text3);padding:6px 10px;text-align:left;white-space:nowrap;font-weight:600;font-size:10px;border-bottom:1px solid var(--border);position:sticky;top:0;font-family:'DM Mono',monospace}
+  .preview-scroll td{padding:5px 10px;border-bottom:1px solid var(--border2);white-space:nowrap;font-family:'DM Mono',monospace;color:var(--text)}
+  .preview-scroll tr:hover td{background:var(--surface2)}
+  .start-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 28px;border:none;border-radius:var(--r12);background:linear-gradient(135deg,var(--fn),var(--ie));color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all var(--t250);box-shadow:0 4px 16px rgba(249,115,22,.25)}
+  .start-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(249,115,22,.35)}
+  .bento{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+  .bento-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r12);padding:14px 15px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:box-shadow var(--t150),transform var(--t150)}
+  .bento-card:hover{box-shadow:var(--shm);transform:translateY(-1px)}
+  .bento-card::before{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+  .bc-total::before{background:var(--text3)}.bc-match::before{background:var(--ok)}.bc-cor::before{background:var(--cor)}.bc-err::before{background:var(--err)}.bc-exc::before{background:var(--warn)}.bc-rate::before{background:linear-gradient(90deg,var(--fn),var(--ie))}
+  .bc-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:6px}
+  .bc-val{font-size:26px;font-weight:700;font-family:'DM Mono',monospace;line-height:1;color:var(--text)}
+  .bc-match .bc-val{color:var(--ok-txt)}.bc-cor .bc-val{color:var(--cor-txt)}.bc-err .bc-val{color:var(--err-txt)}.bc-exc .bc-val{color:var(--warn-txt)}
+  .bc-sub{font-size:10px;color:var(--text3);margin-top:3px}
+  .prog-wrap{margin-bottom:14px}
+  .prog-hd{display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px}
+  .prog-track{height:6px;background:var(--surface3);border-radius:var(--rf);overflow:hidden}
+  .prog-bar{height:100%;border-radius:var(--rf);background:linear-gradient(90deg,var(--fn),var(--ie));transition:width .4s var(--ease)}
+  .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:16px}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r12);padding:16px;box-shadow:var(--sh)}
+  .chart-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:12px}
+  .chart-box{position:relative;height:190px}
+  .toolbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r12);padding:14px 16px;box-shadow:var(--sh);margin-bottom:12px}
+  .trow{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:8px}
+  .trow:last-child{margin-bottom:0}
+  .fg{display:flex;flex-direction:column;gap:3px}
+  .fg label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)}
+  .fg input,.fg select{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r8);font-family:inherit;font-size:12px;color:var(--text);background:var(--surface2);outline:none;transition:border-color var(--t150),box-shadow var(--t150)}
+  .fg input:focus,.fg select:focus{border-color:var(--ie);box-shadow:0 0 0 3px var(--ie-10)}
+  .fg-search{flex:1;min-width:180px}
+  .scope-chip{padding:7px 12px;border-radius:var(--r8);font-size:11px;font-weight:600;color:var(--text3);background:var(--surface2);border:1px solid var(--border);white-space:nowrap;font-family:'DM Mono',monospace}
+  .filter-note{font-size:10px;color:var(--text3);margin-top:8px;line-height:1.6}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border);border-radius:var(--r8);background:var(--surface);color:var(--text2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all var(--t150);white-space:nowrap}
+  .btn:hover{background:var(--surface3);color:var(--text)}
+  .btn-primary{background:var(--text);color:#fff;border-color:transparent;box-shadow:var(--sh)}
+  .btn-primary:hover{opacity:.9;color:#fff}
+  [data-theme="dark"] .btn-primary{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.1)}
+  .btn-fn{background:linear-gradient(135deg,var(--fn),var(--fn-dark));color:#fff;border-color:transparent;box-shadow:0 2px 8px var(--fn-20)}
+  .btn-fn:hover{box-shadow:0 4px 16px var(--fn-20);transform:translateY(-1px);color:#fff}
+  .table-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r12);box-shadow:var(--sh);overflow:hidden}
+  .tw{overflow:auto;max-height:60vh}
+  table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
+  thead th{background:var(--surface2);color:var(--text3);padding:8px 10px;text-align:left;white-space:nowrap;font-weight:600;font-size:10px;letter-spacing:.03em;border-bottom:1px solid var(--border);border-right:1px solid var(--border2)}
+  thead tr.gr th{position:sticky;top:0;z-index:4;text-align:center;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;border-bottom:1px solid var(--border);color:#fff}
+  thead tr.cr th{position:sticky;top:31px;z-index:3}
+  .gc{background:var(--text)!important}.gi{background:var(--ie)!important}.gf{background:var(--fn)!important}.gv{background:#0f766e!important}
+  tbody td{padding:8px 10px;border-bottom:1px solid var(--border2);vertical-align:middle;white-space:nowrap;color:var(--text);transition:background var(--t150)}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr.rm td{background:rgba(34,197,94,.04)}
+  tbody tr.re td{background:rgba(239,68,68,.05)}
+  tbody tr.rx td{background:rgba(245,158,11,.05)}
+  tbody tr.rc td{background:rgba(139,92,246,.05)}
+  tbody tr:hover td{background:var(--surface2)!important}
+  td.mm{background:rgba(239,68,68,.09)!important;color:var(--err-txt)!important;font-weight:600}
+  .pill{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:var(--rf);font-size:10.5px;font-weight:600;white-space:nowrap;border:1px solid}
+  .pill.ok{background:rgba(34,197,94,.1);color:var(--ok-txt);border-color:rgba(34,197,94,.25)}
+  .pill.er{background:rgba(239,68,68,.1);color:var(--err-txt);border-color:rgba(239,68,68,.25)}
+  .pill.wn{background:rgba(245,158,11,.1);color:var(--warn-txt);border-color:rgba(245,158,11,.25)}
+  .pill.co{background:rgba(139,92,246,.1);color:var(--cor-txt);border-color:rgba(139,92,246,.25)}
+  .pdot{width:4px;height:4px;border-radius:50%;background:currentColor}
+  .cbtn{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border:1px solid var(--border);border-radius:var(--rf);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all var(--t250);min-width:86px;justify-content:center;background:var(--surface2);color:var(--text2)}
+  .cbtn.mk:hover{background:var(--text);color:#fff;border-color:transparent;transform:scale(1.04);box-shadow:var(--sh)}
+  .cbtn.dn{background:rgba(34,197,94,.1);color:var(--ok-txt);border-color:rgba(34,197,94,.25);cursor:default}
+  .cbtn.dn::before{content:'\2713 '}
+  .dcl2,.ncl{max-width:220px;white-space:normal;line-height:1.4;font-size:10px;color:var(--text2)}
+  .emp{text-align:center;padding:48px;color:var(--text3);font-weight:500;font-size:13px}
+  .mn{font-family:'DM Mono',monospace;font-size:11px}
+  .h{display:none!important}
+  .report-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r16);padding:28px;max-width:520px;box-shadow:var(--sh)}
+  .report-card h2{font-size:16px;font-weight:700;margin-bottom:10px}
+  .report-card p{font-size:12px;color:var(--text2);line-height:1.8;margin-bottom:20px}
+  .report-card ul{font-size:12px;color:var(--text2);padding-left:18px;margin-bottom:20px;line-height:2}
+  .report-date-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .section-divider{height:1px;background:var(--border);margin:14px 0}
+  @media(max-width:900px){.charts-grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:600px){.page{padding:10px 12px 40px}.charts-grid{grid-template-columns:1fr}.bento{grid-template-columns:repeat(2,1fr)}.trow{flex-direction:column}.btab span:not(.btab-badge){display:none}}
+  </style>
+</head>
+<body>
+
+<div id="pdfOv" class="h"><div class="pdfSpin"></div><div class="pdfLbl">Generating Executive Report PDF…</div></div>
+
+<div id="dbg" class="h">
+  <div class="dbox">
+    <h2>⚠ Error Detected</h2>
+    <p id="dbgMsg"></p>
+    <pre id="dbgStack"></pre>
+    <p style="font-size:11px;color:var(--text3)">Use Chrome or Edge. Disable ad-blockers. File must have a <strong>Report</strong> sheet with Assigned Company = "Field Nation".</p>
+    <button class="dcl" onclick="document.getElementById('dbg').classList.add('h')">Dismiss</button>
+  </div>
+</div>
+
+<div class="page">
+  <div class="book-header">
+    <div class="book-title">
+      <div class="book-icon">🔍</div>
+      <div>
+        <div class="book-name">Audit & Validation Book</div>
+        <div class="book-sub">Field Nation × Internal Entity — Side-by-Side Audit</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;background:var(--ie-10);color:var(--ie-dark);border:1px solid var(--ie-20)"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>IE = Blue</span>
+      <span style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;background:var(--fn-10);color:var(--fn-dark);border:1px solid var(--fn-20)"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>FN = Orange</span>
+    </div>
+  </div>
+
+  <div id="ban"></div>
+
+  <div class="book-tabs" role="tablist">
+    <button class="btab active" data-tab="upload" role="tab"><span>📂</span><span>Upload</span><span class="btab-badge" id="tn-upload" style="display:none"></span></button>
+    <button class="btab audit-tab" data-tab="audit" role="tab"><span>🔍</span><span>Audit</span><span class="btab-badge" id="tn-audit">0</span></button>
+    <button class="btab" data-tab="analytics" role="tab"><span>📊</span><span>Analytics</span></button>
+    <button class="btab" data-tab="report" role="tab"><span>📄</span><span>Report</span></button>
+  </div>
+
+  <div class="tab-panel active" id="tab-upload">
+    <label class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls"/>
+      <span class="dz-icon">📂</span>
+      <div class="dz-title">Drop your Excel workbook here</div>
+      <div class="dz-sub">Or click to browse &nbsp;·&nbsp; Expects a <strong>Report</strong> sheet with Field Nation rows</div>
+    </label>
+    <div id="fileStrip" class="file-strip h"></div>
+    <div id="previewCard" class="preview-card h">
+      <div class="preview-card-hd"><span>File Preview — first rows</span><span id="previewCount" style="color:var(--text3);font-family:'DM Mono',monospace"></span></div>
+      <div class="preview-scroll"><table id="previewTable"></table></div>
+    </div>
+    <button class="start-btn h" id="startBtn"><span>▶</span> Start Audit</button>
+  </div>
+
+  <div class="tab-panel" id="tab-audit">
+    <div class="toolbar">
+      <div class="trow">
+        <div class="fg fg-search"><label>Search</label><input type="text" id="srch" placeholder="Ticket number, technician name…"/></div>
+        <div class="fg"><label>Ticket Type</label><select id="typeF"><option value="all">All Types</option></select></div>
+        <div class="fg"><label>Status</label><select id="statF"><option value="all">All Rows</option><option value="errors">Errors Only</option><option value="corrected">Corrected Only</option><option value="matched">Matched Only</option><option value="exception">Exception Matches</option></select></div>
+        <div class="fg"><label>Specific Date</label><input type="date" id="specD"/></div>
+        <div class="fg"><label>From Date</label><input type="date" id="fromD"/></div>
+        <div class="fg"><label>To Date</label><input type="date" id="toD"/></div>
+        <div class="scope-chip" id="stag">—</div>
+      </div>
+      <div class="trow">
+        <button class="btn btn-primary" id="applyBtn">🔍 Apply Filters</button>
+        <button class="btn" id="clearBtn">✕ Clear</button>
+        <button class="btn btn-fn" id="pdfBtn">📄 Export PDF</button>
+      </div>
+      <div class="filter-note">📅 Date filter uses <strong>FN Scheduled Date</strong> first, then IE Due Date as fallback. &nbsp;·&nbsp; ⚡ ITD tickets always pass date validation.</div>
+    </div>
+    <div class="table-panel"><div class="tw">
+      <table>
+        <thead>
+          <tr class="gr"><th class="gc" colspan="5">Core</th><th class="gi" colspan="5">Internal Entity (IE)</th><th class="gf" colspan="4">Field Nation (FN)</th><th class="gv" colspan="9">Validation & Tracking</th></tr>
+          <tr class="cr"><th>Row#</th><th>Ticket</th><th>Type</th><th>Company</th><th>Date</th><th>IE&amp;FN Status</th><th>IE FE Name</th><th>IE Due Date</th><th>IE Due Time</th><th>IE Scheduled</th><th>FN Status</th><th>FN FE Name</th><th>FN Sched. Date</th><th>FN Sched. Time</th><th>Status✓</th><th>Date✓</th><th>Time✓</th><th>Name✓</th><th>Exception</th><th>Result</th><th>Details</th><th>Note</th><th>Action</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div></div>
+  </div>
+
+  <div class="tab-panel" id="tab-analytics">
+    <div class="bento" id="bento"></div>
+    <div class="prog-wrap">
+      <div class="prog-hd"><span>Completion Rate</span><span id="plbl" style="font-family:'DM Mono',monospace">0%</span></div>
+      <div class="prog-track"><div class="prog-bar" id="pbar" style="width:0%"></div></div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card"><div class="chart-title">Validation Results</div><div class="chart-box"><canvas id="cPie"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Error Breakdown</div><div class="chart-box"><canvas id="cBar"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Ticket Type Distribution</div><div class="chart-box"><canvas id="cType"></canvas></div></div>
+    </div>
+    <p style="font-size:11px;color:var(--text3)">Analytics update in real time as you apply filters in the Audit tab.</p>
+  </div>
+
+  <div class="tab-panel" id="tab-report">
+    <div class="report-card">
+      <h2>📄 Executive Management Report</h2>
+      <p>Generate a professional A4 PDF for management review.</p>
+      <ul>
+        <li>Executive KPI Dashboard with accuracy rates</li>
+        <li>3 embedded analytics charts</li>
+        <li>Period-based statistics</li>
+        <li>Anomaly details table</li>
+        <li>Page footers with timestamps</li>
+      </ul>
+      <div class="section-divider"></div>
+      <p style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">Reporting Period (optional)</p>
+      <div class="report-date-grid">
+        <div class="fg"><label>Specific Date</label><input type="date" id="rSpecD"/></div>
+        <div class="fg"><label>From Date</label><input type="date" id="rFromD"/></div>
+        <div class="fg"><label>To Date</label><input type="date" id="rToD"/></div>
+      </div>
+      <p style="font-size:10px;color:var(--text3);margin-bottom:20px">Leave blank to include all data.</p>
+      <button class="btn btn-fn" id="pdfBtn2" style="padding:11px 28px;font-size:13px">📄 Generate Executive Report</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ═════════════════════════════════════════════════════════════
+   STATE
+═════════════════════════════════════════════════════════════ */
+const S={raw:[],filtered:[],fileMeta:null,charts:{pie:null,bar:null,typ:null}};
+
+/* ═════════════════════════════════════════════════════════════
+   DOM
+═════════════════════════════════════════════════════════════ */
+const $=id=>document.getElementById(id);
+const E={
+  ban:$('ban'),dbg:$('dbg'),dbgMsg:$('dbgMsg'),dbgStk:$('dbgStack'),
+  dz:$('dropzone'),fi:$('fileInput'),
+  fmeta:$('fileMeta'),prev:$('previewWrap'),prevTbl:$('previewTable'),prevCnt:$('previewCount'),
+  startBtn:$('startBtn'),
+  bento:$('bento'),pb:$('pbar'),pl:$('plbl'),
+  tbody:$('tbody'),
+  srch:$('srch'),typeF:$('typeF'),statF:$('statF'),specD:$('specD'),fromD:$('fromD'),toD:$('toD'),
+  stag:$('stag'),
+  rSpecD:$('rSpecD'),rFromD:$('rFromD'),rToD:$('rToD'),
+};
+
+/* ═════════════════════════════════════════════════════════════
+   SUB-TAB ROUTING
+═════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.stab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    $('tab-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='analytics'&&S.filtered.length) renderCharts(S.filtered);
+  });
+});
+
+/* ═════════════════════════════════════════════════════════════
+   BANNER / DEBUG
+═════════════════════════════════════════════════════════════ */
+function showBan(msg,type='err'){E.ban.textContent=msg;E.ban.className=type==='warn'?'s w':'s';}
+function hideBan(){E.ban.className='';}
+function showDbg(msg,stack){E.dbgMsg.textContent=msg;$('dbgStack').textContent=stack||'';E.dbg.classList.remove('h');}
+
+/* ═════════════════════════════════════════════════════════════
+   DATE UTILITIES — UTC serial decode (Day-1 fix)
+═════════════════════════════════════════════════════════════ */
+function p2(n){return String(n).padStart(2,'0')}
+function fd(y,m,d){return `${y}-${p2(m)}-${p2(d)}`}
+function fdL(dt){return fd(dt.getFullYear(),dt.getMonth()+1,dt.getDate())}
+function fdU(dt){return fd(dt.getUTCFullYear(),dt.getUTCMonth()+1,dt.getUTCDate())}
+
+function serial2date(v){
+  if(typeof v!=='number'||!Number.isFinite(v)||v<1) return '';
+  const adj=Math.floor(v)>=60?Math.floor(v)-1:Math.floor(v);
+  const ms=Date.UTC(1899,11,31)+adj*86400000;
+  return fdU(new Date(ms));
+}
+function parseDatePart(v){
+  if(v===null||v===undefined||v==='') return '';
+  if(typeof v==='number'&&Number.isFinite(v)) return serial2date(v);
+  if(v instanceof Date) return fdL(v);
+  const t=String(v).trim().replace(/\s+/g,' ');
+  if(!t) return '';
+  const iso=t.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if(iso) return fd(iso[1],iso[2],iso[3]);
+  const sl=t.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if(sl){let y=sl[3];if(y.length===2)y='20'+y;const a=+sl[1],b=+sl[2];return fd(y,a>12?b:a,a>12?a:b);}
+  const wd=t.match(/^([A-Za-z]{3,9})\s+(\d{1,2}),?\s*(\d{4})$/);
+  if(wd){const dt=new Date(t);return isNaN(dt.getTime())?t:fdL(dt);}
+  return t;
+}
+function parseTimePart(v){
+  if(v===null||v===undefined||v==='') return '';
+  if(v instanceof Date) return `${p2(v.getHours())}:${p2(v.getMinutes())}`;
+  if(typeof v==='number'&&Number.isFinite(v)){const tot=Math.round((v%1)*24*60);return `${p2(Math.floor(tot/60)%24)}:${p2(tot%60)}`;}
+  if(typeof v==='string'){
+    const t=v.trim().toUpperCase();
+    const ap=t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
+    if(ap){let h=+ap[1];const mn=ap[2],s=ap[3];if(s==='PM'&&h<12)h+=12;if(s==='AM'&&h===12)h=0;return `${p2(h)}:${mn}`;}
+    const pl=t.match(/(\d{1,2}):(\d{2})/);
+    if(pl) return `${p2(+pl[1])}:${pl[2]}`;
+  }
+  return String(v).trim();
+}
+
+/* ═════════════════════════════════════════════════════════════
+   VALIDATION
+═════════════════════════════════════════════════════════════ */
+function norm(v){return(v??'').toString().trim().replace(/\s+/g,' ')}
+function normU(v){return norm(v).toUpperCase()}
+function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function defTrk(){return{correctedMarked:false,correctedAt:''}}
+function nowStr(){return new Date().toLocaleString()}
+
+function recomp(row){
+  const sOk=normU(row.ieFnStatus)==='OK';
+  const hD=!!(row.ieDueDate&&row.fnSD),hT=!!(row.ieDueTime&&row.fnST),hN=!!(row.ieFEN||row.fnFEN);
+  const rdOk=!hD?true:row.ieDueDate===row.fnSD;
+  const rtOk=!hT?true:row.ieDueTime===row.fnST;
+  const dExc=!rdOk&&row.type==='ITD',tExc=!rtOk&&(row.type==='ITD'||row.type==='ITR');
+  const dVal=!hD?true:(rdOk||dExc),tVal=!hT?true:(rtOk||tExc);
+  const nVal=!hN?true:normU(row.ieFEN)===normU(row.fnFEN);
+  row.sOk=sOk;row.dVal=dVal;row.tVal=tVal;row.nVal=nVal;
+  row.dExc=dExc;row.tExc=tExc;
+  row.excA=dExc||tExc;
+  row.excT=[dExc?'ITD-Date':'',tExc?`${row.type}-Time`:''].filter(Boolean).join(', ');
+  const errs=[!sOk?'Status≠OK':'',!dVal?'DueDate≠FNDate':'',!tVal?'DueTime≠FNTime':'',!nVal?'IEName≠FNName':''].filter(Boolean);
+  row.vRes=errs.length?'Error':'Matched';
+  row.bDet=errs.length?errs.join('; '):(row.excA?`Matched via ${row.excT}`:'All checks passed');
+  if(row.vRes==='Error'&&row.trk.correctedMarked){
+    row.fRes='Corrected';row.det=`${row.bDet}; Corrected by user`;row.note=`Corrected on ${row.trk.correctedAt}`;
+  } else {
+    row.fRes=row.vRes;row.det=row.bDet;row.note=row.trk.correctedMarked?`Corrected on ${row.trk.correctedAt}`:'Pending';
+  }
+  if(row.excA&&!row.det.includes(row.excT)) row.det+=`; ${row.excT}`;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   PARSE WORKBOOK
+═════════════════════════════════════════════════════════════ */
+function parseSheet(rows){
+  const out=[];
+  for(let i=2;i<rows.length;i++){
+    const r=rows[i]||[];
+    const ticket=r[0];if(!ticket) continue;
+    if(normU(r[12])!=='FIELD NATION') continue;
+    const fnD=parseDatePart(r[20]),ieD=parseDatePart(r[7]);
+    const row={
+      rowId:`r${i}`,srcRow:i+1,ticket,type:normU(r[5]),company:norm(r[12]),
+      ieFnStatus:norm(r[26]),ieFEN:norm(r[13]),fnFEN:norm(r[23]),
+      ieDueDate:ieD,ieDueTime:parseTimePart(r[8]),
+      ieSD:parseDatePart(r[9]),ieST:parseTimePart(r[10]),
+      fnSD:fnD,fnST:parseTimePart(r[21]),fnStatus:norm(r[16]),
+      filterDate:fnD||ieD||'',trk:defTrk(),
+    };
+    recomp(row);out.push(row);
+  }
+  return out;
+}
+
+/* ─── FILE PREVIEW ─── */
+function buildPreview(rows){
+  const headers=rows[1]||rows[0]||[];
+  const data=rows.slice(2,12);
+  let html=`<tr>${headers.slice(0,15).map(h=>`<th>${esc(h)}</th>`).join('')}</tr>`;
+  data.forEach(r=>{
+    if(!r||!r[0]) return;
+    html+=`<tr>${(r||[]).slice(0,15).map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`;
+  });
+  E.prevTbl.innerHTML=html;
+  E.prevCnt.textContent=`${rows.length-2} data rows detected`;
+  E.prev.classList.remove('h');
+}
+
+function handleWB(file){
+  if(typeof XLSX==='undefined'){showBan('SheetJS library failed to load. Refresh and try again.');return;}
+  hideBan();
+  S.fileMeta={name:file.name,size:file.size,lastModified:file.lastModified};
+
+  // show file meta chips
+  E.fmeta.innerHTML=`
+    <div class="fmeta-chip">📄 <b>${esc(file.name)}</b></div>
+    <div class="fmeta-chip">💾 <b>${(file.size/1024).toFixed(1)} KB</b></div>
+    <div class="fmeta-chip">🕒 <b>${new Date(file.lastModified).toLocaleDateString()}</b></div>`;
+  E.fmeta.classList.remove('h');
+
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    try{
+      if(typeof XLSX==='undefined') throw new Error('SheetJS not available');
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:false,cellNF:false,cellText:false});
+      const sn=wb.SheetNames.includes('Report')?'Report':wb.SheetNames[0];
+      if(!sn) throw new Error('No sheets found');
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});
+      if(!rows||rows.length<3) throw new Error('Sheet has fewer than 3 rows');
+
+      // preview
+      buildPreview(rows);
+
+      // parse & store
+      S.raw=parseSheet(rows);
+      if(!S.raw.length){
+        showBan('No Field Nation rows found. Check sheet name = "Report" and Assigned Company = "Field Nation".');
+        return;
+      }
+
+      // update tab badge
+      $('tn-upload').textContent=`${S.raw.length} rows`;
+      $('tn-audit').textContent=S.raw.length;
+
+      // show start button
+      E.startBtn.classList.remove('h');
+      hideBan();
+      loadState();
+
+    } catch(err){
+      console.error('[VRA]',err);
+      showBan(`File processing failed: ${err.message}`);
+      showDbg(`Failed to process "${file.name}": ${err.message}`,err.stack||String(err));
+    }
+  };
+  rd.onerror=()=>{showBan('File could not be read.');showDbg('FileReader.onerror','');};
+  rd.readAsArrayBuffer(file);
+}
+
+/* ═════════════════════════════════════════════════════════════
+   FILTERS
+═════════════════════════════════════════════════════════════ */
+function popTypes(){
+  const cur=E.typeF.value||'all';
+  const ts=[...new Set(S.raw.map(r=>r.type).filter(Boolean))].sort();
+  E.typeF.innerHTML='<option value="all">All Types</option>'+ts.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  E.typeF.value=ts.includes(cur)?cur:'all';
+}
+function applyFilters(){
+  const q=norm(E.srch.value).toLowerCase(),type=E.typeF.value,
+        sp=E.specD.value,fr=E.fromD.value,to=E.toD.value,st=E.statF.value;
+  S.filtered=S.raw.filter(r=>{
+    if(q&&!`${r.ticket} ${r.ieFEN} ${r.fnFEN}`.toLowerCase().includes(q)) return false;
+    if(type!=='all'&&r.type!==type) return false;
+    const d=r.filterDate||'';
+    if(sp&&d!==sp) return false;
+    if(fr&&d&&d<fr) return false;
+    if(to&&d&&d>to) return false;
+    if(st==='errors'&&r.fRes!=='Error') return false;
+    if(st==='corrected'&&r.fRes!=='Corrected') return false;
+    if(st==='matched'&&r.fRes!=='Matched') return false;
+    if(st==='exception'&&!(r.excA&&r.fRes==='Matched')) return false;
+    return true;
+  });
+  renderBento(S.filtered);
+  renderCharts(S.filtered);
+  renderTable(S.filtered);
+  E.stag.textContent=`${S.filtered.length} of ${S.raw.length} tickets`;
+  saveState();
+}
+function clearF(){
+  [E.srch,E.specD,E.fromD,E.toD].forEach(e=>{e.value=''});
+  E.typeF.value='all';E.statF.value='all';applyFilters();
+}
+
+/* ═════════════════════════════════════════════════════════════
+   STATS
+═════════════════════════════════════════════════════════════ */
+function calcStats(rows){
+  const n=rows.length,m=rows.filter(r=>r.fRes==='Matched').length,c=rows.filter(r=>r.fRes==='Corrected').length,
+        e=rows.filter(r=>r.fRes==='Error').length,x=rows.filter(r=>r.excA).length,
+        cp=n?(((m+c)/n)*100).toFixed(1):'0.0',
+        se=rows.filter(r=>!r.sOk).length,de=rows.filter(r=>!r.dVal).length,
+        te=rows.filter(r=>!r.tVal).length,ne=rows.filter(r=>!r.nVal).length;
+  return{n,m,c,e,x,cp,se,de,te,ne};
+}
+function renderBento(rows){
+  const s=calcStats(rows);
+  E.bento.innerHTML=`
+    <div class="bento-card bc-total"><div class="bc-lbl">Tickets</div><div class="bc-val">${s.n}</div></div>
+    <div class="bento-card bc-matched"><div class="bc-lbl">Matched</div><div class="bc-val">${s.m}</div></div>
+    <div class="bento-card bc-cor"><div class="bc-lbl">Corrected</div><div class="bc-val">${s.c}</div></div>
+    <div class="bento-card bc-err"><div class="bc-lbl">Open Errors</div><div class="bc-val">${s.e}</div></div>
+    <div class="bento-card bc-exc"><div class="bc-lbl">Exceptions</div><div class="bc-val">${s.x}</div></div>
+    <div class="bento-card bc-rate"><div class="bc-lbl">Completion</div><div class="bc-val">${s.cp}%</div><div class="bc-sub">matched+corrected</div></div>
+    <div class="bento-card"><div class="bc-lbl">Status Errs</div><div class="bc-val" style="font-size:20px;color:var(--err-txt)">${s.se}</div></div>
+    <div class="bento-card"><div class="bc-lbl">Date Errs</div><div class="bc-val" style="font-size:20px;color:var(--err-txt)">${s.de}</div></div>
+    <div class="bento-card"><div class="bc-lbl">Time Errs</div><div class="bc-val" style="font-size:20px;color:var(--err-txt)">${s.te}</div></div>
+    <div class="bento-card"><div class="bc-lbl">Name Errs</div><div class="bc-val" style="font-size:20px;color:var(--err-txt)">${s.ne}</div></div>`;
+  const pct=parseFloat(s.cp);
+  E.pb.style.width=`${pct}%`;E.pl.textContent=`${s.cp}%`;
+  $('tn-analytics').textContent=`${s.cp}%`;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   CHARTS
+═════════════════════════════════════════════════════════════ */
+const CC={m:'#22c55e',c:'#8b5cf6',e:'#ef4444',x:'#f59e0b',s:'#f97316',d:'#3b82f6',t:'#6366f1',n:'#ec4899'};
+const TC=['#3b82f6','#f97316','#8b5cf6','#22c55e','#f59e0b','#ec4899','#06b6d4','#84cc16'];
+function dstC(k){if(S.charts[k]){S.charts[k].destroy();S.charts[k]=null;}}
+function renderCharts(rows){
+  if(typeof Chart==='undefined') return;
+  const s=calcStats(rows);
+  dstC('pie');
+  S.charts.pie=new Chart($('cPie'),{type:'doughnut',
+    data:{labels:['Matched','Corrected','Errors','Exceptions'],
+      datasets:[{data:[s.m,s.c,s.e,s.x],backgroundColor:[CC.m,CC.c,CC.e,CC.x],borderWidth:2,borderColor:'rgba(255,255,255,.08)'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'right',labels:{color:'#a7b0c0',font:{family:'Space Grotesk',size:10},padding:8}}}}});
+  dstC('bar');
+  S.charts.bar=new Chart($('cBar'),{type:'bar',
+    data:{labels:['Status','Date','Time','Name'],
+      datasets:[{label:'Errors',data:[s.se,s.de,s.te,s.ne],backgroundColor:[CC.s,CC.d,CC.t,CC.n],borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{beginAtZero:true,ticks:{color:'#64748b',font:{family:'Space Grotesk'}},grid:{color:'rgba(255,255,255,.05)'}},
+        x:{ticks:{color:'#64748b',font:{family:'Space Grotesk'}},grid:{display:false}}}}});
+  dstC('typ');
+  const tc={};rows.forEach(r=>{const k=r.type||'Unknown';tc[k]=(tc[k]||0)+1;});
+  const tl=Object.keys(tc).sort();
+  S.charts.typ=new Chart($('cType'),{type:'bar',
+    data:{labels:tl,datasets:[{label:'Tickets',data:tl.map(t=>tc[t]),backgroundColor:tl.map((_,i)=>TC[i%TC.length]),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{beginAtZero:true,ticks:{color:'#64748b',font:{family:'Space Grotesk'}},grid:{color:'rgba(255,255,255,.05)'}},
+        x:{ticks:{color:'#64748b',font:{family:'Space Grotesk',size:9}},grid:{display:false}}}}});
+}
+
+/* ═════════════════════════════════════════════════════════════
+   TABLE
+═════════════════════════════════════════════════════════════ */
+function pill(cls,lbl){return `<span class="pill ${cls}"><span class="pdot"></span>${esc(lbl)}</span>`;}
+function rPill(r){
+  if(r.fRes==='Corrected') return pill('co','Corrected');
+  if(r.fRes==='Error')     return pill('er','Error');
+  if(r.excA)               return pill('wn','Exception');
+  return pill('ok','Matched');
+}
+function mc(v,ex){return(!v&&!ex)?'mm':'';}
+function renderTable(rows){
+  if(!rows.length){E.tbody.innerHTML=`<tr><td colspan="23" class="emp">No rows match the current filters.</td></tr>`;return;}
+  E.tbody.innerHTML=rows.map(r=>{
+    const rc=r.fRes==='Corrected'?'rc':r.fRes==='Error'?'re':r.excA?'rx':'rm';
+    const act=r.fRes==='Corrected'
+      ?`<button class="cbtn dn" disabled>Corrected</button>`
+      :r.vRes==='Error'
+      ?`<button class="cbtn mk" data-cid="${esc(r.rowId)}">Correct</button>`
+      :`<span style="color:var(--text3)">—</span>`;
+    return `<tr class="${rc}">
+      <td class="mn" style="color:var(--text3)">${esc(r.srcRow)}</td>
+      <td><strong>${esc(r.ticket)}</strong></td>
+      <td>${esc(r.type)}</td>
+      <td style="font-size:10px;color:var(--text2)">${esc(r.company)}</td>
+      <td class="mn">${esc(r.filterDate)}</td>
+      <td class="${r.sOk?'':'mm'}">${esc(r.ieFnStatus)}</td>
+      <td class="${mc(r.nVal,false)}">${esc(r.ieFEN)}</td>
+      <td class="mn ${mc(r.dVal,r.dExc)}">${esc(r.ieDueDate)}</td>
+      <td class="mn ${mc(r.tVal,r.tExc)}">${esc(r.ieDueTime)}</td>
+      <td class="mn" style="color:var(--text2)">${esc([r.ieSD,r.ieST].filter(Boolean).join(' '))}</td>
+      <td style="font-size:10px">${esc(r.fnStatus)}</td>
+      <td class="${mc(r.nVal,false)}">${esc(r.fnFEN)}</td>
+      <td class="mn ${mc(r.dVal,r.dExc)}">${esc(r.fnSD)}</td>
+      <td class="mn ${mc(r.tVal,r.tExc)}">${esc(r.fnST)}</td>
+      <td>${r.sOk?pill('ok','OK'):pill('er','Error')}</td>
+      <td>${r.dVal?pill(r.dExc?'wn':'ok',r.dExc?'ITD':'OK'):pill('er','Error')}</td>
+      <td>${r.tVal?pill(r.tExc?'wn':'ok',r.tExc?r.type:'OK'):pill('er','Error')}</td>
+      <td>${r.nVal?pill('ok','OK'):pill('er','Error')}</td>
+      <td>${r.excA?pill('wn',r.excT):'<span style="color:var(--text3);font-size:10px">—</span>'}</td>
+      <td>${rPill(r)}</td>
+      <td class="dcl2">${esc(r.det)}</td>
+      <td class="ncl">${esc(r.note)}</td>
+      <td>${act}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ═════════════════════════════════════════════════════════════
+   CORRECTION TRACKING
+═════════════════════════════════════════════════════════════ */
+function markCorrected(id){
+  const r=S.raw.find(x=>x.rowId===id);
+  if(!r||r.vRes!=='Error'||r.trk.correctedMarked) return;
+  r.trk.correctedMarked=true;r.trk.correctedAt=nowStr();
+  recomp(r);saveState();applyFilters();
+}
+
+/* ═════════════════════════════════════════════════════════════
+   PERSISTENCE
+═════════════════════════════════════════════════════════════ */
+function sKey(){if(!S.fileMeta)return null;return `vra-hub:${S.fileMeta.name}:${S.fileMeta.size}:${S.fileMeta.lastModified}`;}
+function saveState(){
+  const k=sKey();if(!k)return;
+  try{localStorage.setItem(k,JSON.stringify({
+    f:{q:E.srch.value||'',t:E.typeF.value||'all',sp:E.specD.value||'',fr:E.fromD.value||'',to:E.toD.value||'',st:E.statF.value||'all'},
+    trk:S.raw.reduce((a,r)=>{if(r.trk.correctedMarked)a[r.rowId]=r.trk;return a;},{}),
+  }));}catch(_){}
+}
+function loadState(){
+  const k=sKey();if(!k)return;
+  try{
+    const raw=localStorage.getItem(k);if(!raw)return;
+    const p=JSON.parse(raw);
+    S.raw.forEach(r=>{r.trk=p.trk?.[r.rowId]?{...defTrk(),...p.trk[r.rowId]}:defTrk();recomp(r);});
+    E.srch.value=p.f?.q||'';E.typeF.value=p.f?.t||'all';E.specD.value=p.f?.sp||'';
+    E.fromD.value=p.f?.fr||'';E.toD.value=p.f?.to||'';E.statF.value=p.f?.st||'all';
+  }catch(_){}
+}
+
+/* ═════════════════════════════════════════════════════════════
+   PDF EXPORT
+═════════════════════════════════════════════════════════════ */
+function stamp(){const n=new Date();return `${n.getFullYear()}${p2(n.getMonth()+1)}${p2(n.getDate())}_${p2(n.getHours())}${p2(n.getMinutes())}`;}
+function dl(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),500);}
+
+async function captureChart(id){
+  const canvas=document.getElementById(id);if(!canvas) return null;
+  try{const img=await html2canvas(canvas,{scale:2,backgroundColor:'#0f172a',useCORS:true,logging:false});return img.toDataURL('image/png');}catch(_){return null;}
+}
+
+async function exportPDF(specD,fromD,toD){
+  if(!S.raw.length){showBan('Upload a file first.');return;}
+  if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined'){showBan('jsPDF library not loaded.');return;}
+  $('pdfOv').classList.remove('h');
+  try{
+    await new Promise(r=>setTimeout(r,60));
+    const{jsPDF}=window.jspdf||{jsPDF:window.jsPDF};
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const PW=210,PH=297,M=14,CW=PW-M*2;
+    const hasDate=specD||fromD||toD;
+    const datePeriodRows=hasDate?S.raw.filter(r=>{
+      const d=r.filterDate||'';
+      if(specD&&d!==specD) return false;
+      if(fromD&&d&&d<fromD) return false;
+      if(toD&&d&&d>toD) return false;
+      return true;
+    }):S.raw;
+    const sv=calcStats(datePeriodRows),sa=calcStats(S.raw);
+    const now=new Date().toLocaleString(),fname=S.fileMeta?.name||'Unknown';
+    let periodLabel='All Dates';
+    if(specD) periodLabel=`Date: ${specD}`;
+    else if(fromD&&toD) periodLabel=`${fromD}  →  ${toD}`;
+    else if(fromD) periodLabel=`From ${fromD}`;
+    else if(toD) periodLabel=`Up to ${toD}`;
+
+    const C={fn:[249,115,22],ie:[59,130,246],dark:[15,23,42],mid:[71,85,105],
+             light:[148,163,184],border:[226,232,240],bg:[248,250,252],white:[255,255,255],
+             ok:[34,197,94],err:[239,68,68],warn:[245,158,11],cor:[139,92,246]};
+    let Y=0;
+
+    // Header
+    doc.setFillColor(...C.dark);doc.rect(0,0,PW,28,'F');
+    doc.setFillColor(...C.fn);doc.rect(0,0,6,28,'F');
+    doc.setTextColor(...C.white);doc.setFont('helvetica','bold');doc.setFontSize(16);
+    doc.text('Data Validation & Audit Summary',M+2,11);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...C.light);
+    doc.text('Field Nation × Internal Entity — Management Report',M+2,17.5);
+    doc.text(`Generated: ${now}  |  Period: ${periodLabel}  |  Source: ${fname}`,M+2,22.5);
+    const bx=PW-M-52;
+    doc.setFillColor(...C.ie);doc.roundedRect(bx,6,24,8,2,2,'F');
+    doc.setTextColor(...C.white);doc.setFont('helvetica','bold');doc.setFontSize(7);doc.text('IE = BLUE',bx+3.5,11.2);
+    doc.setFillColor(...C.fn);doc.roundedRect(bx+26,6,26,8,2,2,'F');doc.text('FN = ORANGE',bx+29,11.2);
+    Y=34;
+
+    // KPIs
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...C.mid);
+    doc.text('EXECUTIVE DASHBOARD — KEY PERFORMANCE INDICATORS',M,Y);
+    doc.setDrawColor(...C.border);doc.setLineWidth(0.3);doc.line(M,Y+1.5,PW-M,Y+1.5);Y+=7;
+    const KW=(CW-8)/3,KH=20;
+    const periodSub=hasDate?`period: ${periodLabel}`:'all dates';
+    const kpis=[
+      {label:'Total Tickets Audited',value:sv.n,sub:periodSub,color:C.dark},
+      {label:'Accuracy Rate',value:`${sv.cp}%`,sub:'matched + corrected',color:C.ie},
+      {label:'Manual Corrections',value:sv.c,sub:'marked as corrected',color:C.cor},
+      {label:'Open Errors',value:sv.e,sub:'pending resolution',color:C.err},
+      {label:'ITD/ITR Exceptions',value:sv.x,sub:'auto-approved',color:C.warn},
+      {label:'Matched (Clean)',value:sv.m,sub:'no issues found',color:C.ok},
+    ];
+    kpis.forEach((k,i)=>{
+      const col=i%3,row=Math.floor(i/3);
+      const kx=M+col*(KW+4),ky=Y+row*(KH+4);
+      doc.setFillColor(...C.white);doc.setDrawColor(...C.border);doc.setLineWidth(0.2);doc.roundedRect(kx,ky,KW,KH,2,2,'FD');
+      doc.setFillColor(...k.color);doc.roundedRect(kx,ky,3,KH,1,1,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(...k.color);doc.text(String(k.value),kx+6,ky+11);
+      doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...C.dark);doc.text(k.label.toUpperCase(),kx+6,ky+15.5);
+      doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(...C.light);doc.text(k.sub,kx+6,ky+18.5);
+    });
+    Y+=2*(KH+4)+6;
+
+    // Full file row
+    doc.setFillColor(...C.bg);doc.setDrawColor(...C.border);doc.setLineWidth(0.2);doc.roundedRect(M,Y,CW,11,2,2,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...C.dark);doc.text('Full File (all dates):',M+3,Y+7);
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.mid);
+    doc.text(`Total ${sa.n}  |  Matched ${sa.m}  |  Corrected ${sa.c}  |  Errors ${sa.e}  |  Accuracy ${sa.cp}%`,M+38,Y+7);
+    Y+=17;
+
+    // Charts
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...C.mid);
+    doc.text('VISUAL ANALYTICS',M,Y);doc.line(M,Y+1.5,PW-M,Y+1.5);Y+=7;
+    const[pieImg,barImg,typImg]=await Promise.all([captureChart('cPie'),captureChart('cBar'),captureChart('cType')]);
+    const chartH=50,chartW=(CW-8)/3;
+    ['Validation Results','Error Breakdown','Ticket Types'].forEach((lbl,i)=>{
+      const cx=M+i*(chartW+4);
+      doc.setFillColor(...C.bg);doc.setDrawColor(...C.border);doc.setLineWidth(0.2);doc.roundedRect(cx,Y,chartW,chartH+8,2,2,'FD');
+      doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...C.mid);doc.text(lbl.toUpperCase(),cx+3,Y+5);
+      const img=[pieImg,barImg,typImg][i];
+      if(img){try{doc.addImage(img,'PNG',cx+2,Y+7,chartW-4,chartH-2);}catch(_){}}
+      else{doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...C.light);doc.text('Chart unavailable',cx+chartW/2-12,Y+chartH/2+4);}
+    });
+    Y+=chartH+14;
+
+    // Reporting period box
+    doc.setFillColor(239,246,255);doc.setDrawColor(...C.ie);doc.setLineWidth(0.3);doc.roundedRect(M,Y,CW,18,2,2,'FD');
+    doc.setFillColor(...C.ie);doc.roundedRect(M,Y,3,18,1,1,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...C.ie);doc.text('REPORTING PERIOD',M+6,Y+6.5);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...C.dark);doc.text(periodLabel,M+6,Y+13);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(...C.mid);
+    doc.text('KPI cards reflect ALL tickets within this period, regardless of status filter.',PW-M-98,Y+7);
+    Y+=24;
+
+    // Page 2: anomaly table
+    doc.addPage();Y=0;
+    doc.setFillColor(...C.dark);doc.rect(0,0,PW,20,'F');
+    doc.setFillColor(...C.fn);doc.rect(0,0,6,20,'F');
+    doc.setTextColor(...C.white);doc.setFont('helvetica','bold');doc.setFontSize(13);
+    doc.text('Audit Details — Anomalies & Resolution Status',M+2,13);
+    Y=26;
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...C.mid);
+    const anomalyRows=datePeriodRows.filter(r=>r.fRes!=='Matched'||(r.excA&&r.fRes==='Matched'));
+    doc.text(`Period: ${periodLabel}  |  ${anomalyRows.length} anomalies out of ${datePeriodRows.length} tickets.`,M,Y);Y+=8;
+
+    const cols=[{label:'Ticket',w:28},{label:'Type',w:14},{label:'IE Due Date',w:26},{label:'FN Date',w:26},{label:'IE Name',w:32},{label:'FN Name',w:32},{label:'Result',w:22},{label:'Details',w:CW-28-14-26-26-32-32-22}];
+    const rowH=7.5,headerH=9;
+    doc.setFillColor(...C.dark);doc.rect(M,Y,CW,headerH,'F');
+    doc.setTextColor(...C.white);doc.setFont('helvetica','bold');doc.setFontSize(7);
+    let cx2=M+2;cols.forEach(c=>{doc.text(c.label,cx2,Y+6);cx2+=c.w;});Y+=headerH;
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);
+
+    if(!anomalyRows.length){
+      doc.setFillColor(...C.bg);doc.rect(M,Y,CW,10,'F');
+      doc.setTextColor(...C.mid);doc.text('No anomalies found.',M+4,Y+6.5);Y+=10;
+    }
+    anomalyRows.forEach((r,idx)=>{
+      if(Y>PH-20){
+        doc.addPage();Y=15;
+        doc.setFillColor(...C.dark);doc.rect(0,0,PW,12,'F');
+        doc.setFillColor(...C.fn);doc.rect(0,0,6,12,'F');
+        doc.setTextColor(...C.white);doc.setFont('helvetica','bold');doc.setFontSize(9);
+        doc.text('Audit Details (continued)',M+2,8.5);Y=18;
+        doc.setFillColor(...C.dark);doc.rect(M,Y,CW,headerH,'F');
+        doc.setTextColor(...C.white);let hx=M+2;
+        cols.forEach(c=>{doc.text(c.label,hx,Y+6);hx+=c.w;});Y+=headerH;
+        doc.setFont('helvetica','normal');doc.setFontSize(6.5);
+      }
+      const isEven=idx%2===0;
+      if(r.fRes==='Error') doc.setFillColor(254,226,226);
+      else if(r.fRes==='Corrected') doc.setFillColor(237,233,254);
+      else if(r.excA) doc.setFillColor(254,243,199);
+      else doc.setFillColor(isEven?248:255,isEven?250:255,isEven?252:255);
+      doc.rect(M,Y,CW,rowH,'F');
+      doc.setDrawColor(...C.border);doc.setLineWidth(0.1);doc.line(M,Y+rowH,M+CW,Y+rowH);
+      const pillCol=r.fRes==='Error'?C.err:r.fRes==='Corrected'?C.cor:r.excA?C.warn:C.ok;
+      doc.setTextColor(...C.dark);
+      let rx=M+2;
+      [r.ticket,r.type,r.ieDueDate,r.fnSD,
+       (r.ieFEN||'').substring(0,cols[4].w/1.6),(r.fnFEN||'').substring(0,cols[5].w/1.6)]
+      .forEach((v,i)=>{doc.setTextColor(...C.dark);doc.text(String(v||'').substring(0,cols[i].w/1.6),rx,Y+5);rx+=cols[i].w;});
+      doc.setFillColor(...pillCol);doc.roundedRect(rx,Y+1.5,18,5,1,1,'F');
+      doc.setTextColor(...C.white);doc.setFont('helvetica','bold');doc.setFontSize(5.5);doc.text(r.fRes.toUpperCase(),rx+1.5,Y+5);
+      doc.setFont('helvetica','normal');doc.setFontSize(6.5);rx+=cols[6].w;
+      doc.setTextColor(...C.mid);doc.text(String(r.det||'').substring(0,52),rx,Y+5);
+      Y+=rowH;
+    });
+
+    Y+=6;
+    if(Y<PH-35){
+      doc.setFillColor(...C.dark);doc.setDrawColor(...C.border);doc.setLineWidth(0.2);doc.roundedRect(M,Y,CW,14,2,2,'FD');
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...C.white);
+      doc.text(`Period Summary (${periodLabel}):`,M+4,Y+9);
+      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(200,220,255);
+      doc.text(`Errors: ${sv.e}   Corrected: ${sv.c}   Exceptions: ${sv.x}   Matched: ${sv.m}   Total: ${sv.n}   Accuracy: ${sv.cp}%`,M+52,Y+9);
+    }
+
+    // Footers
+    const pgCount=doc.internal.getNumberOfPages();
+    for(let pg=1;pg<=pgCount;pg++){
+      doc.setPage(pg);
+      doc.setFillColor(...C.bg);doc.rect(0,PH-10,PW,10,'F');
+      doc.setDrawColor(...C.border);doc.setLineWidth(0.2);doc.line(0,PH-10,PW,PH-10);
+      doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(...C.light);
+      doc.text(`Validation Report 0001  |  Field Nation × IE Audit  |  ${now}`,M,PH-4.5);
+      doc.text(`Page ${pg} of ${pgCount}`,PW-M-16,PH-4.5);
+    }
+    doc.save(`management_audit_report_${stamp()}.pdf`);
+  } catch(err){
+    console.error('[VRA PDF]',err);showBan(`PDF failed: ${err.message}`);showDbg('PDF error',err.stack||String(err));
+  } finally {$('pdfOv').classList.add('h');}
+}
+
+/* ═════════════════════════════════════════════════════════════
+   INIT
+═════════════════════════════════════════════════════════════ */
+function init(){
+  // lib check
+  const iss=[];
+  if(typeof XLSX==='undefined') iss.push('SheetJS not loaded');
+  if(typeof Chart==='undefined') iss.push('Chart.js not loaded');
+  if(iss.length){showBan(`⚠ ${iss.join(' | ')}. Try disabling ad-blockers.`,'warn');}
+
+  // dropzone
+  const dz=E.dz,fi=E.fi;
+  dz.addEventListener('click',()=>fi.click());
+  fi.addEventListener('change',ev=>{const f=ev.target.files?.[0];if(f) handleWB(f);});
+  dz.addEventListener('dragover',ev=>{ev.preventDefault();dz.classList.add('dr');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('dr'));
+  dz.addEventListener('drop',ev=>{
+    ev.preventDefault();dz.classList.remove('dr');
+    const f=ev.dataTransfer.files?.[0];if(f) handleWB(f);
+  });
+
+  // start button → switch to audit tab and run filters
+  E.startBtn.addEventListener('click',()=>{
+    popTypes();applyFilters();
+    // switch to audit tab
+    document.querySelector('.stab[data-tab="audit"]').click();
+  });
+
+  // filter events
+  $('applyBtn').addEventListener('click',applyFilters);
+  $('clearBtn').addEventListener('click',clearF);
+  ['srch','typeF','statF','specD','fromD','toD'].forEach(id=>{
+    $(id).addEventListener('input',applyFilters);$(id).addEventListener('change',applyFilters);
+  });
+
+  // PDF buttons
+  $('pdfBtn').addEventListener('click',()=>exportPDF(E.specD.value,E.fromD.value,E.toD.value));
+  $('pdfBtn2').addEventListener('click',()=>exportPDF(E.rSpecD.value,E.rFromD.value,E.rToD.value));
+
+  // table delegation
+  $('tbody').addEventListener('click',ev=>{
+    const b=ev.target.closest('[data-cid]');if(b) markCorrected(b.getAttribute('data-cid'));
+  });
+
+  window.addEventListener('error',ev=>showBan(`Error: ${ev.message||'Unknown'}`));
+  window.addEventListener('unhandledrejection',ev=>showBan(`Async error: ${ev.reason?.message||ev.reason||'Unknown'}`));
+}
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
+else init();
+
+
+/* ─── Dark mode sync from hub parent ─── */
+function syncTheme(){
+  try{
+    var t=window.parent&&window.parent!==window?window.parent.document.documentElement.getAttribute('data-theme'):null;
+    if(t&&document.documentElement.getAttribute('data-theme')!==t){
+      document.documentElement.setAttribute('data-theme',t);
+      // Re-render charts with new theme colors
+      if(typeof S!=='undefined'&&S.filtered&&S.filtered.length) renderCharts(S.filtered);
+    }
+  }catch(e){}
+}
+setInterval(syncTheme,800);
+</script>
+</body>
+</html>
