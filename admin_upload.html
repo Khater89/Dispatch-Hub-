@@ -11,7 +11,7 @@ body{font-family:Arial, sans-serif; margin:24px; max-width:920px;}
     .card{border:1px solid #ddd; border-radius:12px; padding:16px; margin-bottom:14px;}
     label{display:block; margin:10px 0 6px; font-weight:600;}
     input,select,button{font-size:16px;}
-    input[type=text], input[type=email], input[type=password]{width:100%; padding:10px; border:1px solid #ccc; border-radius:8px;}
+    input[type=text]{width:100%; padding:10px; border:1px solid #ccc; border-radius:8px;}
     input[type=file]{width:100%;}
     button{padding:10px 14px; border-radius:10px; border:1px solid #999; cursor:pointer;}
     button.primary{background:#1f6feb; color:white; border-color:#1f6feb;}
@@ -26,17 +26,6 @@ body{font-family:Arial, sans-serif; margin:24px; max-width:920px;}
 <body>
   <h1>UFH Admin — Upload Excel to Cloud DB</h1>
   <p class="muted">This uploads an Excel file to your backend API, and creates <b>one table per sheet</b>.</p>
-  <p class="muted">This page sends your admin identity with every protected upload request.</p>
-
-  <div class="card">
-    <label>Admin Username</label>
-    <input id="adminUser" type="text" value="khater" autocomplete="username" />
-    <label>Admin Email</label>
-    <input id="adminEmail" type="email" value="akhater@acuative.com" autocomplete="email" />
-    <label>Admin Token</label>
-    <input id="adminToken" type="password" placeholder="Set the same ADMIN_TOKEN in Supabase secrets" autocomplete="current-password" />
-    
-  </div>
 
   <div class="card">
     <label>API Base URL (Backend)</label>
@@ -64,39 +53,13 @@ body{font-family:Arial, sans-serif; margin:24px; max-width:920px;}
 const $ = (id)=>document.getElementById(id);
 const statusEl = $('status');
 const outEl = $('out');
-const storageKeys = {
-  apiBase: 'ufh-admin-api-base',
-  adminUser: 'ufh-admin-user',
-  adminEmail: 'ufh-admin-email'
-};
-
-for (const [id, key] of Object.entries(storageKeys)) {
-  try {
-    const saved = localStorage.getItem(key);
-    if (saved && $(id)) $(id).value = saved;
-  } catch (_) {}
-}
-
-for (const [id, key] of Object.entries(storageKeys)) {
-  const el = $(id);
-  if (!el) continue;
-  el.addEventListener('change', ()=>{
-    try { localStorage.setItem(key, el.value || ''); } catch (_) {}
-  });
-}
 
 $('btnUpload').addEventListener('click', async ()=>{
   const base = String($('apiBase').value||'').replace(/\/+$/,'');
   const prefix = String($('prefix').value||'dataset').trim();
   const mode = $('mode').value;
-  const adminUser = String($('adminUser').value || '').trim();
-  const adminEmail = String($('adminEmail').value || '').trim();
-  const adminToken = String($('adminToken').value || '').trim();
   const f = $('file').files?.[0];
   if(!base) return alert('Enter API Base URL');
-  if(!adminUser) return alert('Enter Admin Username');
-  if(!adminEmail) return alert('Enter Admin Email');
-  if(!adminToken) return alert('Enter Admin Token');
   if(!f) return alert('Choose an Excel file');
 
   statusEl.textContent = 'Uploading...';
@@ -105,23 +68,15 @@ $('btnUpload').addEventListener('click', async ()=>{
   const fd = new FormData();
   fd.append('file', f);
 
-  const url = `${base}/admin/techdbs/upload?mode=${encodeURIComponent(mode)}`;
-  const r = await fetch(url, {
-    method:'POST',
-    body: fd,
-    headers: {
-      'x-admin-token': adminToken,
-      'x-admin-user': adminUser,
-      'x-admin-email': adminEmail
-    }
-  });
+  const url = `${base}/api/upload?prefix=${encodeURIComponent(prefix)}&mode=${encodeURIComponent(mode)}`;
+  const r = await fetch(url, { method:'POST', body: fd });
   const t = await r.text();
   try{
     outEl.textContent = JSON.stringify(JSON.parse(t), null, 2);
   }catch(_){
     outEl.textContent = t;
   }
-  statusEl.textContent = r.ok ? 'Done.' : (r.status === 401 ? 'Unauthorized.' : 'Error.');
+  statusEl.textContent = r.ok ? 'Done.' : 'Error.';
 });
 </script>
 </body>
