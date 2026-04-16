@@ -119,27 +119,10 @@ exports.handler = async function handler(event) {
   }
 
   try {
-    // Use pre-resolved coordinates if provided (much more accurate than ORS geocoding for CA)
-    const ticket_coords = payload.ticket_coords;
-    const tech_coords_raw = Array.isArray(payload.tech_coords) ? payload.tech_coords : [];
+    const src = await geocodePostalCA(ticket);
+    if (!src) return resp(200, { ok: false, error: "Could not geocode ticket_postal" });
 
-    // Resolve ticket location: prefer pre-resolved coords, fallback to ORS geocoding
-    let src = null;
-    if (ticket_coords && typeof ticket_coords.lat === "number" && typeof ticket_coords.lon === "number") {
-      src = { lat: ticket_coords.lat, lon: ticket_coords.lon };
-    } else {
-      src = await geocodePostalCA(ticket);
-    }
-    if (!src) return resp(200, { ok: false, error: "Could not resolve ticket_postal coordinates" });
-
-    // Resolve tech locations: use pre-resolved coords where available
-    const destsRaw = await Promise.all(tech.map(async (tp, i) => {
-      const preResolved = tech_coords_raw[i];
-      if (preResolved && typeof preResolved.lat === "number" && typeof preResolved.lon === "number") {
-        return { lat: preResolved.lat, lon: preResolved.lon };
-      }
-      return await geocodePostalCA(tp);
-    }));
+    const destsRaw = await Promise.all(tech.map(geocodePostalCA));
 
     // Keep alignment: compute matrix only for valid dests, then expand back.
     const validIdx = [];

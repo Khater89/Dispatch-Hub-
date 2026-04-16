@@ -140,10 +140,6 @@
     return provFromFirstLetter(p[0]);
   }
 
-  // Load FSA coordinate database (ca_fsa_coords.js)
-  const FSA_COORDS = (window.CA_FSA_COORDS && typeof window.CA_FSA_COORDS === 'object')
-    ? window.CA_FSA_COORDS : {};
-
   function latLonForPostal(p6, cityHint, provHint){
     const p = normalizePostal(p6);
     if (!p) return null;
@@ -154,20 +150,11 @@
       ? String(cityHint).toUpperCase().replace(/\s*\(.*?\)\s*/g,'').trim()
       : '';
 
-    // 1. Exact postal code match (from tech database)
     if (POSTAL_OVERRIDE[p]){
       const c = POSTAL_OVERRIDE[p];
       return { lat: c.lat, lon: c.lon, prec: 'postal', prov, city };
     }
 
-    // 2. FSA (first 3 chars) lookup — covers virtually all Canadian postal codes
-    const fsa = p.slice(0, 3);
-    if (FSA_COORDS[fsa]){
-      const c = FSA_COORDS[fsa];
-      return { lat: c.lat, lon: c.lon, prec: 'fsa', prov: c.prov || prov, city: c.city || city };
-    }
-
-    // 3. City name lookup
     if (city && prov){
       const k = city + '|' + prov;
       if (CITY_COORD[k]){
@@ -176,7 +163,6 @@
       }
     }
 
-    // 4. Province center fallback (last resort)
     if (prov && PROV_CENTER[prov]){
       const c = PROV_CENTER[prov];
       return { lat: c.lat, lon: c.lon, prec: 'prov', prov, city: '' };
@@ -422,17 +408,9 @@
 
           for (const ep of ORS_ENDPOINTS){
             try{
-              // Build request with pre-resolved coordinates (avoids ORS geocoding errors)
-              const ticketCoords = ticketLL ? { lat: ticketLL.lat, lon: ticketLL.lon } : null;
-              const techCoords = oneChunk.map(x => {
-                const ll = x.ll;
-                return ll ? { lat: ll.lat, lon: ll.lon } : null;
-              });
               j = await postJson(ep, {
                 ticket_postal: p,
-                tech_postals: oneChunk.map(x => x.tech.postal),
-                ticket_coords: ticketCoords,
-                tech_coords: techCoords
+                tech_postals: oneChunk.map(x => x.tech.postal)
               });
               if (j && j.ok) break;
               lastErr = new Error(j?.error || 'ORS routing failed');
@@ -494,7 +472,7 @@
         `Closest W2 Canada tech: ${best.tech.name} (#${best.tech.tech_id})`,
         `Location: ${best.tech.city}, ${best.tech.province} ${formatPostal(best.tech.postal)}`,
         `Ticket postal: ${formatPostal(p)}`,
-        `Straight-line (local): ${best.ll && best.ll.prec !== 'prov' ? fmtNum(best.miles,1)+' mi ('+fmtNum(best.km,1)+' km)' : 'N/A (province center fallback)'}`,
+        `Straight-line (local): N/A (uses province center; may be misleading)`,
         `Driving (ORS): ${fmtNum(best.driveMiles,1)} mi (${fmtNum(best.driveKm,1)} km)`,
         `ETA (ORS): ~${eta}`
       ].join('\n');
