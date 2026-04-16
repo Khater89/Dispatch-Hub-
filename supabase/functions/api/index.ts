@@ -112,14 +112,14 @@ async function getAllowedUser(req: Request, supabase: any) {
     return { ok: false, reason: `Invalid or expired session: ${lastError}` };
   }
 
-  const email = normalizeIdentity(data.user.email || "");
+  const email = normalizeIdentity((userData as any)?.email || "");
   if (ADMIN_EMAILS.length && !ADMIN_EMAILS.includes(email)) {
     return { ok: false, reason: "User email not allowed" };
   }
 
-  const meta = data.user.user_metadata || {};
+  const meta = ((userData as any)?.user_metadata) || {};
   const username = String(meta.username || meta.full_name || ADMIN_USERNAME || "").trim() || ADMIN_USERNAME;
-  return { ok: true, email, username, user: data.user };
+  return { ok: true, email, username, user: userData };
 }
 
 async function requireAllowedUser(req: Request, supabase: any, origin: string | null) {
