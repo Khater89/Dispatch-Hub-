@@ -121,6 +121,53 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 
+
+  <style>
+    /* Kill Chrome autofill yellow background + suppress autocomplete UI */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+      box-shadow: 0 0 0 1000px transparent inset !important;
+      transition: background-color 5000s ease-in-out 0s !important;
+      -webkit-text-fill-color: inherit !important;
+    }
+  </style>
+  <script>
+    /* Defeat Chrome autofill / address suggestions on all inputs */
+    (function(){
+      function killAutofill(){
+        var inputs = document.querySelectorAll('input');
+        inputs.forEach(function(el){
+          var t = (el.type||'text').toLowerCase();
+          if(['file','radio','checkbox','submit','button','hidden','reset'].indexOf(t)===-1){
+            if(t!=='date'&&t!=='number'){
+              el.setAttribute('autocomplete','new-password');
+            }
+            /* readonly trick: Chrome won't show suggestions on readonly fields */
+            if(!el.readOnly && !el.disabled){
+              el.setAttribute('readonly','');
+              el.addEventListener('focus',function(){
+                this.removeAttribute('readonly');
+              },{once:false});
+              el.addEventListener('blur',function(){
+                this.setAttribute('readonly','');
+              });
+            }
+          }
+        });
+      }
+      if(document.readyState==='loading'){
+        document.addEventListener('DOMContentLoaded',killAutofill);
+      } else {
+        killAutofill();
+      }
+      /* Also run after any dynamic content might be added */
+      setTimeout(killAutofill, 500);
+      setTimeout(killAutofill, 1500);
+    })();
+  </script>
 </head>
 <body>
   <div class="topbar">
@@ -141,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="row">
           <div>
             <label for="postalInput">Ticket postal code (A1A1A1 or A1A 1A1)</label>
-            <input id="postalInput" placeholder="e.g., H7V 1X3" autocomplete="off"/>
+            <input id="postalInput" placeholder="e.g., H7V 1X3" autocomplete="new-password"/>
           </div>
           <div>
             <label for="driveFactor">Driving correction factor (base)</label>

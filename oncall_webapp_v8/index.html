@@ -23,6 +23,53 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 
+
+  <style>
+    /* Kill Chrome autofill yellow background + suppress autocomplete UI */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+      box-shadow: 0 0 0 1000px transparent inset !important;
+      transition: background-color 5000s ease-in-out 0s !important;
+      -webkit-text-fill-color: inherit !important;
+    }
+  </style>
+  <script>
+    /* Defeat Chrome autofill / address suggestions on all inputs */
+    (function(){
+      function killAutofill(){
+        var inputs = document.querySelectorAll('input');
+        inputs.forEach(function(el){
+          var t = (el.type||'text').toLowerCase();
+          if(['file','radio','checkbox','submit','button','hidden','reset'].indexOf(t)===-1){
+            if(t!=='date'&&t!=='number'){
+              el.setAttribute('autocomplete','new-password');
+            }
+            /* readonly trick: Chrome won't show suggestions on readonly fields */
+            if(!el.readOnly && !el.disabled){
+              el.setAttribute('readonly','');
+              el.addEventListener('focus',function(){
+                this.removeAttribute('readonly');
+              },{once:false});
+              el.addEventListener('blur',function(){
+                this.setAttribute('readonly','');
+              });
+            }
+          }
+        });
+      }
+      if(document.readyState==='loading'){
+        document.addEventListener('DOMContentLoaded',killAutofill);
+      } else {
+        killAutofill();
+      }
+      /* Also run after any dynamic content might be added */
+      setTimeout(killAutofill, 500);
+      setTimeout(killAutofill, 1500);
+    })();
+  </script>
 </head>
 <body>
 
@@ -64,12 +111,12 @@ document.addEventListener('DOMContentLoaded', function(){
 
       <div class="grid">
         <label>ZIP Code (US) (Optional)
-          <input id="zipInput" inputmode="numeric" placeholder="Example: 75201" maxlength="5"  autocomplete="off"/>
+          <input id="zipInput" inputmode="numeric" placeholder="Example: 75201" maxlength="5"  autocomplete="new-password"/>
         </label>
         <label>City (optional if you enter ZIP)
-          <input id="cityInput" placeholder="Example: Austin"  autocomplete="off"/>
+          <input id="cityInput" placeholder="Example: Austin"  autocomplete="new-password"/>
         </label>
-        <label>State (2-letter) (Required)<input id="stateInput" placeholder="Example: TX" maxlength="2" required pattern="[A-Za-z]{2}" title="Enter 2-letter state code (e.g., TX)"  autocomplete="off"/>
+        <label>State (2-letter) (Required)<input id="stateInput" placeholder="Example: TX" maxlength="2" required pattern="[A-Za-z]{2}" title="Enter 2-letter state code (e.g., TX)"  autocomplete="new-password"/>
         </label>
       </div>
 

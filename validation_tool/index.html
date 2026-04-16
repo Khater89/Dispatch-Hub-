@@ -202,6 +202,53 @@
       .sgrid{grid-template-columns:repeat(2,1fr);} .tr{flex-direction:column;}
     }
   </style>
+
+  <style>
+    /* Kill Chrome autofill yellow background + suppress autocomplete UI */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+      box-shadow: 0 0 0 1000px transparent inset !important;
+      transition: background-color 5000s ease-in-out 0s !important;
+      -webkit-text-fill-color: inherit !important;
+    }
+  </style>
+  <script>
+    /* Defeat Chrome autofill / address suggestions on all inputs */
+    (function(){
+      function killAutofill(){
+        var inputs = document.querySelectorAll('input');
+        inputs.forEach(function(el){
+          var t = (el.type||'text').toLowerCase();
+          if(['file','radio','checkbox','submit','button','hidden','reset'].indexOf(t)===-1){
+            if(t!=='date'&&t!=='number'){
+              el.setAttribute('autocomplete','new-password');
+            }
+            /* readonly trick: Chrome won't show suggestions on readonly fields */
+            if(!el.readOnly && !el.disabled){
+              el.setAttribute('readonly','');
+              el.addEventListener('focus',function(){
+                this.removeAttribute('readonly');
+              },{once:false});
+              el.addEventListener('blur',function(){
+                this.setAttribute('readonly','');
+              });
+            }
+          }
+        });
+      }
+      if(document.readyState==='loading'){
+        document.addEventListener('DOMContentLoaded',killAutofill);
+      } else {
+        killAutofill();
+      }
+      /* Also run after any dynamic content might be added */
+      setTimeout(killAutofill, 500);
+      setTimeout(killAutofill, 1500);
+    })();
+  </script>
 </head>
 <body>
 
@@ -268,7 +315,7 @@
   <!-- TOOLBAR -->
   <div id="tbp" class="tbp h">
     <div class="tr">
-      <div class="fg fgs"><label>Search</label><input type="text" id="srch" placeholder="Ticket, name…"  autocomplete="off"/></div>
+      <div class="fg fgs"><label>Search</label><input type="text" id="srch" placeholder="Ticket, name…"  autocomplete="new-password"/></div>
       <div class="fg"><label>Ticket Type</label><select id="typeF"><option value="all">All Types</option></select></div>
       <div class="fg"><label>Status</label>
         <select id="statF">
