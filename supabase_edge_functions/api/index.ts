@@ -8,6 +8,8 @@ import { INTL_SUPPLIERS_DB } from "./intl_suppliers_data.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+// ANON key is auto-injected by Supabase runtime — used for user token verification
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || SERVICE_ROLE;
 
 // Defaults (override via Secrets)
 const TECH_TABLE = Deno.env.get("TECH_TABLE") || "ars_technician";
@@ -28,6 +30,10 @@ const ADMIN_EMAILS = (Deno.env.get("ADMIN_EMAILS") || "akhater@acuative.com")
   .map((x) => x.trim().toLowerCase())
   .filter(Boolean);
 
+// Optional: set ADMIN_SECRET in Supabase Edge Function Secrets for token-free auth
+// Supabase Dashboard → Edge Functions → api → Secrets → Add ADMIN_SECRET=your_secret
+const ADMIN_SECRET = (Deno.env.get("ADMIN_SECRET") || "").trim();
+
 // Allowed tables for /export/<table>
 const ALLOWED_TABLES = new Set(
   [TECH_TABLE, ZIP_TABLE, FLEX_TABLE, CA_W2_TABLE, CA_POSTAL_TABLE, USA_W2_TABLE].filter(Boolean),
@@ -45,8 +51,15 @@ function cors(origin: string | null) {
   };
 }
 
+// Service role client — for database operations (bypasses RLS)
 function getSupabase() {
   return createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+}
+
+// Auth client using ANON key — for verifying user JWTs via auth.getUser()
+// Using service_role for getUser() can fail in some Supabase versions
+function getAuthClient() {
+  return createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
 }
 
 function normalizeIdentity(v: string | null) {
@@ -61,12 +74,42 @@ function bearerToken(req: Request) {
 }
 
 async function getAllowedUser(req: Request, supabase: any) {
-  const token = bearerToken(req);
-  if (!token) return { ok: false, reason: "Missing bearer token" };
+  // ── Path 1: x-admin-token bypass (no JWT needed) ──────────────────────────
+  // Set ADMIN_SECRET in Supabase Edge Function secrets to enable this path
+  if (ADMIN_SECRET) {
+    const adminHeader = req.headers.get("x-admin-token") || "";
+    if (adminHeader && adminHeader === ADMIN_SECRET) {
+      return { ok: true, email: ADMIN_EMAILS[0] || "admin", username: ADMIN_USERNAME, user: null };
+    }
+  }
 
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) {
-    return { ok: false, reason: "Invalid or expired session" };
+  // ── Path 2: Bearer JWT verification ───────────────────────────────────────
+  const token = bearerToken(req);
+  if (!token) return { ok: false, reason: "Missing bearer token and no x-admin-token provided" };
+
+  // Try with ANON key client first (correct way to verify user tokens)
+  const authClient = getAuthClient();
+  let userData = null;
+  let lastError = "";
+
+  // Attempt 1: anon key client
+  try {
+    const { data, error } = await authClient.auth.getUser(token);
+    if (!error && data?.user) userData = data.user;
+    else lastError = error?.message || "anon client failed";
+  } catch(e: any) { lastError = e?.message || "anon client exception"; }
+
+  // Attempt 2: service role client (fallback)
+  if (!userData) {
+    try {
+      const { data, error } = await supabase.auth.getUser(token);
+      if (!error && data?.user) userData = data.user;
+      else lastError = error?.message || "service role client failed";
+    } catch(e: any) { lastError = e?.message || "service role exception"; }
+  }
+
+  if (!userData) {
+    return { ok: false, reason: `Invalid or expired session: ${lastError}` };
   }
 
   const email = normalizeIdentity(data.user.email || "");

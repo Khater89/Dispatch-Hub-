@@ -8,6 +8,8 @@ import { INTL_SUPPLIERS_DB } from "./intl_suppliers_data.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+// ANON key is auto-injected by Supabase runtime — used for user token verification
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || SERVICE_ROLE;
 
 // Defaults (override via Secrets)
 const TECH_TABLE = Deno.env.get("TECH_TABLE") || "ars_technician";
@@ -28,6 +30,10 @@ const ADMIN_EMAILS = (Deno.env.get("ADMIN_EMAILS") || "akhater@acuative.com")
   .map((x) => x.trim().toLowerCase())
   .filter(Boolean);
 
+// Optional: set ADMIN_SECRET in Supabase Edge Function Secrets for token-free auth
+// Supabase Dashboard → Edge Functions → api → Secrets → Add ADMIN_SECRET=your_secret
+const ADMIN_SECRET = (Deno.env.get("ADMIN_SECRET") || "").trim();
+
 // Allowed tables for /export/<table>
 const ALLOWED_TABLES = new Set(
   [TECH_TABLE, ZIP_TABLE, FLEX_TABLE, CA_W2_TABLE, CA_POSTAL_TABLE, USA_W2_TABLE].filter(Boolean),
@@ -45,8 +51,15 @@ function cors(origin: string | null) {
   };
 }
 
+// Service role client — for database operations (bypasses RLS)
 function getSupabase() {
   return createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+}
+
+// Auth client using ANON key — for verifying user JWTs via auth.getUser()
+// Using service_role for getUser() can fail in some Supabase versions
+function getAuthClient() {
+  return createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
 }
 
 function normalizeIdentity(v: string | null) {
@@ -61,12 +74,42 @@ function bearerToken(req: Request) {
 }
 
 async function getAllowedUser(req: Request, supabase: any) {
-  const token = bearerToken(req);
-  if (!token) return { ok: false, reason: "Missing bearer token" };
+  // ── Path 1: x-admin-token bypass (no JWT needed) ──────────────────────────
+  // Set ADMIN_SECRET in Supabase Edge Function secrets to enable this path
+  if (ADMIN_SECRET) {
+    const adminHeader = req.headers.get("x-admin-token") || "";
+    if (adminHeader && adminHeader === ADMIN_SECRET) {
+      return { ok: true, email: ADMIN_EMAILS[0] || "admin", username: ADMIN_USERNAME, user: null };
+    }
+  }
 
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) {
-    return { ok: false, reason: "Invalid or expired session" };
+  // ── Path 2: Bearer JWT verification ───────────────────────────────────────
+  const token = bearerToken(req);
+  if (!token) return { ok: false, reason: "Missing bearer token and no x-admin-token provided" };
+
+  // Try with ANON key client first (correct way to verify user tokens)
+  const authClient = getAuthClient();
+  let userData = null;
+  let lastError = "";
+
+  // Attempt 1: anon key client
+  try {
+    const { data, error } = await authClient.auth.getUser(token);
+    if (!error && data?.user) userData = data.user;
+    else lastError = error?.message || "anon client failed";
+  } catch(e: any) { lastError = e?.message || "anon client exception"; }
+
+  // Attempt 2: service role client (fallback)
+  if (!userData) {
+    try {
+      const { data, error } = await supabase.auth.getUser(token);
+      if (!error && data?.user) userData = data.user;
+      else lastError = error?.message || "service role client failed";
+    } catch(e: any) { lastError = e?.message || "service role exception"; }
+  }
+
+  if (!userData) {
+    return { ok: false, reason: `Invalid or expired session: ${lastError}` };
   }
 
   const email = normalizeIdentity(data.user.email || "");
@@ -180,9 +223,9 @@ Deno.serve(async (req) => {
   //  - /api/...
   //  - /...
   let p = url.pathname;
-  p = p.replace(/^\/functions\/v1\/api/, "");
-  p = p.replace(/^\/api/, "");
-  if (!p.startsWith("/")) p = "/" + p;
+    p = p.replace(/^\/functions\/v1\/api/, "");
+    p = p.replace(/^\/api/, "");
+    if (!p.startsWith("/")) p = "/" + p;
 
   try {
     if (!SUPABASE_URL || !SERVICE_ROLE) {
@@ -321,6 +364,148 @@ Deno.serve(async (req) => {
       });
 
       return new Response(JSON.stringify({ ok: true, table, rows }), {
+        headers: { ...cors(origin), "Content-Type": "application/json" },
+      });
+    }
+
+
+    // --- CANADA: ORS Matrix (distance + duration from job lat/lng to tech postals) ---
+    if (p === "/canada/ors_matrix" && req.method === "POST") {
+      const auth = await requireAllowedUser(req, supabase, origin);
+      if (auth instanceof Response) return auth;
+      const ORS_API_KEY = Deno.env.get("ORS_API_KEY") || "";
+      if (!ORS_API_KEY) {
+        return new Response(JSON.stringify({ ok: false, error: "Missing ORS_API_KEY env var" }), {
+          status: 500,
+          headers: { ...cors(origin), "Content-Type": "application/json" },
+        });
+      }
+
+      const body = await req.json().catch(() => null) as any;
+      const job_lat = Number(body?.job_lat);
+      const job_lng = Number(body?.job_lng);
+      const techList: any[] = Array.isArray(body?.tech) ? body.tech : [];
+
+      if (!Number.isFinite(job_lat) || !Number.isFinite(job_lng)) {
+        return new Response(JSON.stringify({ ok: false, error: "Invalid job_lat/job_lng" }), {
+          status: 400,
+          headers: { ...cors(origin), "Content-Type": "application/json" },
+        });
+      }
+
+      if (!techList.length) {
+        return new Response(JSON.stringify({ ok: true, distances_km: [], durations_min: [] }), {
+          headers: { ...cors(origin), "Content-Type": "application/json" },
+        });
+      }
+
+      // Geocode postal codes via Nominatim (Canada only) with a tiny in-request cache
+      const geoCache = new Map<string, { lat: number; lng: number } | null>();
+
+      async function geocodePostal(postalRaw: string) {
+        const postal = (postalRaw || "").toString().trim().replace(/\s+/g, "");
+        if (!postal) return null;
+        if (geoCache.has(postal)) return geoCache.get(postal) ?? null;
+
+        const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=ca&limit=1&postalcode=${encodeURIComponent(postal)}`;
+        const r = await fetch(url, {
+          headers: {
+            "User-Agent": "Dispatch-Hub (ORS Matrix) - contact: akhater@acuative.com",
+            "Accept-Language": "en",
+          },
+        });
+
+        if (!r.ok) {
+          geoCache.set(postal, null);
+          return null;
+        }
+        const arr = (await r.json().catch(() => [])) as any[];
+        const first = Array.isArray(arr) && arr.length ? arr[0] : null;
+        const lat = Number(first?.lat);
+        const lng = Number(first?.lon);
+        const out = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+        geoCache.set(postal, out);
+        return out;
+      }
+
+      // Build destinations in ORS format [lng, lat]
+      const destinations: Array<[number, number]> = [];
+      const idxMap: Array<number | null> = [];
+
+      for (const t of techList) {
+        const postal = (t?.tech_postal ?? t?.postal ?? "").toString();
+        const geo = await geocodePostal(postal).catch(() => null);
+        if (!geo) {
+          idxMap.push(null);
+          continue;
+        }
+        destinations.push([geo.lng, geo.lat]);
+        idxMap.push(destinations.length - 1);
+      }
+
+      // If none could be geocoded, return nulls aligned with techList
+      if (!destinations.length) {
+        return new Response(JSON.stringify({
+          ok: true,
+          distances_km: techList.map(() => null),
+          durations_min: techList.map(() => null),
+        }), {
+          headers: { ...cors(origin), "Content-Type": "application/json" },
+        });
+      }
+
+      // ORS Matrix: first location is the origin, others are destinations
+      const payload = {
+        locations: [[job_lng, job_lat], ...destinations],
+        metrics: ["distance", "duration"],
+        units: "m",
+      };
+
+      const orsResp = await fetch("https://api.openrouteservice.org/v2/matrix/driving-car", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": ORS_API_KEY,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const orsJson = await orsResp.json().catch(() => null) as any;
+
+      if (!orsResp.ok || !orsJson) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: "ORS matrix request failed",
+          status: orsResp.status,
+          detail: orsJson,
+        }), {
+          status: 502,
+          headers: { ...cors(origin), "Content-Type": "application/json" },
+        });
+      }
+
+      const distRow = Array.isArray(orsJson?.distances) ? orsJson.distances[0] : [];
+      const durRow = Array.isArray(orsJson?.durations) ? orsJson.durations[0] : [];
+
+      const distances_km = techList.map(() => null as number | null);
+      const durations_min = techList.map(() => null as number | null);
+
+      for (let i = 0; i < idxMap.length; i++) {
+        const di = idxMap[i];
+        if (di === null) continue;
+
+        const dist_m = distRow?.[di + 1];
+        const dur_s = durRow?.[di + 1];
+
+        if (typeof dist_m === "number" && Number.isFinite(dist_m)) {
+          distances_km[i] = Math.round((dist_m / 1000) * 100) / 100;
+        }
+        if (typeof dur_s === "number" && Number.isFinite(dur_s)) {
+          durations_min[i] = Math.round((dur_s / 60) * 10) / 10;
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, distances_km, durations_min }), {
         headers: { ...cors(origin), "Content-Type": "application/json" },
       });
     }

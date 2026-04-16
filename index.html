@@ -714,10 +714,16 @@ window.addEventListener('message', (ev) => {
       <button id="techdbSyncClose" type="button" style="border:1px solid #ddd;background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer;">✕</button>
     </div>
 
-    <p style="margin:10px 0 12px 0;color:#444;line-height:1.5;">
+    <p style="margin:10px 0 6px 0;color:#444;line-height:1.5;">
       ارفع ملف Excel واحد يحتوي عدة Sheets (مثل: <b>ARS Technician</b>, <b>USA Tier 2 Flex Tech</b>, <b>Canada - W2</b>). سيتم المعالجة داخل Supabase Edge Function (index.ts):
       مطابقة Sheet → Table، مزامنة الأعمدة (إضافة الأعمدة الناقصة)، ثم upsert/replace للجداول.
     </p>
+    <div style="background:#fff8e1;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#7c4a00;line-height:1.6;">
+      <b>🔑 طريقة الاستخدام بدون مشاكل:</b><br>
+      اذهب إلى <b>Supabase Dashboard → Edge Functions → api → Secrets</b><br>
+      أضف Secret جديد: <code style="background:#fef3c7;padding:1px 5px;border-radius:4px;">ADMIN_SECRET</code> = أي كلمة سر تختارها<br>
+      ثم ضع نفس الكلمة في حقل <b>Admin Secret</b> أدناه. لن تحتاج token بعد الآن.
+    </div>
 
     <div style="display:grid;grid-template-columns:1fr 240px;gap:10px;align-items:end;">
       <div>
@@ -735,15 +741,41 @@ window.addEventListener('message', (ev) => {
       </div>
     </div>
 
+    <div style="margin-top:10px;">
+      <label style="font-weight:600;">Admin Secret <span style="font-weight:400;color:#888;font-size:12px;">(من Supabase Secrets → ADMIN_SECRET)</span></label>
+      <input id="techdbAdminSecret"
+             type="password"
+             placeholder="الكلمة السرية اللي حطيتها في ADMIN_SECRET"
+             autocomplete="new-password"
+             style="width:100%;padding:9px 10px;border:1px solid #f59e0b;border-radius:10px;font-size:13px;margin-top:4px;"/>
+      <div style="margin-top:4px;color:#888;font-size:11px;">إذا حطيت Admin Secret، ما راح تحتاج Bearer Token أبداً. ✅</div>
+    </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
       <div>
         <label style="font-weight:600;">Excel File (all Tech DBs)</label>
         <input id="techdbExcel" type="file" accept=".xlsx,.xls" style="width:100%;"  autocomplete="off"/>
       </div>
       <div>
-        <label style="font-weight:600;">Owner Session</label>
-        <div id="techdbAuthHint" style="width:100%;padding:11px 12px;border:1px solid #ddd;border-radius:10px;background:#f8fafc;color:#334155;">Sign in with the owner account to enable upload.</div>
-        <div style="margin-top:6px;color:#666;font-size:12px;">Uses your Supabase login session automatically.</div>
+        <label style="font-weight:600;">Bearer Token <span style="font-weight:400;color:#888;font-size:12px;">(your session access token)</span></label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input id="techdbManualToken"
+                 type="password"
+                 placeholder="eyJhbGci… (paste or click Copy below)"
+                 autocomplete="new-password"
+                 style="flex:1;padding:9px 10px;border:1px solid #ddd;border-radius:10px;font-family:monospace;font-size:12px;"/>
+          <button id="techdbCopyToken" type="button"
+                  style="padding:9px 12px;border-radius:10px;border:1px solid #0b5ed7;background:#e8f0fe;color:#1a56db;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
+            📋 Copy Token
+          </button>
+        </div>
+        <div id="techdbAuthHint" style="margin-top:6px;padding:8px 10px;border-radius:8px;font-size:12px;color:#555;background:#f8fafc;border:1px solid #e2e8f0;">
+          Sign in first, then click <b>Copy Token</b> → paste here → upload.
+        </div>
+        <div style="margin-top:5px;color:#888;font-size:11px;line-height:1.5;">
+          ⚠️ This is your <b>session access_token</b> (not the anon or service_role key).<br>
+          Sign in with <b>akhater@acuative.com</b> → click Copy Token → paste above.
+        </div>
       </div>
     </div>
 
@@ -776,31 +808,76 @@ window.addEventListener('message', (ev) => {
     closeBtn?.addEventListener('click', hideModal);
     modal?.addEventListener('click', (e)=>{ if (e.target === modal) hideModal(); });
 
+    function updateAuthHint(email) {
+      const hint = document.getElementById('techdbAuthHint');
+      if (!hint) return;
+      if (email) {
+        hint.innerHTML = '✅ Signed in as: <b>' + email + '</b> — token will be fetched automatically.';
+        hint.style.color = '#166534';
+        hint.style.background = '#dcfce7';
+        hint.style.borderColor = '#86efac';
+      } else {
+        hint.textContent = 'Not signed in. Paste token above or sign in first.';
+        hint.style.color = '#555';
+        hint.style.background = '#f8fafc';
+        hint.style.borderColor = '#e2e8f0';
+      }
+    }
+
     window.addEventListener('ufh-auth-ready', (ev)=>{
       const email = ev && ev.detail && ev.detail.user ? (ev.detail.user.email || '') : '';
-      if (authHintEl) {
-        authHintEl.textContent = email ? ('✅ Signed in as: ' + email) : 'Owner session ready.';
-        authHintEl.style.color = '#166534';
-        authHintEl.style.background = '#dcfce7';
-        authHintEl.style.borderColor = '#86efac';
-      }
-      // Enable the upload button after sign-in
+      updateAuthHint(email);
       if (doSyncBtn) doSyncBtn.disabled = false;
     });
 
-    // Check existing session on modal open
     btn?.addEventListener('click', async () => {
       showModal();
       if (window.UFHAuth) {
         try {
           const session = await window.UFHAuth.getSession();
-          if (session && session.user && authHintEl) {
-            authHintEl.textContent = '✅ Signed in as: ' + (session.user.email || '');
-            authHintEl.style.color = '#166534';
-            authHintEl.style.background = '#dcfce7';
-            authHintEl.style.borderColor = '#86efac';
-          }
+          if (session && session.user) updateAuthHint(session.user.email || '');
         } catch(e) {}
+      }
+    });
+
+    // Copy Token button — copies the current session access_token to clipboard AND fills the field
+    const copyTokenBtn = document.getElementById('techdbCopyToken');
+    copyTokenBtn?.addEventListener('click', async () => {
+      if (!window.UFHAuth) {
+        out.textContent = '❌ Auth not loaded.';
+        return;
+      }
+      try {
+        const token = await window.UFHAuth.getAccessToken();
+        if (!token) {
+          out.textContent = '❌ No active session.\nPlease sign in first (the sign-in overlay should appear).\nAfter signing in, click Copy Token again.';
+          // Trigger sign in
+          await window.UFHAuth.requireSession();
+          return;
+        }
+        // Fill the input field
+        const tokenEl = document.getElementById('techdbManualToken');
+        if (tokenEl) tokenEl.value = token;
+        // Copy to clipboard
+        try {
+          await navigator.clipboard.writeText(token);
+          copyTokenBtn.textContent = '✅ Copied!';
+          copyTokenBtn.style.background = '#dcfce7';
+          copyTokenBtn.style.borderColor = '#86efac';
+          copyTokenBtn.style.color = '#166534';
+        } catch(e) {
+          copyTokenBtn.textContent = '✅ Filled';
+          copyTokenBtn.style.background = '#dcfce7';
+        }
+        setTimeout(() => {
+          copyTokenBtn.textContent = '📋 Copy Token';
+          copyTokenBtn.style.background = '#e8f0fe';
+          copyTokenBtn.style.borderColor = '#0b5ed7';
+          copyTokenBtn.style.color = '#1a56db';
+        }, 2500);
+        out.textContent = '✅ Token filled. Now select your Excel file and click تحميل.';
+      } catch(err) {
+        out.textContent = '❌ ' + (err?.message || String(err));
       }
     });
 
@@ -825,23 +902,43 @@ window.addEventListener('message', (ev) => {
         if (!f) { out.textContent = '❌ اختار ملف Excel'; return; }
         if (!window.UFHAuth) { out.textContent = '❌ Auth client not loaded'; return; }
 
-        out.textContent = '⏳ Checking session...';
+        // ── Resolve auth: Admin Secret first, then Bearer token, then auto session ──
+        const adminSecretEl = document.getElementById('techdbAdminSecret');
+        const adminSecret = (adminSecretEl && adminSecretEl.value || '').trim();
 
-        // Ensure valid session (handles sign-in flow if needed)
-        const session = await window.UFHAuth.requireSession();
-        if (!session) throw new Error('Authentication required — please sign in first.');
+        const manualTokenEl = document.getElementById('techdbManualToken');
+        let token = (manualTokenEl && manualTokenEl.value || '').trim();
 
-        // Get fresh access token after requireSession resolves
-        const token = await window.UFHAuth.getAccessToken();
-        if (!token) throw new Error('No access token — session may have expired. Please reload and sign in again.');
+        if (!adminSecret && !token) {
+          // Try auto session token
+          out.textContent = '⏳ Getting session token...';
+          if (window.UFHAuth) {
+            try { token = await window.UFHAuth.getAccessToken(); } catch(e) {}
+          }
+        }
+
+        if (!adminSecret && !token) {
+          out.textContent = '❌ لا يوجد مصادقة.\n\nالخيار الأسهل:\n1. اذهب Supabase Dashboard → Edge Functions → api → Secrets\n2. أضف: ADMIN_SECRET = كلمة سر تختارها\n3. ضع نفس الكلمة في حقل Admin Secret أعلاه\n4. اضغط تحميل ✅';
+          return;
+        }
 
         const fd = new FormData();
         fd.append('file', f);
         out.textContent = '⏳ Uploading & syncing...';
 
+        // Build headers based on auth method
+        const uploadHeaders = {};
+        if (adminSecret) {
+          // Use x-admin-token (bypasses JWT auth completely)
+          uploadHeaders['x-admin-token'] = adminSecret;
+          out.textContent = '⏳ Uploading with Admin Secret...';
+        } else {
+          uploadHeaders['Authorization'] = 'Bearer ' + token;
+        }
+
         const r = await fetch(base + '/admin/techdbs/upload?mode=' + encodeURIComponent(mode), {
           method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + token },
+          headers: uploadHeaders,
           body: fd
         });
         const t = await r.text();
