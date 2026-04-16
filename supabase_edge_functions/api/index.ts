@@ -382,12 +382,31 @@ Deno.serve(async (req) => {
       }
 
       const body = await req.json().catch(() => null) as any;
-      const job_lat = Number(body?.job_lat);
-      const job_lng = Number(body?.job_lng);
-      const techList: any[] = Array.isArray(body?.tech) ? body.tech : [];
+
+      // Support Format A (new: pre-resolved coords) and Format B (old: job_lat/lng)
+      let job_lat: number, job_lng: number;
+      let techList: any[];
+
+      if (body?.ticket_coords && typeof body.ticket_coords.lat === "number") {
+        // Format A: app sends pre-resolved FSA coordinates (accurate)
+        job_lat = Number(body.ticket_coords.lat);
+        job_lng = Number(body.ticket_coords.lon);
+        const rawPostals: string[] = Array.isArray(body.tech_postals) ? body.tech_postals : [];
+        const rawCoords: any[] = Array.isArray(body.tech_coords) ? body.tech_coords : [];
+        techList = rawPostals.map((p: string, i: number) => ({
+          postal: p,
+          lat: rawCoords[i]?.lat ?? null,
+          lng: rawCoords[i]?.lon ?? null,
+        }));
+      } else {
+        // Format B: legacy format
+        job_lat = Number(body?.job_lat);
+        job_lng = Number(body?.job_lng);
+        techList = Array.isArray(body?.tech) ? body.tech : [];
+      }
 
       if (!Number.isFinite(job_lat) || !Number.isFinite(job_lng)) {
-        return new Response(JSON.stringify({ ok: false, error: "Invalid job_lat/job_lng" }), {
+        return new Response(JSON.stringify({ ok: false, error: "Invalid ticket coordinates" }), {
           status: 400,
           headers: { ...cors(origin), "Content-Type": "application/json" },
         });
@@ -429,10 +448,23 @@ Deno.serve(async (req) => {
       }
 
       // Build destinations in ORS format [lng, lat]
+      // Prefer pre-resolved coordinates from the FSA database (more accurate)
       const destinations: Array<[number, number]> = [];
       const idxMap: Array<number | null> = [];
 
       for (const t of techList) {
+        // Check for pre-resolved lat/lng first
+        const preResolvedLat = (t?.lat !== null && t?.lat !== undefined) ? Number(t.lat) : NaN;
+        const preResolvedLng = (t?.lng !== null && t?.lng !== undefined) ? Number(t.lng) : NaN;
+
+        if (Number.isFinite(preResolvedLat) && Number.isFinite(preResolvedLng)) {
+          // Use pre-resolved coordinates (from FSA DB - accurate)
+          destinations.push([preResolvedLng, preResolvedLat]);
+          idxMap.push(destinations.length - 1);
+          continue;
+        }
+
+        // Fallback: geocode the postal code
         const postal = (t?.tech_postal ?? t?.postal ?? "").toString();
         const geo = await geocodePostal(postal).catch(() => null);
         if (!geo) {
