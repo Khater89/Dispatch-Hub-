@@ -406,12 +406,10 @@ document.addEventListener('DOMContentLoaded', function(){
     async function fetchJson(url){
       let headers = { 'Accept':'application/json' };
       if (window.UFHAuth) {
-        try {
-          await window.UFHAuth.requireSession();
-          headers = await window.UFHAuth.getAuthHeaders(headers);
-        } catch (e) {
-          // leave plain headers so the caller gets a readable API error
-        }
+        // Enforce auth before cloud calls. Falling back to anonymous requests
+        // causes silent 401s, which looked like “cloud DB stopped working”.
+        await window.UFHAuth.requireSession();
+        headers = await window.UFHAuth.getAuthHeaders(headers);
       }
       const r = await fetch(url, { headers });
       if(!r.ok) throw new Error(`API error ${r.status}: ${await r.text()}`);
