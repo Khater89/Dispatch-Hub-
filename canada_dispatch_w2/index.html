@@ -141,15 +141,15 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="row">
           <div>
             <label for="postalInput">Ticket postal code (A1A1A1 or A1A 1A1)</label>
-            <input id="postalInput" placeholder="e.g., H7V 1X3"/>
+            <input id="postalInput" placeholder="e.g., H7V 1X3" autocomplete="off"/>
           </div>
           <div>
             <label for="driveFactor">Driving correction factor (base)</label>
-            <input id="driveFactor" type="number" min="0.8" max="5" step="0.05" value="1.25"/>
+            <input id="driveFactor" type="number" min="0.8" max="5" step="0.05" value="1.25" autocomplete="off"/>
           </div>
           <div>
             <label for="speedKmh">Avg speed (km/h)</label>
-            <input id="speedKmh" type="number" min="20" max="130" step="5" value="80"/>
+            <input id="speedKmh" type="number" min="20" max="130" step="5" value="80" autocomplete="off"/>
           </div>
         </div>
 

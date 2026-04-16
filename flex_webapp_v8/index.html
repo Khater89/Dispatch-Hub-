@@ -301,24 +301,24 @@ document.addEventListener('DOMContentLoaded', function(){
     <div class="split">
       <div>
         <label for="stateInput">State filter (abbr or full name)</label>
-        <input id="stateInput" list="stateList" placeholder="Example: CA or California (leave empty = auto from ZIP)" />
+        <input id="stateInput" list="stateList" placeholder="Example: CA or California (leave empty = auto from ZIP)"  autocomplete="off"/>
         <datalist id="stateList"></datalist>
       </div>
       <div>
         <label for="zipInput">Ticket ZIP (required for Find Closest)</label>
-        <input id="zipInput" inputmode="numeric" placeholder="Required for Find Closest — e.g. 90210" />
+        <input id="zipInput" inputmode="numeric" placeholder="Required for Find Closest — e.g. 90210"  autocomplete="off"/>
       </div>
     </div>
 
     <label for="lastNameInput">Last name (optional)</label>
-    <input id="lastNameInput" placeholder="Example: Young (works without ZIP or State)" />
+    <input id="lastNameInput" placeholder="Example: Young (works without ZIP or State)"  autocomplete="off"/>
 
     <label for="ticketInput">Ticket text (optional)</label>
     <textarea id="ticketInput" placeholder="Paste the ticket here. You can click 'Extract ZIP' to fill the ZIP field."></textarea>
 
     <div class="row" style="margin-top:10px;">
       <button class="btn secondary" id="uploadDbBtn" type="button">Upload Tech DB (Excel)</button>
-      <input id="techDbUpload" type="file" accept=".xlsx,.xls" style="display:none;" />
+      <input id="techDbUpload" type="file" accept=".xlsx,.xls" style="display:none;"  autocomplete="off"/>
       <button class="btn secondary" id="resetDbBtn" type="button" title="Use built-in techdb.js">Reset DB</button>
       <button class="btn secondary" id="downloadDbBtn" type="button" title="Download a techdb.js file generated from the uploaded Excel" disabled>Download techdb.js</button>
       <div class="pill" id="dbPill">DB: built-in</div>

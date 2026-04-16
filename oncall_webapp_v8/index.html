@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <section class="card">
       <h2>1) Upload the On Call Rotation (Excel) file – weekly</h2>
       <div class="upload">
-        <input id="oncallFile" class="file" type="file" accept=".xlsx,.xls" />
+        <input id="oncallFile" class="file" type="file" accept=".xlsx,.xls"  autocomplete="off"/>
         <div class="upload-meta">
           <div class="file-name" id="oncallName">No file selected</div>
           <div class="progress"><div id="oncallProg" class="bar"></div></div>
@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <section class="card">
       <h2>2) Upload the Tech Database (Excel) file</h2>
       <div class="upload">
-        <input id="techFile" class="file" type="file" accept=".xlsx,.xls" />
+        <input id="techFile" class="file" type="file" accept=".xlsx,.xls"  autocomplete="off"/>
         <div class="upload-meta">
           <div class="file-name" id="techName">No file selected</div>
           <div class="progress"><div id="techProg" class="bar"></div></div>
@@ -64,28 +64,28 @@ document.addEventListener('DOMContentLoaded', function(){
 
       <div class="grid">
         <label>ZIP Code (US) (Optional)
-          <input id="zipInput" inputmode="numeric" placeholder="Example: 75201" maxlength="5" />
+          <input id="zipInput" inputmode="numeric" placeholder="Example: 75201" maxlength="5"  autocomplete="off"/>
         </label>
         <label>City (optional if you enter ZIP)
-          <input id="cityInput" placeholder="Example: Austin" />
+          <input id="cityInput" placeholder="Example: Austin"  autocomplete="off"/>
         </label>
-        <label>State (2-letter) (Required)<input id="stateInput" placeholder="Example: TX" maxlength="2" required pattern="[A-Za-z]{2}" title="Enter 2-letter state code (e.g., TX)" />
+        <label>State (2-letter) (Required)<input id="stateInput" placeholder="Example: TX" maxlength="2" required pattern="[A-Za-z]{2}" title="Enter 2-letter state code (e.g., TX)"  autocomplete="off"/>
         </label>
       </div>
 
       <div class="grid">
         <label>Date
-          <input id="dateInput" type="date" />
+          <input id="dateInput" type="date"  autocomplete="off"/>
         </label>
         <div id="ampmWrap" class="ampm-wrap" style="display:none">
         <div class="ampm-label">Ticket time (only required if you choose End Date)</div>
         <div class="ampm-toggle" role="radiogroup" aria-label="Ticket time AM/PM">
           <label class="ampm-option">
-            <input type="radio" name="ampm" value="AM" />
+            <input type="radio" name="ampm" value="AM"  autocomplete="off"/>
             <span>Morning (12:00 AM → 12:00 PM)</span>
           </label>
           <label class="ampm-option">
-            <input type="radio" name="ampm" value="PM" />
+            <input type="radio" name="ampm" value="PM"  autocomplete="off"/>
             <span>Evening (1:00 PM → 11:59 PM)</span>
           </label>
         </div>

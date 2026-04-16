@@ -43,14 +43,14 @@
 
   <div class="card">
     <label>API Base URL (Backend)</label>
-    <input id="apiBase" type="text" placeholder="https://your-project.supabase.co/functions/v1/api" />
+    <input id="apiBase" type="text" placeholder="https://your-project.supabase.co/functions/v1/api"  autocomplete="off"/>
     <label>Mode</label>
     <select id="mode">
       <option value="replace">replace (truncate then insert)</option>
       <option value="upsert" selected>upsert (update/insert by tech_id)</option>
     </select>
     <label>Excel File</label>
-    <input id="file" type="file" accept=".xlsx,.xls" />
+    <input id="file" type="file" accept=".xlsx,.xls"  autocomplete="off"/>
     <div style="margin-top:12px;">
       <button class="primary" id="btnUpload">Upload</button>
       <button id="btnPing" type="button">Ping /health</button>

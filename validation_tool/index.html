@@ -248,7 +248,7 @@
 
   <!-- DROPZONE -->
   <label class="dz" id="dropzone">
-    <input type="file" id="fileInput" accept=".xlsx,.xls" />
+    <input type="file" id="fileInput" accept=".xlsx,.xls"  autocomplete="off"/>
     <div class="dzi">📂</div>
     <div class="dzt">Drag &amp; drop your Excel workbook here</div>
     <div class="dzs">Or click to browse &nbsp;·&nbsp; Expects a <strong>Report</strong> sheet · Field Nation rows only</div>
@@ -268,7 +268,7 @@
   <!-- TOOLBAR -->
   <div id="tbp" class="tbp h">
     <div class="tr">
-      <div class="fg fgs"><label>Search</label><input type="text" id="srch" placeholder="Ticket, name…" /></div>
+      <div class="fg fgs"><label>Search</label><input type="text" id="srch" placeholder="Ticket, name…"  autocomplete="off"/></div>
       <div class="fg"><label>Ticket Type</label><select id="typeF"><option value="all">All Types</option></select></div>
       <div class="fg"><label>Status</label>
         <select id="statF">
@@ -277,9 +277,9 @@
           <option value="exception">Exception Matches</option>
         </select>
       </div>
-      <div class="fg"><label>Specific Date</label><input type="date" id="specD" /></div>
-      <div class="fg"><label>From Date</label><input type="date" id="fromD" /></div>
-      <div class="fg"><label>To Date</label><input type="date" id="toD" /></div>
+      <div class="fg"><label>Specific Date</label><input type="date" id="specD"  autocomplete="off"/></div>
+      <div class="fg"><label>From Date</label><input type="date" id="fromD"  autocomplete="off"/></div>
+      <div class="fg"><label>To Date</label><input type="date" id="toD"  autocomplete="off"/></div>
       <div class="stag" id="stag">—</div>
     </div>
     <div class="tr">
