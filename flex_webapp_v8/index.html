@@ -503,9 +503,47 @@ try{
   // If API already returns AOA (9+ columns) and no columns metadata -> use as-is
   if (!cols.length && Array.isArray(first) && first.length >= 9){
     window.TECH_DB_ROWS = rows;
+  } else if (!cols.length && first && typeof first === 'object' && !Array.isArray(first)){
+    // No columns metadata + object rows -> infer keys and normalize to AOA
+    const norm = (s) => String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+    const keyMap = new Map(Object.keys(first).map(k => [norm(k), k]));
+    const pickKey = (names) => {
+      for (const n of names){
+        const k = norm(n);
+        if (keyMap.has(k)) return keyMap.get(k);
+      }
+      return '';
+    };
+    const K = {
+      tech: pickKey(['Tech ID','tech_id','techid','id','TechID']),
+      first: pickKey(['First Name','first_name','firstname','First']),
+      last: pickKey(['Last Name','last_name','lastname','Last']),
+      region: pickKey(['Region','region']),
+      zone: pickKey(['Zone','zone']),
+      type: pickKey(['Type','type']),
+      city: pickKey(['City','city']),
+      state: pickKey(['State','state']),
+      zip: pickKey(['Zip','ZIP','zip','zip_code','ZIP Code','postal_code'])
+    };
+    const mustHave = [K.tech, K.first, K.last, K.type, K.state, K.zip];
+    if (mustHave.some(k => !k)){
+      // keep existing built-in DB if shape is not usable
+    } else {
+      const toStr = (v) => (v == null ? '' : String(v));
+      window.TECH_DB_ROWS = rows.map(r => ([
+        toStr(r[K.tech]),
+        toStr(r[K.first]),
+        toStr(r[K.last]),
+        toStr(r[K.region]),
+        toStr(r[K.zone]),
+        toStr(r[K.type]),
+        toStr(r[K.city]),
+        toStr(r[K.state]),
+        toStr(r[K.zip]),
+      ]));
+    }
   } else if (!cols.length){
-    // No columns metadata -> safest fallback
-    window.TECH_DB_ROWS = rows;
+    // No columns metadata and unknown shape -> keep bundled DB
   } else {
     const norm = (s) => String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
     const idxMap = new Map(cols.map((c,i)=>[norm(c), i]));
