@@ -700,91 +700,156 @@ window.addEventListener('message', (ev) => {
 });
 </script>
 
-<!-- Admin: Tech DBs Multi-Sheet Sync (Excel -> Supabase Tables) -->
-<div id="techdbSyncBtn" style="position:fixed;right:16px;bottom:16px;z-index:9999;">
-  <button type="button" style="padding:10px 14px;border-radius:12px;border:1px solid #ddd;background:#111;color:#fff;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.18);">
-    تحميل Tech DBs
+<!-- Admin: Tech DBs Multi-Sheet Sync -->
+<div id="techdbSyncBtn" style="position:fixed;right:20px;bottom:20px;z-index:9999;">
+  <button type="button" style="
+    display:flex;align-items:center;gap:8px;
+    padding:10px 16px;border-radius:10px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(15,23,42,.92);
+    color:#e2e8f0;font-size:13px;font-weight:600;
+    cursor:pointer;letter-spacing:.2px;
+    box-shadow:0 4px 20px rgba(0,0,0,.35);
+    backdrop-filter:blur(8px);
+    transition:all .15s ease;
+  " onmouseover="this.style.background='rgba(30,41,59,.98)';this.style.borderColor='rgba(99,102,241,.4)'"
+     onmouseout="this.style.background='rgba(15,23,42,.92)';this.style.borderColor='rgba(255,255,255,.12)'">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Sync Tech DBs
   </button>
 </div>
 
-<div id="techdbSyncModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.45);">
-  <div style="max-width:920px;margin:60px auto;background:#fff;border-radius:16px;padding:16px 16px 14px 16px;box-shadow:0 16px 60px rgba(0,0,0,.28);">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-      <h3 style="margin:0;font-size:18px;">Tech DBs Loader (Multi-Sheet)</h3>
-      <button id="techdbSyncClose" type="button" style="border:1px solid #ddd;background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer;">✕</button>
+<style>
+#techdbSyncModal { font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif; }
+#techdbSyncModal .tdb-label {
+  display: block; font-size: 11px; font-weight: 600; letter-spacing: .6px;
+  text-transform: uppercase; color: #64748b; margin-bottom: 6px;
+}
+#techdbSyncModal .tdb-input {
+  width: 100%; padding: 9px 12px; border: 1px solid #e2e8f0;
+  border-radius: 8px; font-size: 13px; color: #0f172a;
+  background: #f8fafc; outline: none; transition: border-color .15s, box-shadow .15s;
+  box-sizing: border-box;
+}
+#techdbSyncModal .tdb-input:focus {
+  border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+  background: #fff;
+}
+#techdbSyncModal .tdb-btn-primary {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 18px; border-radius: 8px;
+  border: none; background: #4f46e5; color: #fff;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+#techdbSyncModal .tdb-btn-primary:hover { background: #4338ca; }
+#techdbSyncModal .tdb-btn-primary:active { transform: translateY(1px); }
+#techdbSyncModal .tdb-btn-ghost {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 14px; border-radius: 8px;
+  border: 1px solid #e2e8f0; background: #fff; color: #475569;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: all .15s;
+}
+#techdbSyncModal .tdb-btn-ghost:hover { border-color: #cbd5e1; background: #f8fafc; color: #0f172a; }
+#techdbSyncModal .tdb-divider {
+  height: 1px; background: #f1f5f9; margin: 16px 0;
+}
+#techdbSyncModal .tdb-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+}
+</style>
+
+<div id="techdbSyncModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;">
+  <div style="width:min(760px,96vw);background:#fff;border-radius:16px;box-shadow:0 24px 80px rgba(15,23,42,.22);overflow:hidden;">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #f1f5f9;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4f46e5);display:flex;align-items:center;justify-content:center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#0f172a;">Sync Tech Databases</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:1px;">Upload Excel → Supabase · Multi-sheet support</div>
+        </div>
+      </div>
+      <button id="techdbSyncClose" type="button" style="width:30px;height:30px;border:1px solid #e2e8f0;background:#fff;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:16px;transition:all .15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">×</button>
     </div>
 
-    <p style="margin:10px 0 6px 0;color:#444;line-height:1.5;">
-      ارفع ملف Excel واحد يحتوي عدة Sheets (مثل: <b>ARS Technician</b>, <b>USA Tier 2 Flex Tech</b>, <b>Canada - W2</b>). سيتم المعالجة داخل Supabase Edge Function (index.ts):
-      مطابقة Sheet → Table، مزامنة الأعمدة (إضافة الأعمدة الناقصة)، ثم upsert/replace للجداول.
-    </p>
-    <div style="background:#fff8e1;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#7c4a00;line-height:1.6;">
-      <b>🔑 طريقة الاستخدام بدون مشاكل:</b><br>
-      اذهب إلى <b>Supabase Dashboard → Edge Functions → api → Secrets</b><br>
-      أضف Secret جديد: <code style="background:#fef3c7;padding:1px 5px;border-radius:4px;">ADMIN_SECRET</code> = أي كلمة سر تختارها<br>
-      ثم ضع نفس الكلمة في حقل <b>Admin Secret</b> أدناه. لن تحتاج token بعد الآن.
-    </div>
+    <!-- Body -->
+    <div style="padding:20px 22px;">
 
-    <div style="display:grid;grid-template-columns:1fr 240px;gap:10px;align-items:end;">
-      <div>
-        <label style="font-weight:600;">Supabase Edge Function Base URL</label>
-        <input id="techdbApiBase" style="width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:10px;" value="https://whocxxcqnjhvqmsldbkz.supabase.co/functions/v1/api"  autocomplete="new-password"/>
-        <div style="margin-top:6px;color:#666;font-size:12px;">مثال: https://&lt;PROJECT_ID&gt;.supabase.co/functions/v1/api</div>
+      <!-- Row 1: URL + Mode -->
+      <div style="display:grid;grid-template-columns:1fr 200px;gap:14px;">
+        <div>
+          <label class="tdb-label">Edge Function URL</label>
+          <input id="techdbApiBase" class="tdb-input" value="https://whocxxcqnjhvqmsldbkz.supabase.co/functions/v1/api" autocomplete="new-password"/>
+        </div>
+        <div>
+          <label class="tdb-label">Sync Mode</label>
+          <select id="techdbSyncMode" class="tdb-input" style="appearance:auto;">
+            <option value="upsert" selected>Upsert</option>
+            <option value="replace">Replace (full)</option>
+          </select>
+        </div>
       </div>
 
-      <div>
-        <label style="font-weight:600;">Mode</label>
-        <select id="techdbSyncMode" style="width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:10px;">
-          <option value="upsert" selected>upsert (update/insert by tech_id)</option>
-          <option value="replace">replace (truncate then insert)</option>
-        </select>
-      </div>
-    </div>
+      <div class="tdb-divider"></div>
 
-    <div style="margin-top:10px;">
-      <label style="font-weight:600;">Admin Secret <span style="font-weight:400;color:#888;font-size:12px;">(من Supabase Secrets → ADMIN_SECRET)</span></label>
-      <input id="techdbAdminSecret"
-             type="password"
-             placeholder="الكلمة السرية اللي حطيتها في ADMIN_SECRET"
-             autocomplete="new-password"
-             style="width:100%;padding:9px 10px;border:1px solid #f59e0b;border-radius:10px;font-size:13px;margin-top:4px;"/>
-      <div style="margin-top:4px;color:#888;font-size:11px;">إذا حطيت Admin Secret، ما راح تحتاج Bearer Token أبداً. ✅</div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-      <div>
-        <label style="font-weight:600;">Excel File (all Tech DBs)</label>
-        <input id="techdbExcel" type="file" accept=".xlsx,.xls" style="width:100%;"  autocomplete="off"/>
+      <!-- Row 2: Admin Secret + File -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div>
+          <label class="tdb-label">Admin Secret</label>
+          <input id="techdbAdminSecret" type="password" class="tdb-input" placeholder="ADMIN_SECRET value" autocomplete="new-password"/>
+          <div style="margin-top:5px;font-size:11px;color:#94a3b8;">Set in Supabase → Edge Functions → api → Secrets</div>
+        </div>
+        <div>
+          <label class="tdb-label">Excel File</label>
+          <input id="techdbExcel" type="file" accept=".xlsx,.xls" class="tdb-input" style="padding:6px 12px;" autocomplete="off"/>
+          <div style="margin-top:5px;font-size:11px;color:#94a3b8;">Sheets: ARS Technician · USA Tier 2 Flex · Canada W2</div>
+        </div>
       </div>
-      <div>
-        <label style="font-weight:600;">Bearer Token <span style="font-weight:400;color:#888;font-size:12px;">(your session access token)</span></label>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <input id="techdbManualToken"
-                 type="password"
-                 placeholder="eyJhbGci… (paste or click Copy below)"
-                 autocomplete="new-password"
-                 style="flex:1;padding:9px 10px;border:1px solid #ddd;border-radius:10px;font-family:monospace;font-size:12px;"/>
-          <button id="techdbCopyToken" type="button"
-                  style="padding:9px 12px;border-radius:10px;border:1px solid #0b5ed7;background:#e8f0fe;color:#1a56db;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
-            📋 Copy Token
+
+      <div class="tdb-divider"></div>
+
+      <!-- Row 3: Token (collapsed/secondary) -->
+      <details style="cursor:pointer;">
+        <summary style="font-size:12px;font-weight:600;color:#64748b;letter-spacing:.4px;text-transform:uppercase;user-select:none;list-style:none;display:flex;align-items:center;gap:6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          Bearer Token (optional if Admin Secret is set)
+        </summary>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:flex-start;">
+          <input id="techdbManualToken" type="password" class="tdb-input" placeholder="eyJhbGci… paste or use Copy Token" autocomplete="new-password" style="font-family:monospace;font-size:12px;"/>
+          <button id="techdbCopyToken" type="button" class="tdb-btn-ghost" style="white-space:nowrap;flex-shrink:0;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy Token
           </button>
         </div>
-        <div id="techdbAuthHint" style="margin-top:6px;padding:8px 10px;border-radius:8px;font-size:12px;color:#555;background:#f8fafc;border:1px solid #e2e8f0;">
-          Sign in first, then click <b>Copy Token</b> → paste here → upload.
+        <div id="techdbAuthHint" style="margin-top:8px;padding:8px 12px;border-radius:8px;font-size:12px;color:#555;background:#f8fafc;border:1px solid #e2e8f0;">
+          Sign in first, then click Copy Token → paste here.
         </div>
-        <div style="margin-top:5px;color:#888;font-size:11px;line-height:1.5;">
-          ⚠️ This is your <b>session access_token</b> (not the anon or service_role key).<br>
-          Sign in with <b>akhater@acuative.com</b> → click Copy Token → paste above.
-        </div>
+      </details>
+
+      <div class="tdb-divider"></div>
+
+      <!-- Actions -->
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button id="techdbDoSync" type="button" class="tdb-btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload & Sync
+        </button>
+        <button id="techdbPing" type="button" class="tdb-btn-ghost">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Ping API
+        </button>
       </div>
-    </div>
 
-    <div style="display:flex;gap:10px;margin-top:12px;">
-      <button id="techdbDoSync" type="button" style="padding:10px 14px;border-radius:12px;border:1px solid #0b5ed7;background:#0d6efd;color:#fff;cursor:pointer;">تحميل</button>
-      <button id="techdbPing" type="button" style="padding:10px 14px;border-radius:12px;border:1px solid #ddd;background:#fff;cursor:pointer;">Ping /health</button>
+      <!-- Output -->
+      <pre id="techdbSyncOut" style="margin-top:14px;background:#0f172a;color:#94a3b8;padding:14px;border-radius:10px;max-height:200px;overflow:auto;font-size:12px;line-height:1.6;display:none;"></pre>
     </div>
-
-    <pre id="techdbSyncOut" style="margin-top:12px;background:#0b1020;color:#e7eaf0;padding:12px;border-radius:12px;max-height:260px;overflow:auto;"></pre>
   </div>
 </div>
 
@@ -801,7 +866,7 @@ window.addEventListener('message', (ev) => {
     const doSyncBtn = document.getElementById('techdbDoSync');
     const pingBtn = document.getElementById('techdbPing');
 
-    function showModal(){ modal.style.display = 'block'; }
+    function showModal(){ modal.style.display = 'flex'; }
     function hideModal(){ modal.style.display = 'none'; }
 
     // btn click handled in auth-ready block above
@@ -875,7 +940,7 @@ window.addEventListener('message', (ev) => {
           copyTokenBtn.style.borderColor = '#0b5ed7';
           copyTokenBtn.style.color = '#1a56db';
         }, 2500);
-        out.textContent = '✅ Token filled. Now select your Excel file and click تحميل.';
+        out.textContent = '✅ Token filled. Now select your Excel file and click Upload & Sync.';
       } catch(err) {
         out.textContent = '❌ ' + (err?.message || String(err));
       }
@@ -884,7 +949,7 @@ window.addEventListener('message', (ev) => {
     pingBtn?.addEventListener('click', async ()=>{
       try{
         const base = String(baseEl.value||'').trim().replace(/\/+$/,'');
-        out.textContent = '⏳ Pinging...';
+        out.style.display='block'; out.textContent = '⏳ Pinging...';
         const r = await fetch(base + '/health', { method:'GET' });
         const t = await r.text();
         out.textContent = 'HTTP ' + r.status + '\n' + t;
@@ -898,8 +963,8 @@ window.addEventListener('message', (ev) => {
         const base = String(baseEl.value||'').trim().replace(/\/+$/,'');
         const mode = String(modeEl.value||'upsert');
         const f = fileEl.files && fileEl.files[0];
-        if (!base) { out.textContent = '❌ ضع Base URL'; return; }
-        if (!f) { out.textContent = '❌ اختار ملف Excel'; return; }
+        if (!base) { out.textContent = '❌ Please enter the Edge Function Base URL.'; return; }
+        if (!f) { out.textContent = '❌ Please select an Excel file.'; return; }
         if (!window.UFHAuth) { out.textContent = '❌ Auth client not loaded'; return; }
 
         // ── Resolve auth: Admin Secret first, then Bearer token, then auto session ──
@@ -911,20 +976,20 @@ window.addEventListener('message', (ev) => {
 
         if (!adminSecret && !token) {
           // Try auto session token
-          out.textContent = '⏳ Getting session token...';
+          out.style.display='block'; out.textContent = '⏳ Getting session token...';
           if (window.UFHAuth) {
             try { token = await window.UFHAuth.getAccessToken(); } catch(e) {}
           }
         }
 
         if (!adminSecret && !token) {
-          out.textContent = '❌ لا يوجد مصادقة.\n\nالخيار الأسهل:\n1. اذهب Supabase Dashboard → Edge Functions → api → Secrets\n2. أضف: ADMIN_SECRET = كلمة سر تختارها\n3. ضع نفس الكلمة في حقل Admin Secret أعلاه\n4. اضغط تحميل ✅';
+          out.textContent = '❌ No authentication found.\n\nEasiest fix: Go to Supabase Dashboard → Edge Functions → api → Secrets\nAdd ADMIN_SECRET = any secret you choose, then paste it in the Admin Secret field above.';
           return;
         }
 
         const fd = new FormData();
         fd.append('file', f);
-        out.textContent = '⏳ Uploading & syncing...';
+        out.style.display='block'; out.textContent = '⏳ Uploading & syncing...';
 
         // Build headers based on auth method
         const uploadHeaders = {};
