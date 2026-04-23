@@ -201,6 +201,41 @@
       .main{padding:10px 10px 50px;} .cgrid{grid-template-columns:1fr;}
       .sgrid{grid-template-columns:repeat(2,1fr);} .tr{flex-direction:column;}
     }
+
+    /* ═══ EMPTY STATE & FILTER BADGE (Audit Tab Enhancement) ═══ */
+    .empty-audit-state{
+      grid-column:1/-1;text-align:center;padding:32px 20px;
+      background:linear-gradient(180deg,#f8fafc,#f1f5f9);
+      border:2px dashed var(--border);border-radius:14px;
+    }
+    .empty-audit-icon{font-size:48px;margin-bottom:8px;}
+    .empty-audit-title{font-weight:800;font-size:16px;color:var(--text1);margin-bottom:6px;}
+    .empty-audit-sub{color:var(--text2);font-size:13px;margin-bottom:16px;line-height:1.5;}
+    .empty-audit-btn{
+      display:inline-block;padding:10px 18px;background:var(--fn-or);color:#fff;
+      border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;
+      font-family:inherit;transition:transform .15s,box-shadow .15s;
+    }
+    .empty-audit-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(249,115,22,.3);}
+
+    .filter-active-badge{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:3px 10px;background:var(--ie-bl);color:#fff;
+      border-radius:99px;font-size:11px;font-weight:700;
+      margin-left:8px;letter-spacing:.3px;text-transform:uppercase;
+    }
+    .filter-active-badge::before{
+      content:'';width:6px;height:6px;border-radius:50%;background:#fff;
+      animation:pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse{50%{opacity:.4;}}
+
+    .chart-empty-msg{
+      display:flex;align-items:center;justify-content:center;
+      height:100%;color:var(--text2);font-size:13px;font-weight:600;
+      flex-direction:column;gap:6px;
+    }
+    .chart-empty-msg .cem-icon{font-size:28px;opacity:.5;}
   </style>
 
   <style>
@@ -591,10 +626,61 @@ function calcStats(rows){
         te=rows.filter(r=>!r.tVal).length,ne=rows.filter(r=>!r.nVal).length;
   return{n,m,c,e,x,cp,se,de,te,ne};
 }
+/* Detect if any UI filter is currently active */
+function hasActiveFilters(){
+  return !!(
+    (E.srch.value||'').trim() ||
+    (E.typeF.value && E.typeF.value!=='all') ||
+    (E.statF.value && E.statF.value!=='all') ||
+    E.specD.value || E.fromD.value || E.toD.value
+  );
+}
+
+/* Build a human-readable summary of the active filters (for PDFs / badges) */
+function activeFilterSummary(){
+  const parts=[];
+  const q=(E.srch.value||'').trim();
+  if(q) parts.push(`Search: "${q}"`);
+  if(E.typeF.value && E.typeF.value!=='all') parts.push(`Type: ${E.typeF.value}`);
+  if(E.statF.value && E.statF.value!=='all') parts.push(`Status: ${E.statF.value}`);
+  if(E.specD.value) parts.push(`Date: ${E.specD.value}`);
+  else if(E.fromD.value && E.toD.value) parts.push(`${E.fromD.value} → ${E.toD.value}`);
+  else if(E.fromD.value) parts.push(`From ${E.fromD.value}`);
+  else if(E.toD.value) parts.push(`Up to ${E.toD.value}`);
+  return parts.length ? parts.join(' · ') : 'All Data (no filters)';
+}
+
 function renderStats(rows){
+  const active = hasActiveFilters();
+  const badge = active ? `<span class="filter-active-badge">Filtered</span>` : '';
+
+  /* ── EMPTY STATE: filters return no results ───────────── */
+  if(!rows.length){
+    const hasData = S.raw.length > 0;
+    E.sg.innerHTML = `
+      <div class="empty-audit-state">
+        <div class="empty-audit-icon">${hasData ? '🔍' : '📂'}</div>
+        <div class="empty-audit-title">
+          ${hasData ? 'No records match the current filters' : 'No data loaded yet'}
+          ${badge}
+        </div>
+        <div class="empty-audit-sub">
+          ${hasData
+            ? `All statistics below are zero because no tickets in the dataset of <strong>${S.raw.length}</strong> match: <em>${esc(activeFilterSummary())}</em>. Clear or adjust the filters to see results.`
+            : 'Upload an Excel file to populate the audit dashboard.'}
+        </div>
+        ${hasData ? '<button class="empty-audit-btn" id="empClearBtn">✕ Clear All Filters</button>' : ''}
+      </div>`;
+    const btn = document.getElementById('empClearBtn');
+    if(btn) btn.addEventListener('click', clearF);
+    E.pb.style.width='0%'; E.pl.textContent='0%';
+    return;
+  }
+
+  /* ── NORMAL STATE: render stat cards from FILTERED rows ── */
   const s=calcStats(rows);
   E.sg.innerHTML=`
-    <div class="sc st"><div class="slb">Tickets</div><div class="svl">${s.n}</div></div>
+    <div class="sc st"><div class="slb">Tickets ${badge}</div><div class="svl">${s.n}</div>${active?`<div class="ssb">of ${S.raw.length} total</div>`:''}</div>
     <div class="sc sm"><div class="slb">Matched</div><div class="svl">${s.m}</div></div>
     <div class="sc scr"><div class="slb">Corrected</div><div class="svl">${s.c}</div></div>
     <div class="sc se"><div class="slb">Open Errors</div><div class="svl">${s.e}</div></div>
@@ -613,19 +699,45 @@ const TC=['#3b82f6','#f97316','#8b5cf6','#22c55e','#f59e0b','#ec4899','#06b6d4',
 function dstC(k){if(S.charts[k]){S.charts[k].destroy();S.charts[k]=null;}}
 function renderCharts(rows){
   if(typeof Chart==='undefined') return;
+
+  /* Always destroy any existing charts first */
+  dstC('pie'); dstC('bar'); dstC('typ');
+
+  /* ── EMPTY STATE: draw "No data" placeholder text on each canvas ── */
+  if(!rows.length){
+    ['cPie','cBar','cType'].forEach(id=>{
+      const c=$(id); if(!c) return;
+      /* Resize canvas to CSS size */
+      const parent=c.parentElement;
+      const w=(parent&&parent.clientWidth)||c.clientWidth||300;
+      const h=(parent&&parent.clientHeight)||c.clientHeight||200;
+      c.width=w; c.height=h;
+      const ctx=c.getContext('2d');
+      ctx.clearRect(0,0,w,h);
+      ctx.save();
+      ctx.fillStyle='#94a3b8';
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.font='26px "Space Grotesk", sans-serif';
+      ctx.fillText('📭', w/2, h/2 - 14);
+      ctx.font='600 12px "Space Grotesk", sans-serif';
+      ctx.fillText('No data for current filters', w/2, h/2 + 14);
+      ctx.restore();
+    });
+    return;
+  }
+
+  /* ── NORMAL CHART RENDERING from FILTERED rows ── */
   const s=calcStats(rows);
-  dstC('pie');
   S.charts.pie=new Chart($('cPie'),{type:'doughnut',
     data:{labels:['Matched','Corrected','Errors','Exceptions'],
       datasets:[{data:[s.m,s.c,s.e,s.x],backgroundColor:[CC.m,CC.c,CC.e,CC.x],borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Space Grotesk',size:11},padding:10}}}}});
-  dstC('bar');
   S.charts.bar=new Chart($('cBar'),{type:'bar',
     data:{labels:['Status','Date','Time','Name'],
       datasets:[{label:'Errors',data:[s.se,s.de,s.te,s.ne],backgroundColor:[CC.s,CC.d,CC.t,CC.n],borderRadius:5}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
       scales:{y:{beginAtZero:true,ticks:{font:{family:'Space Grotesk'}}},x:{ticks:{font:{family:'Space Grotesk'}}}}}});
-  dstC('typ');
   const tc={};rows.forEach(r=>{const k=r.type||'Unknown';tc[k]=(tc[k]||0)+1;});
   const tl=Object.keys(tc).sort();
   S.charts.typ=new Chart($('cType'),{type:'bar',
@@ -741,6 +853,15 @@ async function exportPDF(){
   if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined'){
     showBan('PDF library (jsPDF) failed to load. Check internet connection and refresh.');return;
   }
+  // Confirm with user if the current filter produces zero records
+  if(S.filtered.length===0){
+    const proceed = confirm(
+      'No records match the current filters.\n\n' +
+      'The exported PDF will show zero values across all KPIs and charts.\n\n' +
+      'Click OK to export the empty-filter report, or Cancel to adjust filters first.'
+    );
+    if(!proceed) return;
+  }
 
   // Show loading spinner
   $('pdfOverlay').classList.remove('h');
@@ -754,31 +875,33 @@ async function exportPDF(){
     const M=14;  // margin
     const CW=PW-M*2; // content width
 
-    // ── STATS LOGIC ────────────────────────────────────────
-    // sa  = entire file, no filters
-    // sdp = date-period only (ignores status/search/type filters)
-    //       This is what the PDF KPIs always show — the full picture
-    //       for the selected time window, regardless of UI status filter.
+    // ── STATS LOGIC (Audit Tab spec) ───────────────────────
+    // filteredRows = currently filtered dataset (same as on-screen)
+    //                → single source of truth for ALL KPIs, cards, charts
+    // fullDataset   = entire raw file (for reference / comparison line only)
+    //
+    // This matches the on-screen Audit Tab behaviour: every statistic,
+    // summary card, and chart in this PDF reflects the current filter view.
+    // When no filters are applied, filteredRows === fullDataset → global stats.
+    // When filters return zero rows, KPIs render as 0 with an empty-state note.
+    const filteredRows = S.filtered;
+    const fullDataset  = S.raw;
+
+    const sv = calcStats(filteredRows);   // ← KPIs from filtered data only
+    const sa = calcStats(fullDataset);    // ← reference (full file) for comparison
+
+    const now   = new Date().toLocaleString();
+    const fname = S.fileMeta?.name || 'Unknown File';
+
+    // Collect active filter state for the header / footer labels
     const sp=E.specD.value, fr=E.fromD.value, to=E.toD.value;
-    const hasDateFilter = sp||fr||to;
+    const hasAnyFilter = hasActiveFilters();
+    const isEmptyFiltered = filteredRows.length === 0;
 
-    const datePeriodRows = hasDateFilter
-      ? S.raw.filter(r=>{
-          const d=r.filterDate||'';
-          if(sp && d!==sp) return false;
-          if(fr && d && d<fr) return false;
-          if(to && d && d>to) return false;
-          return true;
-        })
-      : S.raw;  // no date filter → use all rows
-
-    const sv=calcStats(datePeriodRows);   // KPIs: full date-period stats
-    const sa=calcStats(S.raw);            // secondary row: entire file
-    const now=new Date().toLocaleString();
-    const fname=S.fileMeta?.name||'Unknown File';
-
-    // Build human-readable period label for the header
-    let periodLabel='All Dates';
+    // Build human-readable filter label (covers ALL filters, not just date)
+    const filterLabel = activeFilterSummary();
+    // Date-only label kept for backwards compatibility with header copy
+    let periodLabel = 'All Dates';
     if(sp) periodLabel=`Date: ${sp}`;
     else if(fr&&to) periodLabel=`${fr}  →  ${to}`;
     else if(fr) periodLabel=`From ${fr}`;
@@ -826,7 +949,8 @@ async function exportPDF(){
     doc.setFontSize(8);
     doc.setTextColor(...C.light);
     doc.text('Field Nation  ×  Internal Entity — Management Report',M+2,17.5);
-    doc.text(`Generated: ${now}  |  Period: ${periodLabel}  |  Source: ${fname}`,M+2,22.5);
+    const scopeHeader = hasAnyFilter ? `Filtered (${filteredRows.length}/${fullDataset.length})` : 'All Data';
+    doc.text(`Generated: ${now}  |  Scope: ${scopeHeader}  |  Source: ${fname}`,M+2,22.5);
 
     // IE / FN badges (top right)
     const bx=PW-M-52;
@@ -856,7 +980,7 @@ async function exportPDF(){
     // ── KPI CARDS ─────────────────────────────────────
     // 6 cards in 2 rows × 3 cols
     const KW=(CW-8)/3, KH=20;
-    const periodSub = hasDateFilter ? `period: ${periodLabel}` : 'all dates';
+    const periodSub = hasAnyFilter ? `filtered · ${filteredRows.length} of ${fullDataset.length}` : 'all tickets';
     const kpis=[
       { label:'Total Tickets Audited', value:sv.n,       sub:periodSub,             color:C.dark },
       { label:'Accuracy Rate',         value:`${sv.cp}%`, sub:'matched + corrected', color:C.ieBlue },
@@ -962,7 +1086,7 @@ async function exportPDF(){
 
     Y+=chartH+14;
 
-    // ── PERIOD CONTEXT BOX ────────────────────────────
+    // ── REPORTING SCOPE BOX ───────────────────────────
     doc.setFillColor(239,246,255); // light blue bg
     doc.setDrawColor(...C.ieBlue);
     doc.setLineWidth(0.3);
@@ -975,19 +1099,21 @@ async function exportPDF(){
     doc.setFont('helvetica','bold');
     doc.setFontSize(8);
     doc.setTextColor(...C.ieBlue);
-    doc.text('REPORTING PERIOD',M+6,Y+6.5);
+    doc.text(hasAnyFilter ? 'REPORTING SCOPE (FILTERED)' : 'REPORTING SCOPE (ALL DATA)',M+6,Y+6.5);
 
     doc.setFont('helvetica','bold');
     doc.setFontSize(9);
     doc.setTextColor(...C.dark);
-    doc.text(periodLabel,M+6,Y+13);
+    // Use filterLabel (covers all active filters) — truncate if long
+    const scopeText = filterLabel.length > 90 ? filterLabel.slice(0,87)+'…' : filterLabel;
+    doc.text(scopeText,M+6,Y+13);
 
     // Right side: note
     doc.setFont('helvetica','normal');
     doc.setFontSize(6.5);
     doc.setTextColor(...C.mid);
-    doc.text('KPI cards above reflect ALL tickets within this period, regardless of status filter.',PW-M-98,Y+7);
-    doc.text(`UI status filter "${E.statF.value||'all'}" and type filter "${E.typeF.value||'all'}" affect the anomaly table (page 2) only.`,PW-M-98,Y+13);
+    doc.text('All KPIs, charts, and the anomaly table on page 2',PW-M-98,Y+7);
+    doc.text(`reflect the ${filteredRows.length} filtered ticket(s) out of ${fullDataset.length} total.`,PW-M-98,Y+13);
 
     Y+=24;
 
@@ -1012,9 +1138,11 @@ async function exportPDF(){
     doc.setFont('helvetica','normal');
     doc.setFontSize(8);
     doc.setTextColor(...C.mid);
-    // Use datePeriodRows for the table — all anomalies in the selected period
-    const anomalyRows=datePeriodRows.filter(r=>r.fRes!=='Matched'||(r.excA&&r.fRes==='Matched'));
-    doc.text(`Period: ${periodLabel}  |  ${anomalyRows.length} anomalies (errors, corrections, exceptions) out of ${datePeriodRows.length} tickets.`,M,Y);
+    // Use filteredRows for the table — anomalies in the CURRENTLY FILTERED view
+    // (same data the user sees on screen)
+    const anomalyRows=filteredRows.filter(r=>r.fRes!=='Matched'||(r.excA&&r.fRes==='Matched'));
+    const filterBanner = hasAnyFilter ? `Filters: ${filterLabel}` : 'Scope: All Data (no filters)';
+    doc.text(`${filterBanner}  |  ${anomalyRows.length} anomalies out of ${filteredRows.length} filtered tickets.`,M,Y);
     Y+=8;
 
     // Table header
@@ -1149,7 +1277,7 @@ async function exportPDF(){
       doc.setFont('helvetica','bold');
       doc.setFontSize(7.5);
       doc.setTextColor(...C.white);
-      doc.text(`Period Summary  (${periodLabel}):`,M+4,Y+9);
+      doc.text(hasAnyFilter ? `Filtered Summary  (${filterLabel.slice(0,60)}):` : `Summary  (All Data):`,M+4,Y+9);
       doc.setFont('helvetica','normal');
       doc.setFontSize(7.5);
       doc.setTextColor(200,220,255);
