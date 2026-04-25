@@ -554,6 +554,14 @@ function libsOk(){
    We decode them ourselves with UTC math → no timezone offset.
    ════════════════════════════════════════════════════════════ */
 function p2(n){return String(n).padStart(2,'0');}
+function hhmmFromParts(h, m, sec=0, ms=0){
+  // Round to nearest minute to prevent Excel/JS precision issues like 09:00 showing as 08:59.
+  let total = (Number(h)||0)*60 + (Number(m)||0);
+  const seconds = (Number(sec)||0) + (Number(ms)||0)/1000;
+  if(seconds >= 30) total += 1;
+  total = ((total % 1440) + 1440) % 1440;
+  return `${p2(Math.floor(total/60))}:${p2(total%60)}`;
+}
 function fd(y,m,d){return `${y}-${p2(m)}-${p2(d)}`;}
 function fdL(dt){return fd(dt.getFullYear(),dt.getMonth()+1,dt.getDate());}
 function fdU(dt){return fd(dt.getUTCFullYear(),dt.getUTCMonth()+1,dt.getUTCDate());}
@@ -587,17 +595,18 @@ function parseDatePart(v){
 
 function parseTimePart(v){
   if(v===null||v===undefined||v==='') return '';
-  if(v instanceof Date) return `${p2(v.getHours())}:${p2(v.getMinutes())}`;
+  if(v instanceof Date) return hhmmFromParts(v.getHours(), v.getMinutes(), v.getSeconds(), v.getMilliseconds());
   if(typeof v==='number'&&Number.isFinite(v)){
-    const tot=Math.round((v%1)*24*60);
+    let frac = v % 1; if(frac < 0) frac += 1;
+    const tot=Math.round(frac*24*60);
     return `${p2(Math.floor(tot/60)%24)}:${p2(tot%60)}`;
   }
   if(typeof v==='string'){
     const t=v.trim().toUpperCase();
-    const ap=t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
-    if(ap){let h=+ap[1];const mn=ap[2],s=ap[3];if(s==='PM'&&h<12)h+=12;if(s==='AM'&&h===12)h=0;return `${p2(h)}:${mn}`;}
-    const pl=t.match(/(\d{1,2}):(\d{2})/);
-    if(pl) return `${p2(+pl[1])}:${pl[2]}`;
+    const ap=t.match(/^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?\s*(AM|PM)$/);
+    if(ap){let h=+ap[1];const mn=+ap[2],sec=+(ap[3]||0),ms=+(ap[4]||0),ampm=ap[5];if(ampm==='PM'&&h<12)h+=12;if(ampm==='AM'&&h===12)h=0;return hhmmFromParts(h,mn,sec,ms);}
+    const pl=t.match(/(\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?/);
+    if(pl) return hhmmFromParts(+pl[1], +pl[2], +(pl[3]||0), +(pl[4]||0));
   }
   return String(v).trim();
 }
@@ -1511,10 +1520,10 @@ async function mfReadFile(file){
   let wb;
   if(name.endsWith('.csv')){
     const text = await file.text();
-    wb = XLSX.read(text, {type:'string', cellDates:true});
+    wb = XLSX.read(text, {type:'string', cellDates:false});
   }else{
     const buf = await file.arrayBuffer();
-    wb = XLSX.read(buf, {type:'array', cellDates:true});
+    wb = XLSX.read(buf, {type:'array', cellDates:false});
   }
   const ws = wb.Sheets[wb.SheetNames[0]];
 
@@ -1601,9 +1610,17 @@ function mfReset(){
 }
 
 /* ═══ DATE / TIME NORMALISATION ════════════════════════════════ */
+function mfSerialDateYMD(v){
+  if(typeof v!=="number" || !Number.isFinite(v) || v<1) return "";
+  const whole = Math.floor(v);
+  const adj = whole >= 60 ? whole - 1 : whole;
+  const dt = new Date(Date.UTC(1899, 11, 31) + adj * 86400000);
+  return String(dt.getUTCFullYear()) + "-" + p2(dt.getUTCMonth()+1) + "-" + p2(dt.getUTCDate());
+}
 function mfParseDate(v){
   // Returns YYYY-MM-DD or '' if unparseable
   if(v==null||v==='') return '';
+  if(typeof v === 'number' && Number.isFinite(v)) return mfSerialDateYMD(v);
   if(v instanceof Date && !isNaN(v)) {
     const y=v.getFullYear(), m=String(v.getMonth()+1).padStart(2,'0'), d=String(v.getDate()).padStart(2,'0');
     return `${y}-${m}-${d}`;
@@ -1627,26 +1644,29 @@ function mfParseDate(v){
 }
 function mfParseTime(v){
   // Returns HH:MM (24-hr) or '' if unparseable. Ignores timezone suffixes.
+  // Important: times from Excel can arrive as 08:59:59.999 because of floating point precision.
+  // We round to the nearest minute so IE 09:00 never becomes 08:59.
   if(v==null||v==='') return '';
-  if(v instanceof Date && !isNaN(v)) {
-    return `${String(v.getHours()).padStart(2,'0')}:${String(v.getMinutes()).padStart(2,'0')}`;
+  if(v instanceof Date && !isNaN(v)) return hhmmFromParts(v.getHours(), v.getMinutes(), v.getSeconds(), v.getMilliseconds());
+  if(typeof v === 'number' && Number.isFinite(v)){
+    let frac = v % 1; if(frac < 0) frac += 1;
+    const tot = Math.round(frac * 1440);
+    return `${p2(Math.floor(tot/60)%24)}:${p2(tot%60)}`;
   }
   let s = String(v).trim();
   // strip timezone tokens (HST, EST, PST, etc.)
   s = s.replace(/\s+[A-Z]{2,4}$/, '').trim();
-  // "9:30 AM" / "09:30 PM"
-  let m = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?$/);
+  // "9:30 AM" / "09:30:00 PM"
+  let m = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?\s*(AM|PM|am|pm)?$/);
   if(m){
-    let h = parseInt(m[1],10); const mi = m[2]; const ap = (m[3]||'').toUpperCase();
+    let h = parseInt(m[1],10); const mi = parseInt(m[2],10); const sec = parseInt(m[3]||'0',10); const ms = parseInt(m[4]||'0',10); const ap = (m[5]||'').toUpperCase();
     if(ap==='PM' && h<12) h+=12;
     if(ap==='AM' && h===12) h=0;
-    return `${String(h).padStart(2,'0')}:${mi}`;
+    return hhmmFromParts(h, mi, sec, ms);
   }
-  // plain "09:30"
-  m = s.match(/^(\d{1,2}):(\d{2})/); if(m) return `${String(m[1]).padStart(2,'0')}:${m[2]}`;
   // datetime with time — try Date parsing
   const d = new Date(s);
-  if(!isNaN(d)) return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  if(!isNaN(d)) return hhmmFromParts(d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
   return '';
 }
 function mfPickField(obj, candidates){
@@ -1758,6 +1778,12 @@ function mfSplitDateTime(v){
 }
 function mfDateOnlyValue(v){
   if(v==null || v==='') return '';
+  if(typeof v === 'number' && Number.isFinite(v)){
+    const d = mfSerialDateYMD(v);
+    if(!d) return '';
+    const parts = d.split('-').map(Number);
+    return new Date(parts[0], parts[1]-1, parts[2]);
+  }
   if(v instanceof Date && !isNaN(v)) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
   const d = mfParseDate(v);
   if(!d) return '';
@@ -1766,7 +1792,6 @@ function mfDateOnlyValue(v){
 }
 function mfTimeOnlyValue(v){
   if(v==null || v==='') return '';
-  if(v instanceof Date && !isNaN(v)) return new Date(1899, 11, 30, v.getHours(), v.getMinutes(), 0);
   const t = mfParseTime(v);
   if(!t) return '';
   const parts = t.split(':').map(Number);
