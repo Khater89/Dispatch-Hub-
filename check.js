@@ -1,307 +1,28 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Validation Report 0001 — Excel Auditor</title>
-  <meta name="description" content="IE vs Field Nation side-by-side audit. Upload Excel, review mismatches, track corrections, export." />
 
-  <!--
-    ═══════════════════════════════════════════════════════════════
-    GITHUB PAGES FIX: Both libraries loaded from CDN with a
-    fallback CDN. No relative paths. No build step needed.
-    ═══════════════════════════════════════════════════════════════
-  -->
 
-  <!-- Style-enabled SheetJS build: required for matching the Master Report sheet export colors/formats -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"
-          onerror="window.__xlsxFail=true"></script>
-  <!-- SheetJS style-enabled fallback -->
-  <script>
     if (window.__xlsxFail || typeof XLSX === 'undefined') {
       document.write('<scr'+'ipt src="https://unpkg.com/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"><\/scr'+'ipt>');
     }
-  </script>
+  
 
-  <!-- Chart.js primary CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"
-          onerror="window.__chartFail=true"></script>
-  <!-- Chart.js fallback -->
-  <script>
+
     if (window.__chartFail || typeof Chart === 'undefined') {
       document.write('<scr'+'ipt src="https://unpkg.com/chart.js@4.4.2/dist/chart.umd.min.js"><\/scr'+'ipt>');
     }
-  </script>
+  
 
-  <!-- jsPDF for PDF generation -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-          onerror="window.__jsPDFFail=true"></script>
-  <script>
+
     if (window.__jsPDFFail || typeof window.jspdf === 'undefined') {
       document.write('<scr'+'ipt src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"><\/scr'+'ipt>');
     }
-  </script>
+  
 
-  <!-- html2canvas for chart snapshot in PDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
-          onerror="window.__h2cFail=true"></script>
-  <script>
+
     if (window.__h2cFail || typeof html2canvas === 'undefined') {
       document.write('<scr'+'ipt src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"><\/scr'+'ipt>');
     }
-  </script>
+  
 
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
-
-    :root {
-      --fn:#f97316; --fn-dark:#c2410c; --fn-soft:#fff7ed; --fn-border:#fed7aa;
-      --ie:#3b82f6; --ie-dark:#1d4ed8; --ie-soft:#eff6ff; --ie-border:#bfdbfe;
-      --ok:#22c55e; --ok-soft:#dcfce7; --ok-text:#15803d;
-      --err:#ef4444; --err-soft:#fee2e2; --err-text:#b91c1c;
-      --warn:#f59e0b; --warn-soft:#fef3c7; --warn-text:#92400e;
-      --cor:#8b5cf6; --cor-soft:#ede9fe; --cor-text:#6d28d9;
-      --bg:#f8fafc; --surface:#ffffff; --surface2:#f1f5f9;
-      --text:#0f172a; --text2:#475569; --text3:#94a3b8; --border:#e2e8f0;
-      --r:14px; --rsm:9px; --rxs:6px;
-      --sh:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
-      --shm:0 4px 16px rgba(0,0,0,.08),0 1px 4px rgba(0,0,0,.04);
-      --shl:0 10px 40px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);
-    }
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5;}
-
-    /* DEBUG OVERLAY */
-    #dbg{position:fixed;inset:0;background:rgba(15,23,42,.93);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;}
-    #dbg.h{display:none;}
-    .dbox{background:#1e293b;border:1px solid #334155;border-radius:var(--r);padding:32px;max-width:560px;width:100%;}
-    .dbox h2{color:var(--fn);font-size:19px;margin-bottom:14px;}
-    .dbox p{color:#cbd5e1;font-size:13px;line-height:1.7;margin-bottom:10px;}
-    .dbox pre{background:#0f172a;color:#7dd3fc;padding:12px;border-radius:var(--rsm);font-size:11px;overflow:auto;max-height:200px;white-space:pre-wrap;margin-bottom:14px;}
-    .dcl{background:var(--fn);color:#fff;border:none;padding:9px 18px;border-radius:var(--rsm);font-weight:700;cursor:pointer;font-size:13px;}
-
-    /* BANNER */
-    #ban{padding:11px 20px;font-weight:600;font-size:13px;background:#fff1f2;border-bottom:1px solid #fecaca;color:#9f1239;display:none;}
-    #ban.s{display:block;}
-    #ban.w{background:#fffbeb;border-color:#fde68a;color:#92400e;}
-
-    /* HEADER */
-    .hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;position:sticky;top:0;z-index:100;box-shadow:var(--sh);}
-    .hdi{max-width:1800px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:56px;gap:16px;}
-    .logo{display:flex;align-items:center;gap:10px;}
-    .lico{width:33px;height:33px;background:linear-gradient(135deg,var(--fn),var(--ie));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;}
-    .ltxt{font-weight:800;font-size:15px;}
-    .lsub{font-size:11px;color:var(--text3);font-weight:500;}
-    .hbdgs{display:flex;gap:7px;flex-shrink:0;}
-    .hbdg{padding:4px 11px;border-radius:999px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px;}
-    .hbdg.ie{background:var(--ie-soft);color:var(--ie-dark);border:1px solid var(--ie-border);}
-    .hbdg.fn{background:var(--fn-soft);color:var(--fn-dark);border:1px solid var(--fn-border);}
-    .bdt{width:7px;height:7px;border-radius:50%;}
-    .bdt.ie{background:var(--ie);}
-    .bdt.fn{background:var(--fn);}
-
-    /* MAIN */
-    .main{max-width:1800px;margin:0 auto;padding:18px 24px 60px;}
-
-    /* DROPZONE */
-    .dz{border:2px dashed var(--border);border-radius:var(--r);background:linear-gradient(135deg,var(--ie-soft),var(--fn-soft));padding:38px 28px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:18px;display:block;}
-    .dz:hover,.dz.dr{border-color:var(--fn);transform:translateY(-2px);box-shadow:var(--shl);}
-    .dz input{display:none;}
-    .dzi{font-size:36px;margin-bottom:10px;}
-    .dzt{font-size:19px;font-weight:800;margin-bottom:6px;}
-    .dzs{color:var(--text2);font-size:13px;}
-
-    /* STATS */
-    .sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;}
-    .sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh);position:relative;overflow:hidden;}
-    .sc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;}
-    .sc.st::after{background:var(--text3);}
-    .sc.sm::after{background:var(--ok);}
-    .sc.scr::after{background:var(--cor);}
-    .sc.se::after{background:var(--err);}
-    .sc.sx::after{background:var(--warn);}
-    .sc.sr::after{background:linear-gradient(90deg,var(--ie),var(--fn));}
-    .slb{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:6px;}
-    .svl{font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1;}
-    .sm .svl{color:var(--ok-text);} .scr .svl{color:var(--cor-text);} .se .svl{color:var(--err-text);} .sx .svl{color:var(--warn-text);}
-    .ssb{font-size:10px;color:var(--text3);margin-top:3px;}
-
-    /* PROGRESS */
-    .pw{margin-bottom:14px;}
-    .ph{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:5px;}
-    .pt{height:7px;background:var(--border);border-radius:999px;overflow:hidden;}
-    .pb{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--ie),var(--fn));transition:width .4s;}
-
-    /* CHARTS */
-    .cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:18px;}
-    .cc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh);}
-    .ctit{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:14px;}
-    .cbx{position:relative;height:210px;}
-
-    /* TOOLBAR */
-    .tbp{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--sh);margin-bottom:14px;}
-    .tr{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:10px;}
-    .tr:last-child{margin-bottom:0;}
-    .fg{display:flex;flex-direction:column;gap:4px;}
-    .fg label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);}
-    .fg input,.fg select{padding:8px 11px;border:1px solid var(--border);border-radius:var(--rsm);font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;}
-    .fg input:focus,.fg select:focus{border-color:var(--ie);}
-    .fgs{flex:1;min-width:200px;}
-    .stag{font-size:11px;font-weight:700;color:var(--text3);padding:8px 13px;background:var(--surface2);border-radius:var(--rsm);white-space:nowrap;}
-
-    /* BUTTONS */
-    .btn{padding:8px 15px;border:none;border-radius:var(--rsm);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
-    .btn:hover{transform:translateY(-1px);box-shadow:var(--shm);}
-    .btn:disabled{opacity:.5;cursor:default;transform:none!important;box-shadow:none!important;}
-    .bd{background:var(--text);color:#fff;}
-    .bb{background:var(--ie);color:#fff;}
-    .bo{background:var(--fn);color:#fff;}
-    .bg{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
-
-    .fn-note{font-size:11px;color:var(--text3);margin-top:7px;line-height:1.6;}
-
-    /* TABLE */
-    .tp{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;}
-    .tw{overflow:auto;max-height:70vh;}
-    table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;}
-    thead th{background:#0f172a;color:rgba(255,255,255,.8);padding:8px 10px;text-align:left;white-space:nowrap;font-weight:600;font-size:10.5px;letter-spacing:.03em;border-right:1px solid rgba(255,255,255,.05);}
-    thead tr.gr th{position:sticky;top:0;z-index:4;text-align:center;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.08);}
-    thead tr.cr th{position:sticky;top:33px;z-index:3;}
-    .gc{background:#1e293b!important;} .gi{background:#1d4ed8!important;} .gf{background:#c2410c!important;} .gv{background:#0f766e!important;}
-    tbody td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap;}
-    tbody tr:last-child td{border-bottom:none;}
-    tbody tr.rm{background:#f0fdf4;} tbody tr.re{background:#fff5f5;} tbody tr.rx{background:#fffbeb;} tbody tr.rc{background:#faf5ff;}
-    tbody tr:hover{filter:brightness(.97);}
-    td.mm{background:rgba(239,68,68,.13)!important;color:var(--err-text);font-weight:600;}
-
-    /* PILLS */
-    .pill{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;white-space:nowrap;}
-    .pill.ok{background:var(--ok-soft);color:var(--ok-text);} .pill.er{background:var(--err-soft);color:var(--err-text);}
-    .pill.wn{background:var(--warn-soft);color:var(--warn-text);} .pill.co{background:var(--cor-soft);color:var(--cor-text);}
-    .pdot{width:5px;height:5px;border-radius:50%;background:currentColor;}
-
-    .abtn{padding:4px 11px;border:none;border-radius:var(--rxs);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;min-width:84px;}
-    .abtn.mk{background:var(--text);color:#fff;} .abtn.mk:hover{background:#334155;}
-    .abtn.dn{background:var(--cor-soft);color:var(--cor-text);cursor:default;}
-
-    .dcl2,.ncl{max-width:240px;white-space:normal;line-height:1.4;font-size:11px;color:var(--text2);}
-    .emp{text-align:center;padding:48px;color:var(--text3);font-weight:600;}
-    .mn{font-family:'JetBrains Mono',monospace;font-size:11px;}
-    .h{display:none!important;}
-
-    /* PDF LOADING OVERLAY */
-    #pdfOverlay{position:fixed;inset:0;background:rgba(15,23,42,.85);z-index:9998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;}
-    #pdfOverlay.h{display:none;}
-    .pdf-spin{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#f97316;border-radius:50%;animation:spin .8s linear infinite;}
-    @keyframes spin{to{transform:rotate(360deg);}}
-    .pdf-spin-lbl{color:#fff;font-weight:700;font-size:15px;}
-
-    @media(max-width:1100px){.cgrid{grid-template-columns:1fr 1fr;}}
-    @media(max-width:720px){
-      .main{padding:10px 10px 50px;} .cgrid{grid-template-columns:1fr;}
-      .sgrid{grid-template-columns:repeat(2,1fr);} .tr{flex-direction:column;}
-    }
-
-    /* ═══ MODE TAB SWITCHER + MULTI-FILE UI ═══════════════════ */
-    .mode-nav{
-      display:flex;gap:6px;background:#fff;padding:6px;border-radius:14px;
-      box-shadow:var(--sh);margin-bottom:16px;border:1px solid var(--border);
-    }
-    .mode-tab{
-      flex:1;padding:14px 16px;border:none;background:transparent;cursor:pointer;
-      border-radius:10px;font-family:inherit;font-weight:700;font-size:13px;
-      color:var(--text2);transition:all .2s;display:flex;align-items:center;
-      justify-content:center;gap:10px;letter-spacing:.3px;text-align:left;
-    }
-    .mode-tab:hover{background:#f1f5f9;color:var(--text1);}
-    .mode-tab.active{background:var(--ie-bl);color:#fff;box-shadow:0 4px 12px rgba(59,130,246,.3);}
-    .mode-tab .mt-icon{font-size:22px;line-height:1;flex-shrink:0;}
-    .mode-tab .mt-text{display:flex;flex-direction:column;gap:2px;line-height:1.2;}
-    .mode-tab .mt-title{font-size:13px;font-weight:800;}
-    .mode-tab .mt-sub{font-size:10px;opacity:.85;font-weight:500;}
-
-    /* Filter badge + empty state (from audit filtered-stats update) */
-    .empty-audit-state{
-      grid-column:1/-1;text-align:center;padding:32px 20px;
-      background:linear-gradient(180deg,#f8fafc,#f1f5f9);
-      border:2px dashed var(--border);border-radius:14px;
-    }
-    .empty-audit-icon{font-size:48px;margin-bottom:8px;}
-    .empty-audit-title{font-weight:800;font-size:16px;color:var(--text1);margin-bottom:6px;}
-    .empty-audit-sub{color:var(--text2);font-size:13px;margin-bottom:16px;line-height:1.5;}
-    .empty-audit-btn{
-      display:inline-block;padding:10px 18px;background:var(--fn-or);color:#fff;
-      border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;
-      font-family:inherit;transition:transform .15s,box-shadow .15s;
-    }
-    .empty-audit-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(249,115,22,.3);}
-    .filter-active-badge{
-      display:inline-flex;align-items:center;gap:6px;
-      padding:3px 10px;background:var(--ie-bl);color:#fff;
-      border-radius:99px;font-size:11px;font-weight:700;
-      margin-left:8px;letter-spacing:.3px;text-transform:uppercase;
-    }
-    .filter-active-badge::before{
-      content:'';width:6px;height:6px;border-radius:50%;background:#fff;
-      animation:pulse 1.5s ease-in-out infinite;
-    }
-    @keyframes pulse{50%{opacity:.4;}}
-
-    /* Multi-file upload slots */
-    .mf-intro{
-      background:linear-gradient(135deg,#1e293b,#334155);color:#fff;
-      border-radius:14px;padding:20px;margin-bottom:16px;
-    }
-    .mf-intro h2{margin:0 0 6px;font-size:18px;font-weight:800;}
-    .mf-intro p{margin:0;font-size:13px;color:#cbd5e1;line-height:1.6;}
-    .mf-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px;}
-    @media(max-width:900px){.mf-slots{grid-template-columns:1fr;}}
-    .mf-slot{
-      background:#fff;border:2px dashed var(--border);border-radius:14px;
-      padding:18px;transition:all .2s;cursor:pointer;position:relative;
-    }
-    .mf-slot:hover{border-color:var(--ie-bl);background:#f8fafc;}
-    .mf-slot.ok{border-color:#22c55e;background:#f0fdf4;border-style:solid;}
-    .mf-slot.err{border-color:#ef4444;background:#fef2f2;border-style:solid;}
-    .mf-slot input[type=file]{display:none;}
-    .mf-slot .mf-label{font-weight:800;font-size:13px;color:var(--text1);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
-    .mf-slot .mf-sub{font-size:11px;color:var(--text2);margin-bottom:10px;line-height:1.4;}
-    .mf-slot .mf-icon{font-size:32px;margin-bottom:8px;display:block;}
-    .mf-slot .mf-status{
-      font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;
-      background:#f1f5f9;color:var(--text2);margin-top:8px;display:flex;
-      align-items:center;gap:6px;
-    }
-    .mf-slot.ok .mf-status{background:#dcfce7;color:#166534;}
-    .mf-slot.err .mf-status{background:#fee2e2;color:#991b1b;}
-    .mf-slot .mf-meta{font-size:11px;color:var(--text2);margin-top:6px;}
-    .mf-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
-    .mf-actions .mf-hint{color:var(--text2);font-size:12px;margin-left:auto;}
-
-    /* Correct/Undo button in table */
-    .tb-btn{
-      padding:4px 8px;border:none;border-radius:6px;font-family:inherit;
-      font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;
-    }
-    .tb-btn.tb-correct{background:#8b5cf6;color:#fff;}
-    .tb-btn.tb-correct:hover{background:#7c3aed;}
-    .tb-btn.tb-undo{background:#64748b;color:#fff;}
-    .tb-btn.tb-undo:hover{background:#475569;}
-  </style>
-
-  <style>
-    /* Kill Chrome autofill yellow background + suppress autocomplete UI */
-    input:-webkit-autofill,
-    input:-webkit-autofill:hover,
-    input:-webkit-autofill:focus,
-    input:-webkit-autofill:active {
-      -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
-      box-shadow: 0 0 0 1000px transparent inset !important;
-      transition: background-color 5000s ease-in-out 0s !important;
-      -webkit-text-fill-color: inherit !important;
-    }
-  </style>
-  <script>
     /* Defeat Chrome autofill / address suggestions on all inputs */
     (function(){
       function killAutofill(){
@@ -334,183 +55,8 @@
       setTimeout(killAutofill, 500);
       setTimeout(killAutofill, 1500);
     })();
-  </script>
-</head>
-<body>
+  
 
-<!-- DEBUG OVERLAY -->
-<div id="dbg" class="h">
-  <div class="dbox">
-    <h2>⚠ Production Error Detected</h2>
-    <p id="dbgMsg">An error occurred while processing the file.</p>
-    <pre id="dbgStack"></pre>
-    <p style="font-size:12px;color:#94a3b8">
-      Recommended: use <strong>Chrome or Edge</strong>. Disable ad-blockers temporarily.
-      Ensure the file is a valid <strong>.xlsx</strong> with a <strong>Report</strong> sheet
-      and <strong>Assigned Company = "Field Nation"</strong>.
-    </p>
-    <button class="dcl" onclick="document.getElementById('dbg').classList.add('h')">✕ Dismiss &amp; Try Again</button>
-  </div>
-</div>
-
-<!-- PDF GENERATION OVERLAY -->
-<div id="pdfOverlay" class="h">
-  <div class="pdf-spin"></div>
-  <div class="pdf-spin-lbl">Generating Management Report PDF…</div>
-</div>
-
-<!-- RUNTIME BANNER -->
-<div id="ban"></div>
-
-<!-- HEADER -->
-<header class="hdr">
-  <div class="hdi">
-    <div class="logo">
-      <div class="lico">📊</div>
-      <div><div class="ltxt">Validation Report 0001</div><div class="lsub">Excel Auditor — Inside Edge vs Field Nation</div></div>
-    </div>
-    <div class="hbdgs">
-      <span class="hbdg ie"><span class="bdt ie"></span>Inside Edge = Blue</span>
-      <span class="hbdg fn"><span class="bdt fn"></span>Field Nation = Orange</span>
-    </div>
-  </div>
-</header>
-
-<!-- MAIN -->
-<main class="main">
-
-  <!-- ═══ MODE TAB SWITCHER ═══ -->
-  <nav class="mode-nav" role="tablist" aria-label="Audit mode">
-    <button class="mode-tab active" data-mode="workbook" role="tab" aria-selected="true">
-      <span class="mt-icon">📑</span>
-      <span class="mt-text">
-        <span class="mt-title">Single Workbook</span>
-        <span class="mt-sub">One .xlsx with Report sheet</span>
-      </span>
-    </button>
-    <button class="mode-tab" data-mode="multifile" role="tab" aria-selected="false">
-      <span class="mt-icon">🧩</span>
-      <span class="mt-text">
-        <span class="mt-title">Multi-File Validation</span>
-        <span class="mt-sub">Inside Edge + Sheet1 + FN — auto-merge</span>
-      </span>
-    </button>
-  </nav>
-
-  <!-- ═══ MULTI-FILE MODE (hidden by default) ═══ -->
-  <div id="mfRoot" class="h">
-    <div class="mf-intro">
-      <h2>🧩 Multi-File Validation</h2>
-      <p>Upload the three source files separately. Files are auto-detected by their columns and merged on <strong>Ticket Number</strong>. The engine runs five validation checks (Status, Due, Scheduled, Tech, Confirmed) and produces a full audit report with filters, charts, and Excel export.</p>
-    </div>
-
-    <div class="mf-slots">
-      <label class="mf-slot" data-slot="ie">
-        <input type="file" id="mfFileIE" accept=".xlsx,.xls,.csv" autocomplete="off"/>
-        <span class="mf-icon">📋</span>
-        <div class="mf-label">Inside Edge Report <span style="color:var(--ie-bl)">(Labor Names)</span></div>
-        <div class="mf-sub">Needs: <code>Tkt Num</code>, <code>Tkt Status</code>, <code>Ticket Type</code>, <code>FE Name</code></div>
-        <div class="mf-status" id="mfStatIE">⬜ Click or drop a file</div>
-        <div class="mf-meta" id="mfMetaIE"></div>
-      </label>
-
-      <label class="mf-slot" data-slot="ie2">
-        <input type="file" id="mfFileIE2" accept=".xlsx,.xls,.csv" autocomplete="off"/>
-        <span class="mf-icon">🏠</span>
-        <div class="mf-label">Sheet1 <span style="color:var(--ie-bl)">(Names 2 w/ addresses)</span></div>
-        <div class="mf-sub">Needs: <code>Tkt Num</code>, <code>Address 1</code>, <code>City</code>, <code>State</code></div>
-        <div class="mf-status" id="mfStatIE2">⬜ Click or drop a file</div>
-        <div class="mf-meta" id="mfMetaIE2"></div>
-      </label>
-
-      <label class="mf-slot" data-slot="fn">
-        <input type="file" id="mfFileFN" accept=".xlsx,.xls,.csv" autocomplete="off"/>
-        <span class="mf-icon">🟧</span>
-        <div class="mf-label">FN Report <span style="color:var(--fn-or)">(Field Nation)</span></div>
-        <div class="mf-sub">Needs: <code>WO ID</code>, <code>Acuative Ticket Number</code>, <code>WO Status</code></div>
-        <div class="mf-status" id="mfStatFN">⬜ Click or drop a file</div>
-        <div class="mf-meta" id="mfMetaFN"></div>
-      </label>
-    </div>
-
-    <div class="mf-actions">
-      <button class="btn bd" id="mfGenBtn" disabled>🔄 Generate Validation Report</button>
-      <button class="btn bg" id="mfResetBtn">🗑️ Reset</button>
-      <button class="btn bo" id="mfExcelBtn" disabled>📊 Export Excel</button>
-      <span class="mf-hint" id="mfHint">Upload all 3 files to enable generation.</span>
-    </div>
-  </div>
-
-  <!-- DROPZONE -->
-  <label class="dz" id="dropzone" style="margin-top:0;">
-    <input type="file" id="fileInput" accept=".xlsx,.xls"  autocomplete="off"/>
-    <div class="dzi">📂</div>
-    <div class="dzt">Drag &amp; drop your Excel workbook here</div>
-    <div class="dzs">Or click to browse &nbsp;·&nbsp; Expects a <strong>Report</strong> sheet · Field Nation rows only</div>
-  </label>
-
-  <!-- DASHBOARD -->
-  <div id="dash" class="h">
-    <div class="sgrid" id="sgrid"></div>
-    <div class="pw"><div class="ph"><span>Completion</span><span id="plbl">0%</span></div><div class="pt"><div class="pb" id="pbar" style="width:0%"></div></div></div>
-    <div class="cgrid">
-      <div class="cc"><div class="ctit">Validation Results</div><div class="cbx"><canvas id="cPie"></canvas></div></div>
-      <div class="cc"><div class="ctit">Error Breakdown</div><div class="cbx"><canvas id="cBar"></canvas></div></div>
-      <div class="cc"><div class="ctit">Ticket Type Distribution</div><div class="cbx"><canvas id="cType"></canvas></div></div>
-    </div>
-  </div>
-
-  <!-- TOOLBAR -->
-  <div id="tbp" class="tbp h">
-    <div class="tr">
-      <div class="fg fgs"><label>Search</label><input type="text" id="srch" placeholder="Ticket, name…"  autocomplete="new-password"/></div>
-      <div class="fg"><label>Ticket Type</label><select id="typeF"><option value="all">All Types</option></select></div>
-      <div class="fg"><label>Status</label>
-        <select id="statF">
-          <option value="all">All Rows</option><option value="errors">Errors Only</option>
-          <option value="corrected">Corrected Only</option><option value="matched">Matched Only</option>
-          <option value="exception">Exception Matches</option>
-        </select>
-      </div>
-      <div class="fg"><label>Specific Date</label><input type="date" id="specD"  autocomplete="off"/></div>
-      <div class="fg"><label>From Date</label><input type="date" id="fromD"  autocomplete="off"/></div>
-      <div class="fg"><label>To Date</label><input type="date" id="toD"  autocomplete="off"/></div>
-      <div class="stag" id="stag">—</div>
-    </div>
-    <div class="tr">
-      <button class="btn bd" id="applyBtn">🔍 Apply</button>
-      <button class="btn bg" id="clearBtn">✕ Clear</button>
-      <button class="btn bo" id="pdfBtn">📄 Export Management PDF</button>
-    </div>
-    <div class="fn-note">📅 Date filter uses <strong>FN Scheduled Date</strong> first, then <strong>Inside Edge Due Date</strong> as fallback. &nbsp;·&nbsp; ⚡ ITD tickets always pass date validation.</div>
-  </div>
-
-  <!-- TABLE -->
-  <div id="tbl" class="tp h">
-    <div class="tw">
-      <table>
-        <thead>
-          <tr class="gr">
-            <th class="gc" colspan="5">Core</th>
-            <th class="gi" colspan="5">Inside Edge</th>
-            <th class="gf" colspan="4">Field Nation (FN)</th>
-            <th class="gv" colspan="9">Validation &amp; Tracking</th>
-          </tr>
-          <tr class="cr">
-            <th>Row#</th><th>Ticket</th><th>Type</th><th>Company</th><th>Filter Date</th>
-            <th>Inside Edge &amp; FN Status</th><th>Inside Edge FE Name</th><th>Inside Edge Due Date</th><th>Inside Edge Due Time</th><th>Inside Edge Scheduled</th>
-            <th>FN Status</th><th>FN FE Name</th><th>FN Sched. Date</th><th>FN Sched. Time</th>
-            <th>Status✓</th><th>Date✓</th><th>Time✓</th><th>Name✓</th><th>Exception</th><th>Result</th><th>Details</th><th>Note</th><th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
-  </div>
-
-</main>
-
-<script>
 'use strict';
 
 /* ═══ STATE ═══════════════════════════════════════════════════ */
@@ -1799,7 +1345,11 @@ function mfTimeOnlyValue(v){
 }
 function mfExcelDate(v){ return mfDateOnlyValue(v); }
 function mfExcelTime(v){ return mfTimeOnlyValue(v); }
-// IE times are exported exactly as parsed from the uploaded files; no manual +1 minute adjustment.
+function mfAddOneMinuteTimeValue(v){
+  // Emergency IE-side correction: keep raw sheets untouched, add +1 minute only to IE Due/Scheduled times.
+  if(!v || !(v instanceof Date) || isNaN(v)) return v;
+  return new Date(v.getTime() + 60000);
+}
 function mfRaw(obj, candidates){
   const v = mfPickField(obj||{}, candidates);
   return v==null ? '' : v;
@@ -1940,9 +1490,9 @@ function mfBuildMasterRow(ie, fn, addr){
   const explicitDueTime   = mfRaw(ie, ['Due Time','Due Tm']);
   const explicitSchedTime = mfRaw(ie, ['Scheduled Time','Scheduled Tm']);
   const ieDueDate   = mfExcelDate(ieDueRaw);
-  const ieDueTime   = explicitDueTime ? mfExcelTime(explicitDueTime) : mfExcelTime(ieDueRaw);
+  const ieDueTime   = mfAddOneMinuteTimeValue(explicitDueTime ? mfExcelTime(explicitDueTime) : mfExcelTime(ieDueRaw));
   const ieSchedDate = mfExcelDate(ieSchedRaw);
-  const ieSchedTime = explicitSchedTime ? mfExcelTime(explicitSchedTime) : mfExcelTime(ieSchedRaw);
+  const ieSchedTime = mfAddOneMinuteTimeValue(explicitSchedTime ? mfExcelTime(explicitSchedTime) : mfExcelTime(ieSchedRaw));
   const etc         = mfRaw(ie, ['ETC']);
   const company     = mfRaw(ie, ['Company Name','Assigned Company']);
   const ieFE        = mfRaw(ie, ['FE Name','Inside Edge FE Name','Assigned FE Name']);
@@ -2238,6 +1788,3 @@ function initMultiFileMode(){
 
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bindAll);
 else bindAll();
-</script>
-</body>
-</html>
