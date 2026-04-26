@@ -1895,29 +1895,39 @@ function mfApplyMasterReportFormat(ws, isFormula){
   ws['!merges'] = [{s:{r:0,c:5}, e:{r:0,c:15}}, {s:{r:0,c:16}, e:{r:0,c:24}}, {s:{r:0,c:25}, e:{r:0,c:30}}, {s:{r:0,c:31}, e:{r:0,c:34}}, {s:{r:0,c:35}, e:{r:0,c:38}}];
   ws['!autofilter'] = {ref:`A2:AM${Math.max(2,lastR+1)}`};
   ws['!freeze'] = {xSplit:0, ySplit:2, topLeftCell:'A3', activePane:'bottomLeft', state:'frozen'};
-  const ieGroup = mfStyle('1F4E78',{bold:true,color:{rgb:'FFFFFF'},sz:12});
-  const fnGroup = mfStyle('70AD47',{bold:true,color:{rgb:'FFFFFF'},sz:12});
+  // Export color zones requested by Operations:
+  // Inside Edge side (A:P) = light blue, Field Nation side (Q:Y) = light orange.
+  const IE_SIDE_FILL = 'DDEBFF';
+  const FN_SIDE_FILL = 'FFE7CC';
+  const ieGroup = mfStyle(IE_SIDE_FILL,{bold:true,color:{rgb:'000000'},sz:12});
+  const fnGroup = mfStyle(FN_SIDE_FILL,{bold:true,color:{rgb:'000000'},sz:12});
   const valGroup = mfStyle('FFC000',{bold:true,color:{rgb:'000000'},sz:12});
-  const headerBlue = mfStyle('D9EAF7',{bold:true,color:{rgb:'000000'}});
-  const headerGreen = mfStyle('E2F0D9',{bold:true,color:{rgb:'000000'}});
+  const headerBlue = mfStyle(IE_SIDE_FILL,{bold:true,color:{rgb:'000000'}});
+  const headerOrange = mfStyle(FN_SIDE_FILL,{bold:true,color:{rgb:'000000'}});
   const headerYellow = mfStyle('FFF2CC',{bold:true,color:{rgb:'000000'}});
-  mfApplyRangeStyle(ws,0,0,0,4,mfStyle(null,{color:{rgb:'000000'}}));
-  mfApplyRangeStyle(ws,0,5,0,15,ieGroup);
+  mfApplyRangeStyle(ws,0,0,0,15,ieGroup);
   mfApplyRangeStyle(ws,0,16,0,24,fnGroup);
   mfApplyRangeStyle(ws,0,25,0,30,valGroup);
   mfApplyRangeStyle(ws,0,31,0,34,fnGroup);
   mfApplyRangeStyle(ws,0,35,0,38,ieGroup);
   mfApplyRangeStyle(ws,1,0,1,15,headerBlue);
-  mfApplyRangeStyle(ws,1,16,1,24,headerGreen);
+  mfApplyRangeStyle(ws,1,16,1,24,headerOrange);
   mfApplyRangeStyle(ws,1,25,1,30,headerYellow);
-  mfApplyRangeStyle(ws,1,31,1,34,headerGreen);
+  mfApplyRangeStyle(ws,1,31,1,34,headerOrange);
   mfApplyRangeStyle(ws,1,35,1,38,headerBlue);
   const body = mfStyle(null,{color:{rgb:'000000'}},{alignment:{horizontal:'left',vertical:'center',wrapText:false}});
   const centered = mfStyle(null,{color:{rgb:'000000'}},{alignment:{horizontal:'center',vertical:'center',wrapText:false}});
+  const ieBody = mfStyle(IE_SIDE_FILL,{color:{rgb:'000000'}},{alignment:{horizontal:'left',vertical:'center',wrapText:false}});
+  const ieCentered = mfStyle(IE_SIDE_FILL,{color:{rgb:'000000'}},{alignment:{horizontal:'center',vertical:'center',wrapText:false}});
+  const fnBody = mfStyle(FN_SIDE_FILL,{color:{rgb:'000000'}},{alignment:{horizontal:'left',vertical:'center',wrapText:false}});
+  const fnCentered = mfStyle(FN_SIDE_FILL,{color:{rgb:'000000'}},{alignment:{horizontal:'center',vertical:'center',wrapText:false}});
   for(let r=2;r<=lastR;r++){
     for(let c=0;c<=38;c++){
       const cell = mfCell(ws,r,c);
-      cell.s = (c===7||c===8||c===9||c===10||c===18||c===19||c===20||c===21||(c>=25&&c<=30)) ? centered : body;
+      const isCentered = (c===7||c===8||c===9||c===10||c===18||c===19||c===20||c===21||(c>=25&&c<=30));
+      if(c>=0 && c<=15) cell.s = isCentered ? ieCentered : ieBody;
+      else if(c>=16 && c<=24) cell.s = isCentered ? fnCentered : fnBody;
+      else cell.s = isCentered ? centered : body;
     }
     for(const c of [25,26,27,28,29,30]){
       const cell = mfCell(ws,r,c);
