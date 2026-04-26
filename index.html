@@ -202,7 +202,27 @@
     color: #fff;
     box-shadow: 0 2px 12px rgba(249,115,22,.35);
   }
-  .navbtn-icon { font-size: 14px; line-height: 1 }
+  .navbtn-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+    background: rgba(15,23,42,.08);
+    box-shadow: inset 0 0 0 1px rgba(15,23,42,.06);
+    flex-shrink: 0;
+  }
+  .navbtn:hover .navbtn-icon {
+    background: rgba(15,23,42,.12);
+  }
+  .navbtn.active .navbtn-icon,
+  .navbtn.audit-btn.active .navbtn-icon {
+    background: rgba(255,255,255,.18);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+  }
   .navbtn-badge {
     display: inline-flex;
     align-items: center;
@@ -486,27 +506,27 @@
   <!-- Nav -->
   <nav class="topbar-nav" role="tablist" aria-label="Tools">
     <button class="navbtn active" data-key="Contractors (B–J)" role="tab">
-      <span class="navbtn-icon">🗂</span>
+      <span class="navbtn-icon" aria-hidden="true">👥</span>
       <span>Contractors</span>
     </button>
     <button class="navbtn" data-key="On-Call Lookup" role="tab">
-      <span class="navbtn-icon">📞</span>
+      <span class="navbtn-icon" aria-hidden="true">👤☎️</span>
       <span>On-Call</span>
     </button>
     <button class="navbtn" data-key="Flex Tech Finder (Tier 2)" role="tab">
-      <span class="navbtn-icon">🔧</span>
+      <span class="navbtn-icon" aria-hidden="true">↔️</span>
       <span>Flex Tech</span>
     </button>
     <button class="navbtn" data-key="Canada Dispatch W2" role="tab">
-      <span class="navbtn-icon">🍁</span>
+      <span class="navbtn-icon" aria-hidden="true">🍁</span>
       <span>Canada W2</span>
     </button>
     <button class="navbtn" data-key="International Suppliers" role="tab">
-      <span class="navbtn-icon">🌐</span>
+      <span class="navbtn-icon" aria-hidden="true">🌍</span>
       <span>International</span>
     </button>
     <button class="navbtn audit-btn" data-key="Audit &amp; Validation" role="tab" aria-label="Audit and Validation">
-      <span class="navbtn-icon">🔍</span>
+      <span class="navbtn-icon" aria-hidden="true">📋</span>
       <span>Audit</span>
       <span class="navbtn-badge" id="auditBadge" style="display:none">0</span>
     </button>
