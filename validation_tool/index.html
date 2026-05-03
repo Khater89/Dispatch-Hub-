@@ -185,11 +185,6 @@
     .abtn.dn{background:var(--cor-soft);color:var(--cor-text);cursor:default;}
 
     .dcl2,.ncl{max-width:240px;white-space:normal;line-height:1.4;font-size:11px;color:var(--text2);}
-    .ticket-copy{display:inline-block;padding:3px 7px;border:1px solid var(--ie-border);border-radius:6px;background:#f8fbff;font-family:'JetBrains Mono',monospace;font-weight:700;user-select:text;cursor:text;}
-    .note-input{width:190px;min-height:34px;resize:vertical;border:1px solid var(--cor);border-radius:8px;padding:6px 8px;font-family:inherit;font-size:11px;line-height:1.35;background:#faf5ff;color:var(--cor-text);outline:none;font-weight:700;box-shadow:0 0 0 2px rgba(139,92,246,.08);}
-    .note-input:focus{border-color:var(--cor-text);box-shadow:0 0 0 3px rgba(139,92,246,.16);}
-    .note-blank{color:var(--text3);font-size:11px;}
-
     .emp{text-align:center;padding:48px;color:var(--text3);font-weight:600;}
     .mn{font-family:'JetBrains Mono',monospace;font-size:11px;}
     .h{display:none!important;}
@@ -487,16 +482,6 @@
           <option value="exception">Exception Matches</option>
         </select>
       </div>
-      <div class="fg"><label>Error Type</label>
-        <select id="errF">
-          <option value="all">All Error Types</option>
-          <option value="status">Status Error</option>
-          <option value="date">Date Error</option>
-          <option value="time">Time Error</option>
-          <option value="name">Name Error</option>
-          <option value="exception">ITD / ITR Exception</option>
-        </select>
-      </div>
       <div class="fg"><label>Specific Date</label><input type="date" id="specD"  autocomplete="off"/></div>
       <div class="fg"><label>From Date</label><input type="date" id="fromD"  autocomplete="off"/></div>
       <div class="fg"><label>To Date</label><input type="date" id="toD"  autocomplete="off"/></div>
@@ -516,17 +501,16 @@
       <table>
         <thead>
           <tr class="gr">
-            <th class="gi" colspan="8">Inside Edge</th>
+            <th class="gc" colspan="5">Core</th>
+            <th class="gi" colspan="5">Inside Edge</th>
             <th class="gf" colspan="4">Field Nation (FN)</th>
-            <th class="gc" colspan="1">Ticket Number</th>
-            <th class="gc" colspan="1">Correct</th>
-            <th class="gv" colspan="8">Validation &amp; Tracking</th>
+            <th class="gv" colspan="9">Validation &amp; Tracking</th>
           </tr>
           <tr class="cr">
-            <th>Type</th><th>Company</th><th>Filter Date</th><th>Inside Edge &amp; FN Status</th><th>Inside Edge FE Name</th><th>Inside Edge Due Date</th><th>Inside Edge Due Time</th><th>Inside Edge Scheduled</th>
+            <th>Row#</th><th>Ticket</th><th>Type</th><th>Company</th><th>Filter Date</th>
+            <th>Inside Edge &amp; FN Status</th><th>Inside Edge FE Name</th><th>Inside Edge Due Date</th><th>Inside Edge Due Time</th><th>Inside Edge Scheduled</th>
             <th>FN Status</th><th>FN FE Name</th><th>FN Sched. Date</th><th>FN Sched. Time</th>
-            <th>Ticket</th><th>Action</th>
-            <th>Status✓</th><th>Date✓</th><th>Time✓</th><th>Name✓</th><th>Exception</th><th>Result</th><th>Details</th><th>Note</th>
+            <th>Status✓</th><th>Date✓</th><th>Time✓</th><th>Name✓</th><th>Exception</th><th>Result</th><th>Details</th><th>Note</th><th>Action</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -550,7 +534,7 @@ const E={
   dash:$('dash'),sg:$('sgrid'),pb:$('pbar'),pl:$('plbl'),
   // Keep both aliases: older code uses E.tb, multi-file code uses E.tbp.
   tb:$('tbp'),tbp:$('tbp'),tbl:$('tbl'),tbody:$('tbody'),
-  srch:$('srch'),typeF:$('typeF'),statF:$('statF'),errF:$('errF'),specD:$('specD'),fromD:$('fromD'),toD:$('toD'),
+  srch:$('srch'),typeF:$('typeF'),statF:$('statF'),specD:$('specD'),fromD:$('fromD'),toD:$('toD'),
   stag:$('stag'),
 };
 
@@ -641,7 +625,7 @@ function parseTimePart(v){
 function norm(v){return(v??'').toString().trim().replace(/\s+/g,' ');}
 function normU(v){return norm(v).toUpperCase();}
 function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function defTrk(){return{correctedMarked:false,correctedAt:'',note:''};}
+function defTrk(){return{correctedMarked:false,correctedAt:''};}
 function nowStr(){return new Date().toLocaleString();}
 
 function recomp(row){
@@ -664,10 +648,9 @@ function recomp(row){
   row.vRes=errs.length?'Error':'Matched';
   row.bDet=errs.length?errs.join('; '):(row.excA?`Matched via ${row.excT}`:'All checks passed');
   if(row.vRes==='Error'&&row.trk.correctedMarked){
-    if(!row.trk.note) row.trk.note='Corrected';
-    row.fRes='Corrected';row.det=`${row.bDet}; Corrected by user`;row.note=row.trk.note;
+    row.fRes='Corrected';row.det=`${row.bDet}; Corrected by user`;row.note=`Corrected on ${row.trk.correctedAt}`;
   } else {
-    row.fRes=row.vRes;row.det=row.bDet;row.note='';
+    row.fRes=row.vRes;row.det=row.bDet;row.note=row.trk.correctedMarked?`Corrected on ${row.trk.correctedAt}`:'Pending';
   }
   if(row.excA&&!row.det.includes(row.excT)) row.det+=`; ${row.excT}`;
 }
@@ -744,7 +727,7 @@ function popTypes(){
   E.typeF.value=ts.includes(cur)?cur:'all';
 }
 function applyFilters(){
-  const q=norm(E.srch.value).toLowerCase(),type=E.typeF.value,sp=E.specD.value,fr=E.fromD.value,to=E.toD.value,st=E.statF.value,err=E.errF?E.errF.value:'all';
+  const q=norm(E.srch.value).toLowerCase(),type=E.typeF.value,sp=E.specD.value,fr=E.fromD.value,to=E.toD.value,st=E.statF.value;
   S.filtered=S.raw.filter(r=>{
     if(q&&!`${r.ticket} ${r.ieFEN} ${r.fnFEN}`.toLowerCase().includes(q)) return false;
     if(type!=='all'&&r.type!==type) return false;
@@ -756,11 +739,6 @@ function applyFilters(){
     if(st==='corrected'&&r.fRes!=='Corrected') return false;
     if(st==='matched'&&r.fRes!=='Matched') return false;
     if(st==='exception'&&!(r.excA&&r.fRes==='Matched')) return false;
-    if(err==='status' && r.sOk) return false;
-    if(err==='date' && r.dVal) return false;
-    if(err==='time' && r.tVal) return false;
-    if(err==='name' && r.nVal) return false;
-    if(err==='exception' && !r.excA) return false;
     return true;
   });
   renderStats(S.filtered);renderCharts(S.filtered);renderTable(S.filtered);
@@ -769,7 +747,7 @@ function applyFilters(){
 }
 function clearF(){
   [E.srch,E.specD,E.fromD,E.toD].forEach(e=>{e.value='';});
-  E.typeF.value='all';E.statF.value='all';if(E.errF)E.errF.value='all';applyFilters();
+  E.typeF.value='all';E.statF.value='all';applyFilters();
 }
 
 /* ═══ STATS ═══════════════════════════════════════════════════ */
@@ -796,7 +774,6 @@ function activeFilterSummary(){
   if(q) parts.push(`Search: "${q}"`);
   if(E.typeF.value && E.typeF.value!=='all') parts.push(`Type: ${E.typeF.value}`);
   if(E.statF.value && E.statF.value!=='all') parts.push(`Status: ${E.statF.value}`);
-  if(E.errF && E.errF.value && E.errF.value!=='all') parts.push(`Error Type: ${E.errF.options[E.errF.selectedIndex]?.text || E.errF.value}`);
   if(E.specD.value) parts.push(`Date: ${E.specD.value}`);
   else if(E.fromD.value && E.toD.value) parts.push(`${E.fromD.value} → ${E.toD.value}`);
   else if(E.fromD.value) parts.push(`From ${E.fromD.value}`);
@@ -899,7 +876,7 @@ function rPill(r){
 }
 function mc(v,ex){return(!v&&!ex)?'mm':'';}
 function renderTable(rows){
-  if(!rows.length){E.tbody.innerHTML=`<tr><td colspan="22" class="emp">No rows match the current filters.</td></tr>`;return;}
+  if(!rows.length){E.tbody.innerHTML=`<tr><td colspan="23" class="emp">No rows match the current filters.</td></tr>`;return;}
   E.tbody.innerHTML=rows.map(r=>{
     const rc=r.fRes==='Corrected'?'rc':r.fRes==='Error'?'re':r.excA?'rx':'rm';
     const act=r.fRes==='Corrected'
@@ -907,10 +884,9 @@ function renderTable(rows){
       :r.vRes==='Error'
       ?`<button class="abtn mk" data-cid="${esc(r.rowId)}">Correct</button>`
       :`<span style="color:var(--text3)">—</span>`;
-    const noteCell = r.fRes==='Corrected'
-      ? `<textarea class="note-input" data-noteid="${esc(r.rowId)}" title="Correction note">${esc(r.trk.note||'Corrected')}</textarea>`
-      : `<span class="note-blank">—</span>`;
     return `<tr class="${rc}">
+      <td class="mn" style="color:var(--text3)">${esc(r.srcRow)}</td>
+      <td><strong>${esc(r.ticket)}</strong></td>
       <td>${esc(r.type)}</td>
       <td style="font-size:11px;color:var(--text2)">${esc(r.company)}</td>
       <td class="mn">${esc(r.filterDate)}</td>
@@ -923,8 +899,6 @@ function renderTable(rows){
       <td class="${mc(r.nVal,false)}">${esc(r.fnFEN)}</td>
       <td class="mn ${mc(r.dVal,r.dExc)}">${esc(r.fnSD)}</td>
       <td class="mn ${mc(r.tVal,r.tExc)}">${esc(r.fnST)}</td>
-      <td><span class="ticket-copy" title="Select and copy ticket number">${esc(r.ticket)}</span></td>
-      <td>${act}</td>
       <td>${r.sOk?pill('ok','OK'):pill('er','Error')}</td>
       <td>${r.dVal?pill(r.dExc?'wn':'ok',r.dExc?'ITD':'OK'):pill('er','Error')}</td>
       <td>${r.tVal?pill(r.tExc?'wn':'ok',r.tExc?r.type:'OK'):pill('er','Error')}</td>
@@ -932,16 +906,10 @@ function renderTable(rows){
       <td>${r.excA?pill('wn',r.excT):'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
       <td>${rPill(r)}</td>
       <td class="dcl2">${esc(r.det)}</td>
-      <td class="ncl">${noteCell}</td>
+      <td class="ncl">${esc(r.note)}</td>
+      <td>${act}</td>
     </tr>`;
   }).join('');
-}
-function updateNote(id,value){
-  const r=S.raw.find(x=>x.rowId===id);
-  if(!r || !r.trk.correctedMarked) return;
-  r.trk.note=value || 'Corrected';
-  r.note=r.trk.note;
-  saveState();
 }
 
 /* ═══ CORRECTION ══════════════════════════════════════════════ */
@@ -949,7 +917,6 @@ function markCorrected(id){
   const r=S.raw.find(x=>x.rowId===id);
   if(!r||r.vRes!=='Error'||r.trk.correctedMarked) return;
   r.trk.correctedMarked=true;r.trk.correctedAt=nowStr();
-  if(!r.trk.note) r.trk.note='Corrected';
   recomp(r);saveState();applyFilters();
 }
 
@@ -958,8 +925,8 @@ function sKey(){if(!S.fileMeta)return null;return `vra3:${S.fileMeta.name}:${S.f
 function saveState(){
   const k=sKey();if(!k)return;
   try{localStorage.setItem(k,JSON.stringify({
-    f:{q:E.srch.value||'',t:E.typeF.value||'all',sp:E.specD.value||'',fr:E.fromD.value||'',to:E.toD.value||'',st:E.statF.value||'all',err:E.errF?E.errF.value:'all'},
-    trk:S.raw.reduce((a,r)=>{if(r.trk.correctedMarked || (r.trk.note||'').trim())a[r.rowId]=r.trk;return a;},{}),
+    f:{q:E.srch.value||'',t:E.typeF.value||'all',sp:E.specD.value||'',fr:E.fromD.value||'',to:E.toD.value||'',st:E.statF.value||'all'},
+    trk:S.raw.reduce((a,r)=>{if(r.trk.correctedMarked)a[r.rowId]=r.trk;return a;},{}),
   }));}catch(_){}
 }
 function loadState(){
@@ -969,7 +936,7 @@ function loadState(){
     const p=JSON.parse(raw);
     S.raw.forEach(r=>{r.trk=p.trk?.[r.rowId]?{...defTrk(),...p.trk[r.rowId]}:defTrk();recomp(r);});
     E.srch.value=p.f?.q||'';E.typeF.value=p.f?.t||'all';E.specD.value=p.f?.sp||'';
-    E.fromD.value=p.f?.fr||'';E.toD.value=p.f?.to||'';E.statF.value=p.f?.st||'all';if(E.errF)E.errF.value=p.f?.err||'all';
+    E.fromD.value=p.f?.fr||'';E.toD.value=p.f?.to||'';E.statF.value=p.f?.st||'all';
   }catch(_){}
 }
 
@@ -1244,7 +1211,7 @@ async function exportPDF(){
     doc.setFontSize(6.5);
     doc.setTextColor(...C.mid);
     doc.text('KPI cards above reflect ALL tickets within this period, regardless of status filter.',PW-M-98,Y+7);
-    doc.text(`UI filters: status "${E.statF.value||'all'}", type "${E.typeF.value||'all'}", error type "${E.errF?E.errF.value:'all'}".`,PW-M-98,Y+13);
+    doc.text(`UI status filter "${E.statF.value||'all'}" and type filter "${E.typeF.value||'all'}" affect the anomaly table (page 2) only.`,PW-M-98,Y+13);
 
     Y+=24;
 
@@ -1471,11 +1438,10 @@ function bindAll(){
   $('applyBtn').addEventListener('click',applyFilters);
   $('clearBtn').addEventListener('click',clearF);
   $('pdfBtn').addEventListener('click',exportPDF);
-  ['srch','typeF','statF','errF','specD','fromD','toD'].forEach(id=>{
-    const el=$(id); if(el){el.addEventListener('input',applyFilters);el.addEventListener('change',applyFilters);}
+  ['srch','typeF','statF','specD','fromD','toD'].forEach(id=>{
+    $(id).addEventListener('input',applyFilters);$(id).addEventListener('change',applyFilters);
   });
   E.tbody.addEventListener('click',ev=>{const b=ev.target.closest('[data-cid]');if(b)markCorrected(b.getAttribute('data-cid'));});
-  E.tbody.addEventListener('input',ev=>{const n=ev.target.closest('[data-noteid]');if(n)updateNote(n.getAttribute('data-noteid'),n.value);});
   window.addEventListener('error',ev=>{console.error('[VRA]',ev.error||ev.message);showBan(`Error: ${ev.message||'Unknown'}`);});
   window.addEventListener('unhandledrejection',ev=>{console.error('[VRA]',ev.reason);showBan(`Async error: ${ev.reason?.message||ev.reason||'Unknown'}`);});
 
@@ -2161,16 +2127,14 @@ function mfGenerateReport(){
   }
 
   const out = [];
-  const dashboardMasterRows = [];
-  const dashboardFormulaIeRows = [];
-  const exportMasterRows = [];
-  const exportFormulaIeRows = [];
+  const masterRows = [];
+  const masterFormulaIeRows = [];
   let idx = 0;
   let skippedNonFN = 0;
   let skippedNoFNMatch = 0;
 
-  // Dashboard/software view: only tickets existing on BOTH sides.
-  // Excel export: ALL Inside Edge rows are kept, including tickets not found in FN.
+  // New rule: count/export only tickets that exist on BOTH sides:
+  // Inside Edge row must be assigned to FIELD NATION AND the same ticket must exist in FN Report.
   for(let ieIndex = 0; ieIndex < ieRows.length; ieIndex++){
     const ie = ieRows[ieIndex];
     const ticket = mfPickField(ie, ['Tkt Num','Ticket','Ticket Number']);
@@ -2180,34 +2144,29 @@ function mfGenerateReport(){
     const addr = ie2ByTkt.get(tkey) || null;
     const built = mfBuildMasterRow(ie, fn, addr);
     const m = built.meta;
-    const excelIeRow = ieIndex + 2;
-
-    exportMasterRows.push(built.values);
-    exportFormulaIeRows.push(excelIeRow);
 
     if(!m.isFN){ skippedNonFN++; continue; }
     if(!m.hasFN){ skippedNoFNMatch++; continue; }
 
-    dashboardMasterRows.push(built.values);
-    dashboardFormulaIeRows.push(excelIeRow);
+    masterRows.push(built.values);
+    // IE Report data starts on Excel row 2 because row 1 is headers.
+    masterFormulaIeRows.push(ieIndex + 2);
 
     const dashRow = mfDashboardRowFromMaster(built, m, tkey, ++idx);
     out.push(dashRow);
   }
 
-  MF.masterRows = exportMasterRows;
-  MF.masterFormulaIeRows = exportFormulaIeRows;
-  MF.dashboardMasterRows = dashboardMasterRows;
-  MF.dashboardFormulaIeRows = dashboardFormulaIeRows;
+  MF.masterRows = masterRows;
+  MF.masterFormulaIeRows = masterFormulaIeRows;
   MF.skippedNonFN = skippedNonFN;
   MF.skippedNoFNMatch = skippedNoFNMatch;
-  MF.exportTotalRows = exportMasterRows.length;
   S.raw = out;
   S.fileMeta = { name: 'Multi-File: ' + (MF.ie.file?.name||'Inside Edge') + ' + ' + (MF.ie2.file?.name||'Sheet1') + ' + ' + (MF.fn.file?.name||'FN'), rows: out.length, when: new Date().toISOString(), source: 'multi-file' };
 
   const ts=[...new Set(out.map(r=>r.type).filter(Boolean))].sort();
   E.typeF.innerHTML='<option value="all">All Types</option>'+ts.map(t=>'<option value="'+esc(t)+'">'+esc(t)+'</option>').join('');
 
+  // Show the dashboard, restored filter toolbar, and report table after multi-file generation.
   if(E.dash) E.dash.classList.remove('h');
   if(E.tb) E.tb.classList.remove('h');
   if(E.tbp) E.tbp.classList.remove('h');
@@ -2218,7 +2177,7 @@ function mfGenerateReport(){
 
   const errCount = out.filter(r=>r.fRes==='Error').length;
   const excCount = out.filter(r=>r.excA).length;
-  showBan('✅ Dashboard generated ' + out.length.toLocaleString() + ' shared tickets only. Excel export will include all ' + exportMasterRows.length.toLocaleString() + ' Inside Edge rows. Skipped from dashboard: ' + skippedNonFN.toLocaleString() + ' non-Field-Nation rows, ' + skippedNoFNMatch.toLocaleString() + ' IE tickets not found in FN. ' + errCount + ' errors, ' + excCount + ' ITD/ITR exceptions.');
+  showBan('✅ Generated ' + out.length.toLocaleString() + ' tickets existing in BOTH Inside Edge and Field Nation. Skipped: ' + skippedNonFN.toLocaleString() + ' non-Field-Nation Inside Edge rows, ' + skippedNoFNMatch.toLocaleString() + ' Inside Edge tickets not found in FN. ' + errCount + ' errors, ' + excCount + ' ITD/ITR exceptions.');
   setTimeout(()=>{ const el = $('dash'); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); }, 200);
 }
 
@@ -2252,9 +2211,9 @@ function mfExportExcel(){
   XLSX.utils.book_append_sheet(wb, ie2Ws, 'Sheet1');
   wb.SheetNames = ['Report','Formulas','IE Report','FN Report','Sheet1'];
 
-  const fname = 'Field_Nation_Daily_Validation_Master_All_IE_' + stamp() + '.xlsx';
+  const fname = 'Field_Nation_Daily_Validation_Master_Matched_' + stamp() + '.xlsx';
   XLSX.writeFile(wb, fname);
-  showBan('📊 Excel exported with ALL Inside Edge rows: ' + fname);
+  showBan('📊 Master-matched Excel exported: ' + fname);
 }
 
 /* ═══ INIT ═════════════════════════════════════════════════════ */

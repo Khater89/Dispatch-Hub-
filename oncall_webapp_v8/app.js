@@ -1,9 +1,59 @@
+window.ONCALL_NYNJ_FIX_VERSION = 'V15_4_NA_NO_DATE_LINE';
+console.log('%c[OnCall] Loaded:', 'color:#22c55e;font-weight:bold;', window.ONCALL_NYNJ_FIX_VERSION);
+console.log('[OnCall v15.4] Date line removed from Non Available Tech card.');
+console.log('[OnCall] NY/NJ V13: NY works; NJ now uses the inverse order.');
 
 function escapeHtml(s){
   return String(s ?? '').replace(/[&<>"']/g, (c)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
 function normState(s){ return String(s||'').trim().toUpperCase(); }
+function stateLookupOptions(st){
+  const state = normState(st);
+  if(state === 'NY') return ['NY','NJ'];
+  if(state === 'NJ') return ['NJ','NY'];
+  return state ? [state] : [];
+}
+function marketDisplayLabel(market){
+  const resolved = (typeof market?.resolvedState === 'string') ? market.resolvedState.trim().toUpperCase() : '';
+  const rawHint = market && market.stateHint ? String(market.stateHint).trim().toUpperCase() : '';
+  // Prefer the tech-ZIP-resolved state. Hide the placeholder 'NYNJ' marker.
+  const display = (resolved === 'NY' || resolved === 'NJ') ? resolved
+                : (rawHint && rawHint !== 'NYNJ') ? rawHint
+                : '';
+  const hint = display ? ` (${display})` : '';
+  return `${market?.displayName || ''}${hint}`;
+}
+
+
+function isNyNjMarketName(name){
+  return /New\s*York\s*\/\s*New\s*Jersey|New\s*York|New\s*Jersey|\bNY\s*\/\s*NJ\b|\bNY\s*-\s*NJ\b|\bNY\s+NJ\b/i.test(String(name||''));
+}
+
+function getMarketStateHint(market){
+  // Resolved state (set during candidate collection from tech ZIP) wins.
+  const rs = normState(market?.resolvedState);
+  if(rs === 'NY' || rs === 'NJ') return rs;
+  const st = normState(market?.stateHint);
+  if(st === 'NY' || st === 'NJ') return st;
+  // 'NYNJ' = ambiguous merged-row marker; resolved later from tech ZIP.
+  return '';
+}
+
+// Resolve the actual NY/NJ state for a candidate using the on-call tech's ZIP.
+// Returns 'NY' or 'NJ' if we can determine it; otherwise returns ''.
+function resolveNyNjStateFromTechZip(techZip, techStateField){
+  // First try the tech record's State field if present.
+  const ts = normState(techStateField);
+  if(ts === 'NY' || ts === 'NJ') return ts;
+  // Otherwise, look up the ZIP in the local zipDB.
+  const z = normalizeZip(techZip);
+  if(!z) return '';
+  const info = (typeof zipDB !== 'undefined' && zipDB) ? zipDB.get(z) : null;
+  const zs = normState(info?.state);
+  if(zs === 'NY' || zs === 'NJ') return zs;
+  return '';
+}
 
 // Market-to-State mapping (lightweight, no ZIP database needed for this step)
 // We use it ONLY to restrict candidate markets before choosing the nearest one.
@@ -25,7 +75,7 @@ const MARKET_STATE_GROUPS = [
   { re: /Minnesota/i, states: [ 'MN','ND','SD' ] },
   { re: /Northern\s*Ohio/i, states: ['OH'] },
   { re: /St\.\s*Louis|St\s*Louis/i, states: ['MO'] },
-  { re: /New\s*York\s*\/\s*New\s*Jersey|New\s*York|New\s*Jersey/i, states: ['NY','NJ'] },
+  { re: /New\s*York\s*\/\s*New\s*Jersey|New\s*York|New\s*Jersey|\bNY\s*\/\s*NJ\b|\bNY\s*-\s*NJ\b|\bNY\s+NJ\b/i, states: ['NY','NJ'] },
   { re: /Connecticut/i, states: ['CT'] },
   { re: /Boston/i, states: ['MA'] },
   { re: /Philadelphia/i, states: ['PA'] },
@@ -126,8 +176,9 @@ function confidenceNoticeHtml(conf, distKm, deltaKm){
 function marketAcceptsStateForMarket(market, st){
   const state = normState(st);
   if(!state) return true;
-  if(market && market.stateHint){
-    return String(market.stateHint).toUpperCase() === state;
+  const hint = getMarketStateHint(market);
+  if(hint){
+    return hint === state;
   }
   return marketAcceptsState(market?.displayName, state);
 }
@@ -211,6 +262,89 @@ function setAmPmVisible(visible){
   if(!wrap) return;
   wrap.style.display = visible ? '' : 'none';
   if(!visible) clearAmPm();
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Ticket Time visibility — only show the picker when the market the
+   user is researching is currently Reserved.
+
+   The decision needs the OnCall sheet to be loaded plus a State and a
+   Date. If any of those is missing we hide the picker.
+   ─────────────────────────────────────────────────────────────────── */
+function setTicketTimeVisible(visible){
+  const wrap = document.getElementById('ticketTimeWrap');
+  if(!wrap) return;
+  wrap.style.display = visible ? '' : 'none';
+  if(!visible){
+    const el = document.getElementById('ticketTimeInput');
+    if(el) el.value = '';
+  }
+}
+
+/* Check whether the currently-entered State/Date points to a Reserved
+   market in the loaded OnCall sheet. Lightweight: never throws, never
+   blocks the UI. Returns true only when we are confident the market
+   is Reserved. */
+function isStateMarketReserved(stateRaw, dateYmd){
+  try{
+    if(!oncallMeta || !oncallSheetAOA) return false;
+    const state = normState(stateRaw);
+    if(!state || state.length !== 2) return false;
+    if(!dateYmd) return false;
+
+    // Find the active week column for the given date.
+    let weekIdx = -1;
+    try{ weekIdx = pickWeekIndexForDate(dateYmd, getSelectedAmPm()); }
+    catch(_){ /* boundary date without AM/PM picked yet — bail silently */ return false; }
+    const week = oncallMeta.weeks[weekIdx];
+    if(!week || week.col == null) return false;
+
+    // Look at every market that matches the entered state, then check if any
+    // of its rows for this week is flagged Reserved (either by the cell text
+    // or by the market info).
+    for(const market of oncallMeta.markets){
+      if(!marketAcceptsStateForMarket(market, state)) continue;
+      const rawCell = oncallSheetAOA[market.row]?.[week.col];
+      const techCell = parseTechCell(rawCell);
+      const marketInfoText = String(market?.info || market?.note || '');
+      const isReserved = !!(techCell?.reserved) || /\breserv/i.test(marketInfoText);
+      if(isReserved) return true;
+    }
+    return false;
+  }catch(_){
+    return false;
+  }
+}
+
+/* Re-evaluate Ticket Time visibility from current State + Date inputs. */
+function refreshTicketTimeVisibility(){
+  const stateRaw = (document.getElementById('stateInput')?.value)||'';
+  const dateRaw = effectiveInputDateYmd((document.getElementById('dateInput')?.value)||'');
+  setTicketTimeVisible(isStateMarketReserved(stateRaw, dateRaw));
+}
+
+/* Build the dropdown options for the Ticket Time picker.
+   24 hours × every 15 minutes = 96 entries, displayed as 12:00 AM, 12:15 AM,
+   …, 11:45 PM. The option `value` is stored in 24-hour HH:MM so the rest of
+   the code (shouldShowReservedWarning, buildLocalDate) can keep using the
+   same format it already understands. */
+function populateTicketTimeOptions(){
+  const sel = document.getElementById('ticketTimeInput');
+  if(!sel || sel.tagName.toLowerCase() !== 'select') return;
+  // Skip if already populated.
+  if(sel.options.length > 1) return;
+  for(let h = 0; h < 24; h++){
+    for(let m = 0; m < 60; m += 15){
+      const value24 = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+      const ampm = h < 12 ? 'AM' : 'PM';
+      let h12 = h % 12; if(h12 === 0) h12 = 12;
+      const label = `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+      const opt = document.createElement('option');
+      opt.value = value24;
+      opt.textContent = label;
+      sel.appendChild(opt);
+    }
+  }
 }
  // zip -> {lat, lon, city, state}
 
@@ -616,6 +750,114 @@ function effectiveTodayYmd(){
   return isUtcMinus5() ? shiftYmd(t, +1) : t;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   RESERVED WARNING LOGIC
+   ─────────────────────────────────────────────────────────────────────
+   shouldShowReservedWarning(currentTime, ticketTime, isReserved, isHoliday)
+   Decides whether the "Reserved" warning card is displayed in the result.
+
+   Rules (applied in this priority order):
+
+     0) If the market is NOT marked Reserved → never show the warning.
+
+     1) WEEKEND RULE (highest priority for Reserved markets)
+        On Saturday or Sunday, the Reserved warning is fully suppressed
+        for the ENTIRE day (24 hours) regardless of ticket time.
+
+     2) NIGHT RULE
+        If the current local time is between 11:00 PM and 7:00 AM
+        (window crosses midnight), AND the gap between currentTime
+        and ticketTime is 8 hours or less, do NOT show the warning.
+
+     3) EVENING RULE
+        If the current local time is between 5:00 PM and 12:00 AM,
+        AND (ticketTime - currentTime) > 3 hours, the market should
+        BE TREATED as Reserved → show the warning.
+
+     4) GENERAL RULE
+        Otherwise, if the market is Reserved, show the warning normally.
+
+   currentTime / ticketTime are JavaScript Date objects.
+   ════════════════════════════════════════════════════════════════════ */
+function shouldShowReservedWarning(currentTime, ticketTime, isReserved, isHoliday){
+  // Step 0: not Reserved at all → never show.
+  if(!isReserved) return false;
+
+  // Defensive defaults — if no ticketTime is supplied we cannot apply the
+  // time-based suppression rules; fall back to the general rule.
+  const cur = (currentTime instanceof Date && !isNaN(currentTime)) ? currentTime : new Date();
+  const tkt = (ticketTime instanceof Date && !isNaN(ticketTime)) ? ticketTime : null;
+
+  const curHour = cur.getHours();           // 0..23
+  const tktHour = tkt ? tkt.getHours() : null;
+
+  // Helper: hours between two dates (signed: ticket - current).
+  // Handles intervals that legitimately span midnight as long as the caller
+  // passes Date objects on the correct calendar day.
+  const hoursBetween = (a, b) => {
+    if(!(a instanceof Date) || !(b instanceof Date)) return null;
+    return (b.getTime() - a.getTime()) / 3600000;
+  };
+
+  // Helper: is `hour` within a window that may cross midnight?
+  // e.g. inWindow(23, 7, h) → true for 23, 0, 1, ..., 6
+  const inWindow = (startHr, endHr, h) => {
+    if(h == null) return false;
+    if(startHr === endHr) return false;
+    if(startHr < endHr) return h >= startHr && h < endHr;
+    // crosses midnight
+    return h >= startHr || h < endHr;
+  };
+
+  // Step 1: WEEKEND rule — runs FIRST for Reserved markets.
+  // On Saturday/Sunday the Reserved warning is suppressed for the ENTIRE day
+  // (24 hours), regardless of ticket time.
+  if(isHoliday){
+    return false;
+  }
+
+  // Step 2: NIGHT rule — current time 11 PM → 7 AM, gap ≤ 8h, suppress.
+  if(inWindow(23, 7, curHour) && tkt){
+    const gap = Math.abs(hoursBetween(cur, tkt));
+    if(gap != null && gap <= 8) return false;
+  }
+
+  // Step 3: EVENING rule — current time 5 PM → 12 AM (midnight),
+  // and ticket is more than 3 hours ahead of now → force Reserved warning.
+  if(inWindow(17, 24, curHour) && tkt){
+    const ahead = hoursBetween(cur, tkt);  // positive if ticket in the future
+    if(ahead != null && ahead > 3) return true;
+  }
+
+  // Step 4: General rule — Reserved + nothing suppressed → show warning.
+  return true;
+}
+
+/* Build a Date object from a YYYY-MM-DD string and a "HH:MM" 24-hour time.
+   Returns null if either piece is missing/invalid. */
+function buildLocalDate(ymdStr, hhmmStr){
+  if(!ymdStr) return null;
+  const [y,m,d] = String(ymdStr).split('-').map(Number);
+  if(!y || !m || !d) return null;
+  let hh = 0, mm = 0;
+  if(hhmmStr){
+    const m2 = String(hhmmStr).match(/^(\d{1,2}):(\d{2})$/);
+    if(m2){ hh = Math.min(23, Math.max(0, Number(m2[1]))); mm = Math.min(59, Math.max(0, Number(m2[2]))); }
+  }
+  return new Date(y, m-1, d, hh, mm, 0, 0);
+}
+
+/* Weekend detector — Saturday or Sunday count as "holiday" for the
+   Reserved-warning suppression rule. (The dispatcher does NOT treat US
+   federal holidays specially — only weekends.) */
+function isUsHolidayYmd(ymdStr){
+  if(!ymdStr) return false;
+  const d = buildLocalDate(ymdStr, '12:00');
+  if(!d) return false;
+  const dow = d.getDay();          // 0 = Sunday, 6 = Saturday
+  return dow === 0 || dow === 6;
+}
+
 
 function normalizeDate(d){
   if(!(d instanceof Date) || isNaN(d.getTime())) return d;
@@ -882,10 +1124,13 @@ function parseOncallAOA(aoa){
       const displayName = MARKET_ZIP_TO_NAME.get(centerZip) || `Market ${centerZip}`;
       const info = extractMarketInfoFromRow(aoa[r], centerZip, firstDateCol);
 
-      // Special case: merged market row "New York/New Jersey" has TWO tech rows:
-      // top row = NY, next row = NJ (the market name cell is usually merged so the NJ row has empty market cell).
-      if(/New\s*York\s*\/\s*New\s*Jersey/i.test(displayName)){
-        markets.push({row:r, centerZip, displayName, info, stateHint:'NY', subIndex:0});
+      // Special case: merged market row "New York/New Jersey" has TWO tech rows.
+      // We do NOT assume which physical row is NY vs NJ — the spreadsheet author
+      // can put them in either order. The actual state is resolved later from
+      // the on-call tech's ZIP code (see resolveNyNjStateHint in the candidate
+      // collection loop). subIndex is just kept for stability.
+      if(isNyNjMarketName(displayName)){
+        markets.push({row:r, centerZip, displayName, info, stateHint:'NYNJ', subIndex:0});
         lastMarket = {row:r, centerZip, displayName, info, subIndex:0};
       }else{
         markets.push({row:r, centerZip, displayName, info});
@@ -895,10 +1140,10 @@ function parseOncallAOA(aoa){
       continue;
     }
 
-    // Handle the merged second row for New York/New Jersey (NJ row)
+    // Handle the merged second row for New York/New Jersey
     if(lastMarket && (r === lastMarket.row + 1) && hasSample){
-      if(/New\s*York\s*\/\s*New\s*Jersey/i.test(lastMarket.displayName)){
-        markets.push({row:r, centerZip:lastMarket.centerZip, displayName:lastMarket.displayName, info:lastMarket.info, stateHint:'NJ', subIndex:1});
+      if(isNyNjMarketName(lastMarket.displayName)){
+        markets.push({row:r, centerZip:lastMarket.centerZip, displayName:lastMarket.displayName, info:lastMarket.info, stateHint:'NYNJ', subIndex:1});
       }
     }
   }
@@ -963,9 +1208,34 @@ function detectMarketForZip(inputZip, selectedState, week, dateStr){
 
   const warnings = [];
 
-  // 1) Filter markets by State coverage mapping (State is a hint)
-  let candidateMarkets = oncallMeta.markets.filter(m => marketAcceptsStateForMarket(m, selectedState));
+  // 1) Filter markets by State coverage mapping (State is a hint).
+  // For NY/NJ: include both NY and NJ On-Call rows in the candidate pool so the
+  // standard Top-2 chooser can present them like any other pair of nearby markets.
+  // We do NOT force ordering here — distance ranking decides which is shown first.
+  const stateOptions = stateLookupOptions(selectedState);
+  const selectedStateNormForFilter = normState(selectedState);
+  const isNyNjInputForFilter = (selectedStateNormForFilter === 'NY' || selectedStateNormForFilter === 'NJ');
+
+  let candidateMarkets = oncallMeta.markets.filter(m => {
+    if(isNyNjInputForFilter){
+      const hint = getMarketStateHint(m);
+      if(hint === 'NY' || hint === 'NJ') return true;
+      return isNyNjMarketName(m?.displayName);
+    }
+    return stateOptions.some(st => marketAcceptsStateForMarket(m, st));
+  });
   let usedStateFilter = true;
+
+  if(isNyNjInputForFilter){
+    console.log('[OnCall NY/NJ filter] selected=', selectedStateNormForFilter,
+      '| candidate markets count=', candidateMarkets.length,
+      '| markets:', candidateMarkets.map(m => ({
+        row: m.row,
+        name: m.displayName,
+        hint: getMarketStateHint(m),
+        subIndex: m.subIndex
+      })));
+  }
 
   if(!candidateMarkets.length){
     // If state isn't covered by the OnCall markets list, fall back to ZIP-only matching across all markets.
@@ -981,26 +1251,53 @@ function detectMarketForZip(inputZip, selectedState, week, dateStr){
   let missingTechZip = 0;
   let missingTechZipInZipDB = 0;
   let missingTechIdInOncall = 0;
+  // Track NY/NJ candidate row indices so we can assign a fallback NY/NJ label
+  // to a row whose tech is missing from Tech DB (so the chooser still works).
+  const nyNjAssignedStates = new Set();
   for(const market of candidateMarkets){
     const rawCell = oncallSheetAOA[market.row]?.[week.col];
     const techCell = parseTechCell(rawCell);
     if(!techCell?.techId){ missingTechIdInOncall++; continue; }
 
     const tech = techMap.get(techCell.techId);
-    if(!tech){ missingTechInDB++; continue; }
+    // For NY/NJ markets specifically, keep the row in the pool even if the tech
+    // is not in Tech DB — we still want both NY and NJ buttons in the UI.
+    const isNyNjMarket = isNyNjMarketName(market?.displayName);
+    const keepDespiteMissing = isNyNjInputForFilter && isNyNjMarket;
+    if(!tech && !keepDespiteMissing){ missingTechInDB++; continue; }
+    if(!tech){ missingTechInDB++; }
 
-    const techZip = normalizeZip(tech.zip || tech.Zip || tech.ZIP);
+    const techZip = tech ? normalizeZip(tech.zip || tech.Zip || tech.ZIP) : '';
     let techZipInfo = null;
     let distKm = null;
 
     if(!techZip){
-      missingTechZip++;
+      if(tech) missingTechZip++;
     }else{
       techZipInfo = zipDB.get(techZip);
       if(!techZipInfo){
         missingTechZipInZipDB++;
       }else{
         distKm = haversineKm(zInfo.lat, zInfo.lon, techZipInfo.lat, techZipInfo.lon);
+      }
+    }
+
+    // Resolve which side of NY/NJ this candidate actually belongs to.
+    // Priority: tech.state field → tech ZIP → fallback by subIndex.
+    let resolvedState = '';
+    if(isNyNjMarket){
+      if(tech){
+        resolvedState = resolveNyNjStateFromTechZip(techZip, tech.state || tech.State);
+      }
+      if(!resolvedState){
+        // Fallback: if one slot already taken, give this one the other state.
+        if(!nyNjAssignedStates.has('NY')) resolvedState = 'NY';
+        else if(!nyNjAssignedStates.has('NJ')) resolvedState = 'NJ';
+      }
+      if(resolvedState){
+        nyNjAssignedStates.add(resolvedState);
+        // Stamp it on the market so getMarketStateHint can pick it up later.
+        market.resolvedState = resolvedState;
       }
     }
 
@@ -1012,7 +1309,9 @@ function detectMarketForZip(inputZip, selectedState, week, dateStr){
       distKm,
       techId: techCell.techId,
       techZip,
-      techName: tech.firstName ? `${tech.firstName} ${tech.lastName||''}`.trim() : (tech.name||tech.fullName||null)
+      resolvedState,
+      techName: tech ? (tech.firstName ? `${tech.firstName} ${tech.lastName||''}`.trim() : (tech.name||tech.fullName||null))
+                    : `Tech ID ${techCell.techId} (not in Tech DB)`
     };
 
     // Reserved handling (like before):
@@ -1130,11 +1429,72 @@ function detectMarketForZip(inputZip, selectedState, week, dateStr){
     warnings.push('All candidate markets are Reserved for the selected date. Showing the closest reserved market (tech details will be blocked unless date is today).');
   }
 
+  // Standard behavior used everywhere else in the app: closest candidates win.
   poolFinal.sort((a,b)=>( (a.distKm ?? Infinity) - (b.distKm ?? Infinity) ));
-  const best = poolFinal[0];
-  const second = poolFinal.length>1 ? poolFinal[1] : null;
 
-  const deltaKm = (second && Number.isFinite(best.distKm) && Number.isFinite(second.distKm)) ? (second.distKm - best.distKm) : null;
+  let best = poolFinal[0];
+  let second = poolFinal.length>1 ? poolFinal[1] : null;
+
+  // NY/NJ behavior:
+  // Keep the same Choose Tech / Top 2 shape.
+  // NY was already working. This adds the exact inverse for NJ:
+  // - input NY => NY tech first, NJ tech second
+  // - input NJ => NJ tech first, NY tech second
+  const selectedStateNorm = normState(selectedState);
+  const isNYNJSelection = (selectedStateNorm === 'NY' || selectedStateNorm === 'NJ');
+  if(isNYNJSelection){
+    const oppositeState = selectedStateNorm === 'NY' ? 'NJ' : 'NY';
+
+    const nyNjRows = poolFinal
+      .filter(c => isNyNjMarketName(c?.market?.displayName))
+      .map(c => {
+        let resolved = normState(c.resolvedState || getMarketStateHint(c?.market));
+
+        // Safety fallback for the merged NY/NJ market:
+        // top row/subIndex 0 is treated as NY; second row/subIndex 1 is treated as NJ.
+        if(!resolved){
+          if(Number(c?.market?.subIndex) === 0) resolved = 'NY';
+          if(Number(c?.market?.subIndex) === 1) resolved = 'NJ';
+        }
+
+        return {...c, resolvedState: resolved};
+      });
+
+    const primary = nyNjRows
+      .filter(c => c.resolvedState === selectedStateNorm)
+      .sort((a,b)=>( (a.distKm ?? Infinity) - (b.distKm ?? Infinity) ))[0] || null;
+
+    const alternate = nyNjRows
+      .filter(c => c.resolvedState === oppositeState)
+      .sort((a,b)=>( (a.distKm ?? Infinity) - (b.distKm ?? Infinity) ))[0] || null;
+
+    console.log('[OnCall NY/NJ V13] selected=', selectedStateNorm,
+      '| primary=', primary ? primary.resolvedState : null,
+      '| alternate=', alternate ? alternate.resolvedState : null,
+      '| rows=', nyNjRows.map(c => ({
+        resolvedState: c.resolvedState,
+        subIndex: c.market?.subIndex,
+        tech: c.techName,
+        techZip: c.techZip,
+        dist: c.distKm
+      })));
+
+    if(primary && alternate){
+      best = primary;
+      second = alternate;
+      warnings.push(`NY/NJ choice enabled: ${selectedStateNorm} tech is shown first; ${oppositeState} tech is available as the alternate option.`);
+    }else if(nyNjRows.length >= 2){
+      // Last fallback: show both buttons, but do not break the result.
+      best = nyNjRows[0];
+      second = nyNjRows[1];
+      warnings.push('NY/NJ choice enabled, but one row could not be classified. Showing both available NY/NJ options.');
+    }else if(nyNjRows.length === 1){
+      best = nyNjRows[0];
+      second = null;
+    }
+  }
+
+  const deltaKm = (second && Number.isFinite(best.distKm) && Number.isFinite(second.distKm)) ? Math.abs(second.distKm - best.distKm) : null;
 
   // Confidence based on separation between best and second best.
   let confidence = 'Low';
@@ -1174,7 +1534,10 @@ function detectMarketForZip(inputZip, selectedState, week, dateStr){
     allReserved: !!allReservedFinal,
     secondMarket: second ? second.market : null,
     secondDistKm: second ? second.distKm : null,
-    alternatives: [ {market: best.market, distKm: best.distKm, techId: best.techId, techZip: best.techZip, techName: best.techName}, ...(second ? [{market: second.market, distKm: second.distKm, techId: second.techId, techZip: second.techZip, techName: second.techName}] : []) ],
+    alternatives: [
+      {market: best.market, distKm: best.distKm, techId: best.techId, techZip: best.techZip, techName: best.techName},
+      ...(second ? [{market: second.market, distKm: second.distKm, techId: second.techId, techZip: second.techZip, techName: second.techName}] : [])
+    ],
     techZip: best.techZip,
     techIdHint: best.techId,
     techNameHint: best.techName,
@@ -1220,7 +1583,7 @@ function parseTechCell(cellValue){
   return {raw:s, techId:idMatch?idMatch[1]:null, reserved};
 }
 
-function renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,techCell,tech,selectedState='',reservedBlocked=false, techNotFoundReason}){
+function renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,techCell,tech,selectedState='',reservedBlocked=false, techNotFoundReason, ticketTimeStr='', isHoliday=false}){
   // `requireChoice` must be available before the HTML template is built.
   // It was previously declared later with `const`, which triggered a TDZ error:
   // "Cannot access 'requireChoice' before initialization".
@@ -1245,7 +1608,6 @@ function renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,
   const nonAvailHtml = nonAvailList.length
     ? `<div class="na-card">
          <div class="na-title">Non Available Tech <span class="na-count">(${nonAvailList.length})</span></div>
-         <div class="na-sub">Date: <b>${escapeHtml(nonAvailDateStr)}</b> — State: <b>${escapeHtml(stFilter)}</b></div>
          <div class="na-list">
            ${nonAvailList.map(x=>{
               const st = x.state ? ` <span class="na-state">${escapeHtml(x.state)}</span>` : '';
@@ -1256,13 +1618,13 @@ function renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,
     : `<div class="na-card">
          <div class="na-title">Non Available Tech</div>
          ${stFilter
-           ? `<div class="na-empty">No non-available tech for <b>${escapeHtml(stFilter)}</b> on <b>${escapeHtml(nonAvailDateStr)}</b>.</div>`
-           : `<div class="na-empty">Enter State (2-letter) to show Non Available Tech for the same date/state.</div>`}
+           ? `<div class="na-empty">No non-available tech for <b>${escapeHtml(stFilter)}</b>.</div>`
+           : `<div class="na-empty">Enter State (2-letter) to show Non Available Tech.</div>`}
        </div>`;
 
 $('result').innerHTML = `
     <div class="row" style="justify-content:space-between">
-      <div><b>Market</b>: ${marketDetected.market.displayName}${marketDetected.userSelected ? ' <span class="badge">User selected</span>' : ''} <span class="badge">${marketDetected.market.centerZip}</span>${marketDetected.market.info ? ` <span class="muted">— ${marketDetected.market.info}</span>` : ''}</div>
+      <div><b>Market</b>: ${escapeHtml(marketDisplayLabel(marketDetected.market))}${marketDetected.userSelected ? ' <span class="badge">User selected</span>' : ''} <span class="badge">${marketDetected.market.centerZip}</span>${(() => { const rs = (marketDetected.market.resolvedState||'').toUpperCase(); const sh = (marketDetected.market.stateHint||'').toUpperCase(); const tag = (rs==='NY'||rs==='NJ') ? rs : (sh && sh!=='NYNJ' ? sh : ''); return tag ? ` <span class="badge">${tag}</span>` : ''; })()}${marketDetected.market.info ? ` <span class="muted">— ${escapeHtml(marketDetected.market.info)}</span>` : ''}</div>
       <div class="muted">Distance (to Tech ZIP): ${formatKmAndMiles(marketDetected.distKm)}${(marketDetected.distKm!=null && Number.isFinite(marketDetected.distKm)) ? ` • ETA: ${formatHoursHM(kmToMarketHours(marketDetected.distKm))}` : ``} ${marketDetected.confidence ? ` • Confidence: <b>${marketDetected.confidence}</b>` : ``} ${(marketDetected.deltaKm!=null && Number.isFinite(marketDetected.deltaKm)) ? ` • Next Δ: ${formatKmAndMiles(marketDetected.deltaKm)}` : ``}</div>
       ${confidenceNoticeHtml(marketDetected.confidence, marketDetected.distKm, marketDetected.deltaKm)}
       ${(() => {
@@ -1273,14 +1635,34 @@ $('result').innerHTML = `
 
       ${(() => {
          const c = String(marketDetected.confidence||'').toLowerCase();
-         const show = (c==='high' || c==='medium' || c==='low') && marketDetected.secondMarket && marketDetected.secondDistKm!=null;
+         const inputState = String(selectedState||'').toUpperCase();
+         const isNyNj = (inputState === 'NY' || inputState === 'NJ');
+         // For NY/NJ, only require that a second market exists. distance can be
+         // unknown (e.g. tech missing from Tech DB) — we still want to show the
+         // second button so the dispatcher can manually pick it.
+         // For everything else, keep the original rule that needs both distances.
+         const show = isNyNj
+           ? !!marketDetected.secondMarket
+           : ((c==='high' || c==='medium' || c==='low') && marketDetected.secondMarket && marketDetected.secondDistKm!=null);
          if(!show) return '';
+         const button1Dist = (marketDetected.distKm!=null && Number.isFinite(marketDetected.distKm))
+           ? formatKmAndMiles(marketDetected.distKm) : 'distance N/A';
+         const button2Dist = (marketDetected.secondDistKm!=null && Number.isFinite(marketDetected.secondDistKm))
+           ? formatKmAndMiles(marketDetected.secondDistKm) : 'distance N/A';
+         const alt1 = marketDetected.alternatives && marketDetected.alternatives[0];
+         const alt2 = marketDetected.alternatives && marketDetected.alternatives[1];
+         const button1Tech = (alt1 && alt1.techName) ? alt1.techName
+           : (marketDetected.techNameHint ? marketDetected.techNameHint
+           : (alt1 && alt1.techId ? `Tech ID ${alt1.techId} (not in Tech DB)`
+           : (marketDetected.techIdHint ? `Tech ID ${marketDetected.techIdHint} (not in Tech DB)` : '')));
+         const button2Tech = (alt2 && alt2.techName) ? alt2.techName
+           : (alt2 && alt2.techId ? `Tech ID ${alt2.techId} (not in Tech DB)` : '');
          return `
            <div class="market-choice">
              <div class="muted" style="margin-bottom:6px"><b>Choose Tech:</b> Select one of the two closest options (Top 2):</div>
              <div class="choice-grid">
-               <button class="btn" id="btnUseBest">Use: ${marketDetected.market.displayName}${marketDetected.techNameHint ? ` — ${marketDetected.techNameHint}` : ``} — ${formatKmAndMiles(marketDetected.distKm)}</button>
-               <button class="btn" id="btnUseSecond">Use: ${marketDetected.secondMarket.displayName}${(marketDetected.alternatives && marketDetected.alternatives[1] && marketDetected.alternatives[1].techName) ? ` — ${marketDetected.alternatives[1].techName}` : ``} — ${formatKmAndMiles(marketDetected.secondDistKm)}</button>
+               <button class="btn" id="btnUseBest">Use: ${escapeHtml(marketDisplayLabel(marketDetected.market))}${button1Tech ? ` — ${escapeHtml(button1Tech)}` : ``} — ${button1Dist}</button>
+               <button class="btn" id="btnUseSecond">Use: ${escapeHtml(marketDisplayLabel(marketDetected.secondMarket))}${button2Tech ? ` — ${escapeHtml(button2Tech)}` : ``} — ${button2Dist}</button>
              </div>
              <div class="muted" style="margin-top:6px">Tip: If the ticket is near a boundary, City/State usually confirms the correct market.</div>
            </div>
@@ -1296,29 +1678,47 @@ $('result').innerHTML = `
     </div>
     <hr style="border:0;border-top:1px solid rgba(148,163,184,.18);margin:12px 0">
     ${requireChoice ? `<div class="warn-card"><div class="warn-title">⚠️ Confirmation required</div><div class="warn-body">Two options were found     On‑Call. Please choose one from the <b>Top 2</b> options below.</div></div>` : `<div><b>On‑Call Cell</b>: ${techCell ? (techCell.raw+' '+reservedBadge) : '<span class="muted">Empty</span>'}</div>`}
-    ${requireChoice ? '' : `<div style="margin-top:10px">
-      <b>Tech Details</b> ${techFoundBadge}
-      ${reservedBlocked ? `
-        <div class="warn-card">
-          <div class="warn-title">⚠️ RESERVED</div>
-          <div class="warn-body">This region/week is marked Reserved.</div>
-          <div class="warn-body">Because the chosen date <b>${escapeHtml(dateStr)}</b> is not today's date, tech details will not be displayed.</div>
-          <div class="warn-body">Please choose another tech (not Reserved).</div>
+    ${requireChoice ? '' : `<div class="tech-na-grid" style="margin-top:10px;display:grid;grid-template-columns:1.4fr 1fr;gap:14px;align-items:start;">
+      <div>
+        <b>Tech Details</b> ${techFoundBadge}
+        ${(() => {
+          // Reserved mini-summary shown next to Tech Details when ticketTime is supplied.
+          // It shows the dispatcher exactly which Reserved rule was applied (if any).
+          const marketInfoText = String(marketDetected?.market?.info || marketDetected?.market?.note || '');
+          const isReserved = !!(techCell?.reserved) || /\breserv/i.test(marketInfoText);
+          if(!isReserved) return '';
+          const ticketDate = buildLocalDate(dateStr, ticketTimeStr);
+          const showWarn = shouldShowReservedWarning(new Date(), ticketDate, isReserved, isHoliday);
+          const tk = ticketTimeStr ? ` Ticket time: <b>${escapeHtml(ticketTimeStr)}</b>.` : ' (No ticket time supplied — using general rule.)';
+          const hd = isHoliday ? ' <span class="badge">Holiday</span>' : '';
+          return `<div class="muted" style="margin-top:6px;font-size:12px">
+            <b>Reserved status</b>${hd}: ${showWarn
+              ? '<span style="color:#ef4444">⚠ Reserved warning shown</span>'
+              : '<span style="color:#22c55e">✓ Reserved warning suppressed by time/holiday rule</span>'}.
+            ${tk}
+          </div>`;
+        })()}
+        ${reservedBlocked ? `
+          <div class="warn-card">
+            <div class="warn-title">⚠️ RESERVED</div>
+            <div class="warn-body">This region/week is marked Reserved.</div>
+            <div class="warn-body">Because the chosen date <b>${escapeHtml(dateStr)}</b> is not today's date, tech details will not be displayed.</div>
+            <div class="warn-body">Please choose another tech (not Reserved).</div>
+          </div>
+        ` : `
+        <div class="kv" style="margin-top:8px">
+          <div class="key">Tech ID</div><div>${techCell?.techId ?? '<span class="muted">N/A</span>'}</div>
+          <div class="key">Name</div><div>${techNotFoundReason ? `<div class="warn-box warn-red"><b>Tech lookup issue:</b> ${escapeHtml(techNotFoundReason)}<div class="muted" style="margin-top:6px">Result is hidden to avoid dispatching the wrong person. Upload updated Tech DB.</div></div>` : ``}
+        ${(!techNotFoundReason && tech) ? `${tech.firstName} ${tech.lastName}` : '<span class="muted">Not found</span>'}</div>
+          <div class="key">City/State</div><div>${tech ? `${tech.city}, ${tech.state}` : '<span class="muted">-</span>'}</div>
+          <div class="key">ZIP</div><div>${tech ? (tech.zip ?? '-') : '<span class="muted">-</span>'}</div>
+          <div class="key">Region / Zone</div><div>${tech ? `${tech.region} / ${tech.zone}` : '<span class="muted">-</span>'}</div>
+          <div class="key">Type</div><div>${tech ? tech.type : '<span class="muted">-</span>'}</div>
         </div>
-      ` : `
-      <div class="kv" style="margin-top:8px">
-        <div class="key">Tech ID</div><div>${techCell?.techId ?? '<span class="muted">N/A</span>'}</div>
-        <div class="key">Name</div><div>${techNotFoundReason ? `<div class="warn-box warn-red"><b>Tech lookup issue:</b> ${escapeHtml(techNotFoundReason)}<div class="muted" style="margin-top:6px">Result is hidden to avoid dispatching the wrong person. Upload updated Tech DB.</div></div>` : ``}
-      ${(!techNotFoundReason && tech) ? `${tech.firstName} ${tech.lastName}` : '<span class="muted">Not found</span>'}</div>
-        <div class="key">City/State</div><div>${tech ? `${tech.city}, ${tech.state}` : '<span class="muted">-</span>'}</div>
-        <div class="key">ZIP</div><div>${tech ? (tech.zip ?? '-') : '<span class="muted">-</span>'}</div>
-        <div class="key">Region / Zone</div><div>${tech ? `${tech.region} / ${tech.zone}` : '<span class="muted">-</span>'}</div>
-        <div class="key">Type</div><div>${tech ? tech.type : '<span class="muted">-</span>'}</div>
+        `}
       </div>
-      `}
-      </div>`}
-
-    ${nonAvailHtml}
+      <div>${nonAvailHtml}</div>
+    </div>`}
   `;
 
   // Market chooser (for Medium/Low confidence): allow dispatcher to pick between top 2 markets
@@ -1347,7 +1747,7 @@ let __lastLookup = null;
 
 function lookupWithChosenMarket(choice){
   if(!__lastLookup) return;
-  const {inputZip, dateStr, enteredDateStr, ampm, selectedState, baseDetected} = __lastLookup;
+  const {inputZip, dateStr, enteredDateStr, ampm, selectedState, baseDetected, ticketTimeStr} = __lastLookup;
   const weekIdx = pickWeekIndexForDate(dateStr, ampm);
   const week = oncallMeta.weeks[weekIdx];
 
@@ -1378,16 +1778,20 @@ function lookupWithChosenMarket(choice){
     userSelected: true
   };
 
+  // Reserved warning logic — same path used by btnLookup.
   const marketInfoText = String(marketDetected?.market?.info || marketDetected?.market?.note || '');
   const isReserved = !!(techCell?.reserved) || /\breserv/i.test(marketInfoText);
+  const isHoliday = isUsHolidayYmd(dateStr);
+  const ticketDate = buildLocalDate(dateStr, ticketTimeStr);
+  const showReserved = shouldShowReservedWarning(new Date(), ticketDate, isReserved, isHoliday);
   const isToday = (dateStr === effectiveTodayYmd());
 
-  if(isReserved && !isToday){
-    renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,techCell,tech:null,selectedState,reservedBlocked:true,techNotFoundReason});
+  if(isReserved && !isToday && showReserved){
+    renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,techCell,tech:null,selectedState,reservedBlocked:true,techNotFoundReason,ticketTimeStr,isHoliday});
     return;
   }
 
-  renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,techCell,tech,selectedState,techNotFoundReason});
+  renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,techCell,tech,selectedState,techNotFoundReason,ticketTimeStr,isHoliday});
 }
 
 // UI buttons
@@ -1482,6 +1886,9 @@ $('btnLookup').addEventListener('click', async ()=>{
     const dateStr = effectiveInputDateYmd(enteredDateStr);
     const ampm = getSelectedAmPm();
     const selectedState = normState($('stateInput').value);
+    // Read the new "Ticket Time" input (HH:MM 24h). Optional — if empty,
+    // the Reserved time-window rules will still work using the general path.
+    const ticketTimeStr = String(($('ticketTimeInput')?.value)||'').trim();
 
     if(!selectedState || selectedState.length !== 2){
       throw new Error('State is required (2 letters like TX, CA).');
@@ -1497,7 +1904,7 @@ $('btnLookup').addEventListener('click', async ()=>{
     const week=oncallMeta.weeks[weekIdx];
 
     const marketDetected=detectMarketForZip(inputZip, selectedState, week, dateStr);
-    __lastLookup = { inputZip, dateStr, enteredDateStr, ampm, selectedState, baseDetected: marketDetected };
+    __lastLookup = { inputZip, dateStr, enteredDateStr, ampm, selectedState, baseDetected: marketDetected, ticketTimeStr };
 
     const techCell=parseTechCell(oncallSheetAOA[marketDetected.market.row][week.col]);
     const tech = techCell?.techId ? (techMap.get(techCell.techId)||null) : null;
@@ -1505,20 +1912,27 @@ $('btnLookup').addEventListener('click', async ()=>{
     if(techCell?.techId && !tech){ techNotFoundReason = `Tech ID ${techCell.techId} not found in Tech DB. Please upload the updated Tech DB.`; }
     const __techZip = tech ? normalizeZip(tech.zip || tech.Zip || tech.ZIP) : '';
     if(tech && !__techZip){ techNotFoundReason = techNotFoundReason || 'Tech ZIP is missing in Tech DB. Please upload the updated Tech DB.'; }
-    // Reserved-today rule:
-    // If this market/week is marked RESERVED, only allow showing tech details when date == today.
-    // Otherwise, block tech display and tell dispatcher to choose another tech.
+    // Reserved warning logic — delegated to shouldShowReservedWarning().
+    // The function knows about Night / Evening / Holiday rules, so we just feed
+    // it the current time, the ticket time, and the Reserved + Holiday flags.
     const marketInfoText = String(marketDetected?.market?.info || marketDetected?.market?.note || '');
     const isReserved = !!(techCell?.reserved) || /\breserv/i.test(marketInfoText);
+    const isHoliday = isUsHolidayYmd(dateStr);
+    const ticketDate = buildLocalDate(dateStr, ticketTimeStr);
+    const showReserved = shouldShowReservedWarning(new Date(), ticketDate, isReserved, isHoliday);
     const isToday = (dateStr === effectiveTodayYmd());
 
-    if(isReserved && !isToday){
-      renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,techCell,tech:null,selectedState,reservedBlocked:true,techNotFoundReason});
+    // Backwards-compatible block: if the market is Reserved AND not today AND
+    // the new logic also says we should warn, keep the old "block tech display"
+    // behavior. If the new logic says NO warning (night/holiday/etc.), let
+    // tech details render normally.
+    if(isReserved && !isToday && showReserved){
+      renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,techCell,tech:null,selectedState,reservedBlocked:true,techNotFoundReason,ticketTimeStr,isHoliday});
       return;
     }
 
 
-    renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,techCell,tech,selectedState,techNotFoundReason});
+    renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,techCell,tech,selectedState,techNotFoundReason,ticketTimeStr,isHoliday});
     setStatus('Done.');
   }catch(e){
     setStatus(String(e.message||e), true);
@@ -1531,16 +1945,34 @@ $('dateInput').addEventListener('change', ()=>{
     const dateStr = effectiveInputDateYmd($('dateInput').value);
     if(!oncallMeta || !dateStr){
       setAmPmVisible(false);
+      refreshTicketTimeVisibility();
       return;
     }
     const d = new Date(dateStr + 'T00:00:00');
-    if(isNaN(d.getTime())) { setAmPmVisible(false); return; }
+    if(isNaN(d.getTime())) { setAmPmVisible(false); refreshTicketTimeVisibility(); return; }
     const dd = new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
     const starts = oncallMeta.weeks.map(w => ymd(w.start));
     const isBoundary = (starts.indexOf(dateStr) > 0);
     setAmPmVisible(isBoundary);
+    // Re-check if the state/date combo lands on a Reserved market and toggle
+    // the Ticket Time picker accordingly.
+    refreshTicketTimeVisibility();
   }catch(_){
     setAmPmVisible(false);
+    refreshTicketTimeVisibility();
   }
 });
+
+// Also re-evaluate Ticket Time visibility whenever State or AM/PM changes.
+const __stateInputEl = document.getElementById('stateInput');
+if(__stateInputEl){
+  __stateInputEl.addEventListener('input', refreshTicketTimeVisibility);
+  __stateInputEl.addEventListener('change', refreshTicketTimeVisibility);
+}
+document.querySelectorAll('input[name="ampm"]').forEach(el => {
+  el.addEventListener('change', refreshTicketTimeVisibility);
+});
+
+// Build the Ticket Time dropdown (96 options, every 15 minutes).
+populateTicketTimeOptions();

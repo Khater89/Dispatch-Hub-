@@ -124,6 +124,12 @@ document.addEventListener('DOMContentLoaded', function(){
         <label>Date
           <input id="dateInput" type="date"  autocomplete="off"/>
         </label>
+        <label id="ticketTimeWrap" style="display:none">Ticket Time
+          <select id="ticketTimeInput" autocomplete="off">
+            <option value="" selected>-- Select time --</option>
+          </select>
+          <div class="muted" style="font-size:11px;margin-top:2px">Required because the market for this state is <b>Reserved</b>. Used to evaluate the Reserved-area warning (night / evening / weekend rules).</div>
+        </label>
         <div id="ampmWrap" class="ampm-wrap" style="display:none">
         <div class="ampm-label">Ticket time (only required if you choose End Date)</div>
         <div class="ampm-toggle" role="radiogroup" aria-label="Ticket time AM/PM">
@@ -160,6 +166,6 @@ document.addEventListener('DOMContentLoaded', function(){
   <script src="config.js"></script>
   <script src="zipdb.js"></script>
   <script src="techdb.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=V15_4_NO_DATE"></script>
 </body>
 </html>
