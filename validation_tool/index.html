@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Validation Report 0001 — Excel Auditor</title>
-  <!-- Audit Export Fix v17: export all FIELD NATION IE rows, including non-shared, excluding non-FN IE rows -->
   <meta name="description" content="IE vs Field Nation side-by-side audit. Upload Excel, review mismatches, track corrections, export." />
 
   <!--
@@ -2183,7 +2182,7 @@ function mfGenerateReport(){
   let skippedNoFNMatch = 0;
 
   // Dashboard/software view: only tickets existing on BOTH sides.
-  // Excel export: ALL Field Nation-assigned Inside Edge rows are kept, including tickets not found in FN.
+  // Excel export: ALL Inside Edge rows are kept, including tickets not found in FN.
   for(let ieIndex = 0; ieIndex < ieRows.length; ieIndex++){
     const ie = ieRows[ieIndex];
     const ticket = mfPickField(ie, ['Tkt Num','Ticket','Ticket Number']);
@@ -2195,15 +2194,10 @@ function mfGenerateReport(){
     const m = built.meta;
     const excelIeRow = ieIndex + 2;
 
-    // Export scope must match the manual Master:
-    // keep ALL Inside Edge tickets where Assigned Company is exactly FIELD NATION,
-    // including tickets not found in FN. Do NOT export non-Field-Nation IE rows.
-    if(!m.isFN){ skippedNonFN++; continue; }
-
     exportMasterRows.push(built.values);
     exportFormulaIeRows.push(excelIeRow);
 
-    // Dashboard/software view remains optimized: only shared IE + FN tickets.
+    if(!m.isFN){ skippedNonFN++; continue; }
     if(!m.hasFN){ skippedNoFNMatch++; continue; }
 
     dashboardMasterRows.push(built.values);
@@ -2236,7 +2230,7 @@ function mfGenerateReport(){
 
   const errCount = out.filter(r=>r.fRes==='Error').length;
   const excCount = out.filter(r=>r.excA).length;
-  showBan('✅ Dashboard generated ' + out.length.toLocaleString() + ' shared tickets only. Excel export will include all ' + exportMasterRows.length.toLocaleString() + ' Field Nation-assigned Inside Edge rows. Skipped from dashboard: ' + skippedNonFN.toLocaleString() + ' non-Field-Nation rows, ' + skippedNoFNMatch.toLocaleString() + ' IE tickets not found in FN. ' + errCount + ' errors, ' + excCount + ' ITD/ITR exceptions.');
+  showBan('✅ Dashboard generated ' + out.length.toLocaleString() + ' shared tickets only. Excel export will include all ' + exportMasterRows.length.toLocaleString() + ' Inside Edge rows. Skipped from dashboard: ' + skippedNonFN.toLocaleString() + ' non-Field-Nation rows, ' + skippedNoFNMatch.toLocaleString() + ' IE tickets not found in FN. ' + errCount + ' errors, ' + excCount + ' ITD/ITR exceptions.');
   setTimeout(()=>{ const el = $('dash'); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); }, 200);
 }
 
@@ -2270,9 +2264,9 @@ function mfExportExcel(){
   XLSX.utils.book_append_sheet(wb, ie2Ws, 'Sheet1');
   wb.SheetNames = ['Report','Formulas','IE Report','FN Report','Sheet1'];
 
-  const fname = 'Field_Nation_Daily_Validation_Master_All_FieldNation_IE_' + stamp() + '.xlsx';
+  const fname = 'Field_Nation_Daily_Validation_Master_All_IE_' + stamp() + '.xlsx';
   XLSX.writeFile(wb, fname);
-  showBan('📊 Excel exported with ALL Field Nation-assigned Inside Edge rows: ' + fname);
+  showBan('📊 Excel exported with ALL Inside Edge rows: ' + fname);
 }
 
 /* ═══ INIT ═════════════════════════════════════════════════════ */
