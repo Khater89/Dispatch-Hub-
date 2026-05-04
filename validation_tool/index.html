@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Validation Report 0001 — Excel Auditor</title>
+  <!-- Audit Export Fix v17: export all FIELD NATION IE rows, including non-shared, excluding non-FN IE rows -->
   <meta name="description" content="IE vs Field Nation side-by-side audit. Upload Excel, review mismatches, track corrections, export." />
 
   <!--
@@ -352,6 +353,8 @@
   </script>
 </head>
 <body>
+
+<!-- AUDIT EXPORT MASTER MATCH FIX v16: all IE tickets kept; Excel serial dates/times; no +1 minute formula shift; export formulas aligned to manual master. -->
 
 <!-- DEBUG OVERLAY -->
 <div id="dbg" class="h">
@@ -1820,26 +1823,36 @@ function mfSplitDateTime(v){
   if(v==null || v==='') return {date:'', time:''};
   return { date: mfParseDate(v), time: mfParseTime(v) };
 }
+function mfExcelSerialFromYMD(ymd){
+  if(!ymd) return '';
+  const p = String(ymd).split('-').map(Number);
+  if(p.length !== 3 || !p[0] || !p[1] || !p[2]) return '';
+  const days = Math.floor((Date.UTC(p[0], p[1]-1, p[2]) - Date.UTC(1899, 11, 31)) / 86400000);
+  // Excel 1900 leap-year bug: modern dates are +1 after the fake 1900-02-29.
+  return days >= 60 ? days + 1 : days;
+}
 function mfDateOnlyValue(v){
+  // Export dates as Excel serial numbers, not JS Date objects.
+  // This prevents timezone/day-shift issues and matches the manual master workbook.
   if(v==null || v==='') return '';
-  if(typeof v === 'number' && Number.isFinite(v)){
-    const d = mfSerialDateYMD(v);
-    if(!d) return '';
-    const parts = d.split('-').map(Number);
-    return new Date(parts[0], parts[1]-1, parts[2]);
-  }
-  if(v instanceof Date && !isNaN(v)) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+  if(typeof v === 'number' && Number.isFinite(v)) return Math.floor(v);
+  if(v instanceof Date && !isNaN(v)) return mfExcelSerialFromYMD(`${v.getFullYear()}-${p2(v.getMonth()+1)}-${p2(v.getDate())}`);
   const d = mfParseDate(v);
-  if(!d) return '';
-  const parts = d.split('-').map(Number);
-  return new Date(parts[0], parts[1]-1, parts[2]);
+  return d ? mfExcelSerialFromYMD(d) : '';
 }
 function mfTimeOnlyValue(v){
+  // Export times as Excel time fractions, rounded to the nearest minute.
+  // No manual +1 minute adjustment is applied.
   if(v==null || v==='') return '';
+  if(typeof v === 'number' && Number.isFinite(v)){
+    let frac = v % 1; if(frac < 0) frac += 1;
+    return (Math.round(frac * 1440) % 1440) / 1440;
+  }
   const t = mfParseTime(v);
   if(!t) return '';
   const parts = t.split(':').map(Number);
-  return new Date(1899, 11, 30, parts[0] || 0, parts[1] || 0, 0);
+  const mins = ((parts[0] || 0) * 60 + (parts[1] || 0)) % 1440;
+  return mins / 1440;
 }
 function mfExcelDate(v){ return mfDateOnlyValue(v); }
 function mfExcelTime(v){ return mfTimeOnlyValue(v); }
@@ -2101,9 +2114,9 @@ function mfFormulaRow(r, sourceIeRow){
     mfFormulaCell(`=IF(A${r}="","",VLOOKUP(A${r},'IE Report'!D:P,13,FALSE))`),
     mfFormulaCell(`=IF(A${r}="","",LEFT(VLOOKUP(A${r},'IE Report'!D:O,12,FALSE),1))`),
     mfFormulaCell(`=IF(A${r}="","",IF(VLOOKUP(A${r},'IE Report'!D:L,9,FALSE)="","",DATE(YEAR(VLOOKUP(A${r},'IE Report'!D:L,9,FALSE)),MONTH(VLOOKUP(A${r},'IE Report'!D:L,9,FALSE)),DAY(VLOOKUP(A${r},'IE Report'!D:L,9,FALSE)))))`),
-    mfFormulaCell(`=IF(A${r}="","",IF(VLOOKUP(A${r},'IE Report'!D:L,9,FALSE)="","",TIME(HOUR(VLOOKUP(A${r},'IE Report'!D:L,9,FALSE)),MINUTE(VLOOKUP(A${r},'IE Report'!D:L,9,FALSE)),0)+TIME(0,1,0)))`),
+    mfFormulaCell(`=IF(A${r}="","",IF(VLOOKUP(A${r},'IE Report'!D:L,9,FALSE)="","",TIME(HOUR(VLOOKUP(A${r},'IE Report'!D:L,9,FALSE)),MINUTE(VLOOKUP(A${r},'IE Report'!D:L,9,FALSE)),0)))`),
     mfFormulaCell(`=IF(A${r}="","",IF(VLOOKUP(A${r},'IE Report'!D:M,10,FALSE)="","",DATE(YEAR(VLOOKUP(A${r},'IE Report'!D:M,10,FALSE)),MONTH(VLOOKUP(A${r},'IE Report'!D:M,10,FALSE)),DAY(VLOOKUP(A${r},'IE Report'!D:M,10,FALSE)))))`),
-    mfFormulaCell(`=IF(A${r}="","",IF(VLOOKUP(A${r},'IE Report'!D:M,10,FALSE)="","",TIME(HOUR(VLOOKUP(A${r},'IE Report'!D:M,10,FALSE)),MINUTE(VLOOKUP(A${r},'IE Report'!D:M,10,FALSE)),0)+TIME(0,1,0)))`),
+    mfFormulaCell(`=IF(A${r}="","",IF(VLOOKUP(A${r},'IE Report'!D:M,10,FALSE)="","",TIME(HOUR(VLOOKUP(A${r},'IE Report'!D:M,10,FALSE)),MINUTE(VLOOKUP(A${r},'IE Report'!D:M,10,FALSE)),0)))`),
     mfFormulaCell(`=IF(A${r}="","",IF(VLOOKUP(A${r},'IE Report'!D:N,11,FALSE)="","",VLOOKUP(A${r},'IE Report'!D:N,11,FALSE)))`),
     mfFormulaCell(`=IF(A${r}="","",IF(VLOOKUP(A${r},'IE Report'!D:H,5,FALSE)="","",VLOOKUP(A${r},'IE Report'!D:H,5,FALSE)))`),
     mfFormulaCell(`=IF(A${r}="","",IF(VLOOKUP(A${r},'IE Report'!D:I,6,FALSE)="","",VLOOKUP(A${r},'IE Report'!D:I,6,FALSE)))`),
@@ -2122,7 +2135,7 @@ function mfFormulaRow(r, sourceIeRow){
     mfFormulaCell(`=IF(A${r}="","",IF(AND(G${r}="S",Q${r}="Assigned"),"OK",IF(AND(G${r}="U",Q${r}="Published"),"OK",IF(AND(G${r}="U",Q${r}="Routed"),"OK",IF(AND(G${r}="H",Q${r}="Not Posted"),"OK",IF(AND(M${r}<>"FIELD NATION",Q${r}="Not Posted"),"OK","Error"))))))`),
     mfFormulaCell(`=IF(A${r}="","",IF(G${r}="H","OK",IF(M${r}<>"FIELD NATION","OK",IF(AND(H${r}=U${r},I${r}=V${r}),"OK","Error"))))`),
     mfFormulaCell(`=IF(A${r}="","",IF(Q${r}="Assigned",IF(AND(J${r}=U${r},K${r}=V${r}),"OK","Error"),"OK"))`),
-    mfFormulaCell(`=IF(A${r}="","",IF(OR(M${r}<>"FIELD NATION",G${r}="H"),"OK",LET(x,TRIM(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(X${r},"."," "),","," "),"-"," "),"_"," "),"/"," "),"'"," ")),n,TRIM(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(N${r},"."," "),","," "),"-"," "),"_"," "),"/"," "),"'"," ")),xf,UPPER(LEFT(x,FIND(" ",x&" ")-1)),nf,UPPER(LEFT(n,FIND(" ",n&" ")-1)),xl,UPPER(TRIM(RIGHT(SUBSTITUTE(x," ",REPT(" ",99)),99))),nl,UPPER(TRIM(RIGHT(SUBSTITUTE(n," ",REPT(" ",99)),99))),IF(OR(UPPER(SUBSTITUTE(x," ",""))=UPPER(SUBSTITUTE(n," ","")),AND(xf=nf,xl=nl,LEN(xf)>0,LEN(xl)>0)),"OK","Error"))))`),
+    mfFormulaCell(`=IF(A${r}="","",IF(OR(M${r}<>"FIELD NATION",G${r}="H"),"OK",IF(X${r}=N${r},"OK","Error")))`),
     mfFormulaCell(`=IF(A${r}="","",IF(R${r}="No","Error","OK"))`),
     mfFormulaCell(`=IFERROR(INDEX('FN Report'!I:L, MATCH(A${r}, 'FN Report'!P:P, 0), 1), "")`),
     mfFormulaCell(`=IFERROR(INDEX('FN Report'!I:L, MATCH(A${r}, 'FN Report'!P:P, 0), 2), "")`),
@@ -2170,7 +2183,7 @@ function mfGenerateReport(){
   let skippedNoFNMatch = 0;
 
   // Dashboard/software view: only tickets existing on BOTH sides.
-  // Excel export: ALL Inside Edge rows are kept, including tickets not found in FN.
+  // Excel export: ALL Field Nation-assigned Inside Edge rows are kept, including tickets not found in FN.
   for(let ieIndex = 0; ieIndex < ieRows.length; ieIndex++){
     const ie = ieRows[ieIndex];
     const ticket = mfPickField(ie, ['Tkt Num','Ticket','Ticket Number']);
@@ -2182,10 +2195,15 @@ function mfGenerateReport(){
     const m = built.meta;
     const excelIeRow = ieIndex + 2;
 
+    // Export scope must match the manual Master:
+    // keep ALL Inside Edge tickets where Assigned Company is exactly FIELD NATION,
+    // including tickets not found in FN. Do NOT export non-Field-Nation IE rows.
+    if(!m.isFN){ skippedNonFN++; continue; }
+
     exportMasterRows.push(built.values);
     exportFormulaIeRows.push(excelIeRow);
 
-    if(!m.isFN){ skippedNonFN++; continue; }
+    // Dashboard/software view remains optimized: only shared IE + FN tickets.
     if(!m.hasFN){ skippedNoFNMatch++; continue; }
 
     dashboardMasterRows.push(built.values);
@@ -2218,7 +2236,7 @@ function mfGenerateReport(){
 
   const errCount = out.filter(r=>r.fRes==='Error').length;
   const excCount = out.filter(r=>r.excA).length;
-  showBan('✅ Dashboard generated ' + out.length.toLocaleString() + ' shared tickets only. Excel export will include all ' + exportMasterRows.length.toLocaleString() + ' Inside Edge rows. Skipped from dashboard: ' + skippedNonFN.toLocaleString() + ' non-Field-Nation rows, ' + skippedNoFNMatch.toLocaleString() + ' IE tickets not found in FN. ' + errCount + ' errors, ' + excCount + ' ITD/ITR exceptions.');
+  showBan('✅ Dashboard generated ' + out.length.toLocaleString() + ' shared tickets only. Excel export will include all ' + exportMasterRows.length.toLocaleString() + ' Field Nation-assigned Inside Edge rows. Skipped from dashboard: ' + skippedNonFN.toLocaleString() + ' non-Field-Nation rows, ' + skippedNoFNMatch.toLocaleString() + ' IE tickets not found in FN. ' + errCount + ' errors, ' + excCount + ' ITD/ITR exceptions.');
   setTimeout(()=>{ const el = $('dash'); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); }, 200);
 }
 
@@ -2252,9 +2270,9 @@ function mfExportExcel(){
   XLSX.utils.book_append_sheet(wb, ie2Ws, 'Sheet1');
   wb.SheetNames = ['Report','Formulas','IE Report','FN Report','Sheet1'];
 
-  const fname = 'Field_Nation_Daily_Validation_Master_All_IE_' + stamp() + '.xlsx';
+  const fname = 'Field_Nation_Daily_Validation_Master_All_FieldNation_IE_' + stamp() + '.xlsx';
   XLSX.writeFile(wb, fname);
-  showBan('📊 Excel exported with ALL Inside Edge rows: ' + fname);
+  showBan('📊 Excel exported with ALL Field Nation-assigned Inside Edge rows: ' + fname);
 }
 
 /* ═══ INIT ═════════════════════════════════════════════════════ */
