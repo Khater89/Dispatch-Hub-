@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Validation Report 0001 — Excel Auditor</title>
-  <!-- Audit Export Fix v18: export same IE source count, numeric date/time serials, wider date columns, date sort UI -->
   <meta name="description" content="IE vs Field Nation side-by-side audit. Upload Excel, review mismatches, track corrections, export." />
 
   <!--
@@ -154,6 +153,8 @@
     .btn{padding:8px 15px;border:none;border-radius:var(--rsm);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
     .btn:hover{transform:translateY(-1px);box-shadow:var(--shm);}
     .btn:disabled{opacity:.5;cursor:default;transform:none!important;box-shadow:none!important;}
+    .btn.bx{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;box-shadow:0 8px 18px rgba(34,197,94,.20);}
+    .btn.bx:hover{box-shadow:0 12px 26px rgba(34,197,94,.28);}
     .bd{background:var(--text);color:#fff;}
     .bb{background:var(--ie);color:#fff;}
     .bo{background:var(--fn);color:#fff;}
@@ -181,14 +182,10 @@
     .pill.wn{background:var(--warn-soft);color:var(--warn-text);} .pill.co{background:var(--cor-soft);color:var(--cor-text);}
     .pdot{width:5px;height:5px;border-radius:50%;background:currentColor;}
 
-    .abtn{padding:4px 11px;border:none;border-radius:var(--rxs);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;min-width:84px;}
-    .abtn.mk{background:var(--text);color:#fff;} .abtn.mk:hover{background:#334155;}
-    .abtn.dn{background:var(--cor-soft);color:var(--cor-text);cursor:default;}
-
-    .ticket-copy{font-family:'JetBrains Mono',monospace;font-weight:700;user-select:text;-webkit-user-select:text;cursor:text;background:#f8fafc;border:1px solid var(--border);border-radius:6px;padding:2px 6px;display:inline-block;}
-    .ticket-copy:hover{background:#e0f2fe;border-color:#7dd3fc;}
-    .note-input{width:180px;min-height:30px;resize:vertical;border:1px solid var(--border);border-radius:7px;padding:5px 7px;font-family:inherit;font-size:11px;line-height:1.35;background:#fff;color:var(--text);outline:none;}
-    .note-input:focus{border-color:var(--ie);box-shadow:0 0 0 2px rgba(59,130,246,.12);}
+    .abtn{padding:7px 13px;border:none;border-radius:999px;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer;transition:all .15s;min-width:92px;letter-spacing:.2px;display:inline-flex;align-items:center;justify-content:center;gap:5px;}
+    .abtn.mk{background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff;box-shadow:0 6px 14px rgba(139,92,246,.24);}
+    .abtn.mk:hover{background:linear-gradient(135deg,#6d28d9,#7c3aed);transform:translateY(-1px);box-shadow:0 8px 18px rgba(139,92,246,.30);}
+    .abtn.dn{background:var(--cor-soft);color:var(--cor-text);cursor:default;border:1px solid rgba(139,92,246,.20);box-shadow:none;}
 
     .dcl2,.ncl{max-width:240px;white-space:normal;line-height:1.4;font-size:11px;color:var(--text2);}
     .emp{text-align:center;padding:48px;color:var(--text3);font-weight:600;}
@@ -303,6 +300,11 @@
     .tb-btn.tb-correct:hover{background:#7c3aed;}
     .tb-btn.tb-undo{background:#64748b;color:#fff;}
     .tb-btn.tb-undo:hover{background:#475569;}
+
+    /* Keep Ticket Number visible near the beginning of every row */
+    table th.ticket-col, table td.ticket-col{position:sticky;left:56px;z-index:2;background:var(--surface);box-shadow:1px 0 0 rgba(226,232,240,.9);}
+    table thead th.ticket-col{z-index:5;background:var(--surface2);}
+    table td.ticket-col strong{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ie-dark);}
   </style>
 
   <style>
@@ -452,7 +454,7 @@
     <div class="mf-actions">
       <button class="btn bd" id="mfGenBtn" disabled>🔄 Generate Validation Report</button>
       <button class="btn bg" id="mfResetBtn">🗑️ Reset</button>
-      <button class="btn bo" id="mfExcelBtn" disabled>📊 Export Excel</button>
+      <button class="btn bx" id="mfExcelBtn" disabled>📊 Export Master Excel</button>
       <span class="mf-hint" id="mfHint">Upload all 3 files to enable generation.</span>
     </div>
   </div>
@@ -489,7 +491,7 @@
         </select>
       </div>
       <div class="fg"><label>Error Type</label>
-        <select id="errF">
+        <select id="errTypeF">
           <option value="all">All Error Types</option>
           <option value="status">Status Error</option>
           <option value="date">Date Error</option>
@@ -498,14 +500,15 @@
           <option value="exception">ITD / ITR Exception</option>
         </select>
       </div>
-      <div class="fg"><label>Specific Date</label><input type="date" id="specD"  autocomplete="off"/></div>
       <div class="fg"><label>Sort Date</label>
-        <select id="sortDateF">
-          <option value="none">No Sort</option>
+        <select id="sortD">
           <option value="oldest">Oldest → Newest</option>
           <option value="newest">Newest → Oldest</option>
+          <option value="ticket">Ticket Number</option>
+          <option value="none">Original Order</option>
         </select>
       </div>
+      <div class="fg"><label>Specific Date</label><input type="date" id="specD"  autocomplete="off"/></div>
       <div class="fg"><label>From Date</label><input type="date" id="fromD"  autocomplete="off"/></div>
       <div class="fg"><label>To Date</label><input type="date" id="toD"  autocomplete="off"/></div>
       <div class="stag" id="stag">—</div>
@@ -513,6 +516,7 @@
     <div class="tr">
       <button class="btn bd" id="applyBtn">🔍 Apply</button>
       <button class="btn bg" id="clearBtn">✕ Clear</button>
+      <button class="btn bx" id="excelBtn">📊 Full Excel Export</button>
       <button class="btn bo" id="pdfBtn">📄 Export Management PDF</button>
     </div>
     <div class="fn-note">📅 Date filter uses <strong>FN Scheduled Date</strong> first, then <strong>Inside Edge Due Date</strong> as fallback. &nbsp;·&nbsp; ⚡ ITD tickets always pass date validation.</div>
@@ -524,17 +528,16 @@
       <table>
         <thead>
           <tr class="gr">
-            <th class="gi" colspan="8">Inside Edge</th>
+            <th class="gc" colspan="5">Core</th>
+            <th class="gi" colspan="5">Inside Edge</th>
             <th class="gf" colspan="4">Field Nation (FN)</th>
-            <th class="gc" colspan="1">Ticket Number</th>
-            <th class="gc" colspan="1">Correct</th>
-            <th class="gv" colspan="8">Validation &amp; Tracking</th>
+            <th class="gv" colspan="9">Validation &amp; Tracking</th>
           </tr>
           <tr class="cr">
-            <th>Type</th><th>Company</th><th>Filter Date</th><th>Inside Edge &amp; FN Status</th><th>Inside Edge FE Name</th><th>Inside Edge Due Date</th><th>Inside Edge Due Time</th><th>Inside Edge Scheduled</th>
+            <th>Row#</th><th class="ticket-col">Ticket</th><th>Type</th><th>Company</th><th>Filter Date</th>
+            <th>Inside Edge &amp; FN Status</th><th>Inside Edge FE Name</th><th>Inside Edge Due Date</th><th>Inside Edge Due Time</th><th>Inside Edge Scheduled</th>
             <th>FN Status</th><th>FN FE Name</th><th>FN Sched. Date</th><th>FN Sched. Time</th>
-            <th>Ticket</th><th>Action</th>
-            <th>Status✓</th><th>Date✓</th><th>Time✓</th><th>Name✓</th><th>Exception</th><th>Result</th><th>Details</th><th>Note</th>
+            <th>Status✓</th><th>Date✓</th><th>Time✓</th><th>Name✓</th><th>Exception</th><th>Result</th><th>Details</th><th>Note</th><th>Action</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -558,7 +561,7 @@ const E={
   dash:$('dash'),sg:$('sgrid'),pb:$('pbar'),pl:$('plbl'),
   // Keep both aliases: older code uses E.tb, multi-file code uses E.tbp.
   tb:$('tbp'),tbp:$('tbp'),tbl:$('tbl'),tbody:$('tbody'),
-  srch:$('srch'),typeF:$('typeF'),statF:$('statF'),specD:$('specD'),fromD:$('fromD'),toD:$('toD'),
+  srch:$('srch'),typeF:$('typeF'),statF:$('statF'),errTypeF:$('errTypeF'),sortD:$('sortD'),specD:$('specD'),fromD:$('fromD'),toD:$('toD'),
   stag:$('stag'),
 };
 
@@ -649,7 +652,7 @@ function parseTimePart(v){
 function norm(v){return(v??'').toString().trim().replace(/\s+/g,' ');}
 function normU(v){return norm(v).toUpperCase();}
 function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function defTrk(){return{correctedMarked:false,correctedAt:'',note:''};}
+function defTrk(){return{correctedMarked:false,correctedAt:''};}
 function nowStr(){return new Date().toLocaleString();}
 
 function recomp(row){
@@ -672,11 +675,10 @@ function recomp(row){
   row.vRes=errs.length?'Error':'Matched';
   row.bDet=errs.length?errs.join('; '):(row.excA?`Matched via ${row.excT}`:'All checks passed');
   if(row.vRes==='Error'&&row.trk.correctedMarked){
-    row.fRes='Corrected';row.det=`${row.bDet}; Corrected by user`;
+    row.fRes='Corrected';row.det=`${row.bDet}; Corrected by user`;row.note=`Corrected on ${row.trk.correctedAt}`;
   } else {
-    row.fRes=row.vRes;row.det=row.bDet;
+    row.fRes=row.vRes;row.det=row.bDet;row.note=row.trk.correctedMarked?`Corrected on ${row.trk.correctedAt}`:'Pending';
   }
-  row.note = row.trk.note || '';
   if(row.excA&&!row.det.includes(row.excT)) row.det+=`; ${row.excT}`;
 }
 
@@ -751,9 +753,33 @@ function popTypes(){
   E.typeF.innerHTML='<option value="all">All Types</option>'+ts.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
   E.typeF.value=ts.includes(cur)?cur:'all';
 }
+function errTypeLabel(v){
+  return ({all:'All Error Types',status:'Status Error',date:'Date Error',time:'Time Error',name:'Name Error',exception:'ITD / ITR Exception'})[v] || v || 'All Error Types';
+}
+function sortLabel(v){
+  return ({oldest:'Oldest → Newest',newest:'Newest → Oldest',ticket:'Ticket Number',none:'Original Order'})[v] || v || 'Oldest → Newest';
+}
+function rowDateKey(r){
+  const d = r.filterDate || r.fnSD || r.ieDueDate || r.ieSD || '';
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : '9999-12-31';
+}
+function sortRows(rows){
+  const mode = (E.sortD && E.sortD.value) || 'oldest';
+  const arr = rows.slice();
+  if(mode === 'none') return arr;
+  arr.sort((a,b)=>{
+    if(mode === 'ticket'){
+      return String(a.ticket||'').localeCompare(String(b.ticket||''), undefined, {numeric:true, sensitivity:'base'});
+    }
+    const da=rowDateKey(a), db=rowDateKey(b);
+    if(da !== db) return mode === 'newest' ? db.localeCompare(da) : da.localeCompare(db);
+    return String(a.ticket||'').localeCompare(String(b.ticket||''), undefined, {numeric:true, sensitivity:'base'});
+  });
+  return arr;
+}
 function applyFilters(){
-  const q=norm(E.srch.value).toLowerCase(),type=E.typeF.value,sp=E.specD.value,fr=E.fromD.value,to=E.toD.value,st=E.statF.value,err=E.errF?E.errF.value:'all';
-  S.filtered=S.raw.filter(r=>{
+  const q=norm(E.srch.value).toLowerCase(),type=E.typeF.value,sp=E.specD.value,fr=E.fromD.value,to=E.toD.value,st=E.statF.value,err=(E.errTypeF&&E.errTypeF.value)||'all';
+  const filtered=S.raw.filter(r=>{
     if(q&&!`${r.ticket} ${r.ieFEN} ${r.fnFEN}`.toLowerCase().includes(q)) return false;
     if(type!=='all'&&r.type!==type) return false;
     const d=r.filterDate||'';
@@ -764,31 +790,21 @@ function applyFilters(){
     if(st==='corrected'&&r.fRes!=='Corrected') return false;
     if(st==='matched'&&r.fRes!=='Matched') return false;
     if(st==='exception'&&!(r.excA&&r.fRes==='Matched')) return false;
-    if(err==='status' && r.sOk) return false;
-    if(err==='date' && r.dVal) return false;
-    if(err==='time' && r.tVal) return false;
-    if(err==='name' && r.nVal) return false;
-    if(err==='exception' && !r.excA) return false;
+    if(err==='status'&&r.sOk) return false;
+    if(err==='date'&&r.dVal) return false;
+    if(err==='time'&&r.tVal) return false;
+    if(err==='name'&&r.nVal) return false;
+    if(err==='exception'&&!r.excA) return false;
     return true;
   });
-  const sortMode = E.sortDateF ? E.sortDateF.value : 'none';
-  if(sortMode !== 'none'){
-    S.filtered.sort((a,b)=>{
-      const da = a.filterDate || '';
-      const db = b.filterDate || '';
-      if(!da && !db) return 0;
-      if(!da) return 1;
-      if(!db) return -1;
-      return sortMode === 'oldest' ? da.localeCompare(db) : db.localeCompare(da);
-    });
-  }
+  S.filtered=sortRows(filtered);
   renderStats(S.filtered);renderCharts(S.filtered);renderTable(S.filtered);
   E.stag.textContent=`${S.filtered.length} of ${S.raw.length} tickets`;
   saveState();
 }
 function clearF(){
   [E.srch,E.specD,E.fromD,E.toD].forEach(e=>{e.value='';});
-  E.typeF.value='all';E.statF.value='all';if(E.errF)E.errF.value='all';if(E.sortDateF)E.sortDateF.value='none';applyFilters();
+  E.typeF.value='all';E.statF.value='all'; if(E.errTypeF) E.errTypeF.value='all'; if(E.sortD) E.sortD.value='oldest'; applyFilters();
 }
 
 /* ═══ STATS ═══════════════════════════════════════════════════ */
@@ -806,7 +822,7 @@ function hasActiveFilters(){
     (E.srch.value||'').trim() ||
     (E.typeF.value && E.typeF.value!=='all') ||
     (E.statF.value && E.statF.value!=='all') ||
-    (E.errF && E.errF.value && E.errF.value!=='all') ||
+    (E.errTypeF && E.errTypeF.value && E.errTypeF.value!=='all') ||
     E.specD.value || E.fromD.value || E.toD.value
   );
 }
@@ -816,7 +832,8 @@ function activeFilterSummary(){
   if(q) parts.push(`Search: "${q}"`);
   if(E.typeF.value && E.typeF.value!=='all') parts.push(`Type: ${E.typeF.value}`);
   if(E.statF.value && E.statF.value!=='all') parts.push(`Status: ${E.statF.value}`);
-  if(E.errF && E.errF.value && E.errF.value!=='all') parts.push(`Error Type: ${E.errF.options[E.errF.selectedIndex]?.text || E.errF.value}`);
+  if(E.errTypeF && E.errTypeF.value && E.errTypeF.value!=='all') parts.push(`Error Type: ${errTypeLabel(E.errTypeF.value)}`);
+  if(E.sortD && E.sortD.value && E.sortD.value!=='oldest') parts.push(`Sort: ${sortLabel(E.sortD.value)}`);
   if(E.specD.value) parts.push(`Date: ${E.specD.value}`);
   else if(E.fromD.value && E.toD.value) parts.push(`${E.fromD.value} → ${E.toD.value}`);
   else if(E.fromD.value) parts.push(`From ${E.fromD.value}`);
@@ -919,15 +936,17 @@ function rPill(r){
 }
 function mc(v,ex){return(!v&&!ex)?'mm':'';}
 function renderTable(rows){
-  if(!rows.length){E.tbody.innerHTML=`<tr><td colspan="22" class="emp">No rows match the current filters.</td></tr>`;return;}
+  if(!rows.length){E.tbody.innerHTML=`<tr><td colspan="23" class="emp">No rows match the current filters.</td></tr>`;return;}
   E.tbody.innerHTML=rows.map(r=>{
     const rc=r.fRes==='Corrected'?'rc':r.fRes==='Error'?'re':r.excA?'rx':'rm';
     const act=r.fRes==='Corrected'
       ?`<button class="abtn dn" disabled>✓ Corrected</button>`
       :r.vRes==='Error'
-      ?`<button class="abtn mk" data-cid="${esc(r.rowId)}">Correct</button>`
+      ?`<button class="abtn mk" data-cid="${esc(r.rowId)}">✓ Correct</button>`
       :`<span style="color:var(--text3)">—</span>`;
     return `<tr class="${rc}">
+      <td class="mn" style="color:var(--text3)">${esc(r.srcRow)}</td>
+      <td class="ticket-col"><strong>${esc(r.ticket)}</strong></td>
       <td>${esc(r.type)}</td>
       <td style="font-size:11px;color:var(--text2)">${esc(r.company)}</td>
       <td class="mn">${esc(r.filterDate)}</td>
@@ -940,8 +959,6 @@ function renderTable(rows){
       <td class="${mc(r.nVal,false)}">${esc(r.fnFEN)}</td>
       <td class="mn ${mc(r.dVal,r.dExc)}">${esc(r.fnSD)}</td>
       <td class="mn ${mc(r.tVal,r.tExc)}">${esc(r.fnST)}</td>
-      <td><span class="ticket-copy" title="Select and copy ticket number">${esc(r.ticket)}</span></td>
-      <td>${act}</td>
       <td>${r.sOk?pill('ok','OK'):pill('er','Error')}</td>
       <td>${r.dVal?pill(r.dExc?'wn':'ok',r.dExc?'ITD':'OK'):pill('er','Error')}</td>
       <td>${r.tVal?pill(r.tExc?'wn':'ok',r.tExc?r.type:'OK'):pill('er','Error')}</td>
@@ -949,18 +966,11 @@ function renderTable(rows){
       <td>${r.excA?pill('wn',r.excT):'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
       <td>${rPill(r)}</td>
       <td class="dcl2">${esc(r.det)}</td>
-      <td class="ncl"><textarea class="note-input" data-noteid="${esc(r.rowId)}" placeholder="Add note…">${esc(r.trk.note||'')}</textarea></td>
+      <td class="ncl">${esc(r.note)}</td>
+      <td>${act}</td>
     </tr>`;
   }).join('');
 }
-function updateNote(id,value){
-  const r=S.raw.find(x=>x.rowId===id);
-  if(!r) return;
-  r.trk.note=value;
-  r.note=value;
-  saveState();
-}
-
 
 /* ═══ CORRECTION ══════════════════════════════════════════════ */
 function markCorrected(id){
@@ -975,8 +985,8 @@ function sKey(){if(!S.fileMeta)return null;return `vra3:${S.fileMeta.name}:${S.f
 function saveState(){
   const k=sKey();if(!k)return;
   try{localStorage.setItem(k,JSON.stringify({
-    f:{q:E.srch.value||'',t:E.typeF.value||'all',sp:E.specD.value||'',fr:E.fromD.value||'',to:E.toD.value||'',st:E.statF.value||'all',err:E.errF?E.errF.value:'all',sort:E.sortDateF?E.sortDateF.value:'none'},
-    trk:S.raw.reduce((a,r)=>{if(r.trk.correctedMarked || (r.trk.note||'').trim())a[r.rowId]=r.trk;return a;},{}),
+    f:{q:E.srch.value||'',t:E.typeF.value||'all',sp:E.specD.value||'',fr:E.fromD.value||'',to:E.toD.value||'',st:E.statF.value||'all',et:(E.errTypeF&&E.errTypeF.value)||'all',sd:(E.sortD&&E.sortD.value)||'oldest'},
+    trk:S.raw.reduce((a,r)=>{if(r.trk.correctedMarked)a[r.rowId]=r.trk;return a;},{}),
   }));}catch(_){}
 }
 function loadState(){
@@ -986,8 +996,102 @@ function loadState(){
     const p=JSON.parse(raw);
     S.raw.forEach(r=>{r.trk=p.trk?.[r.rowId]?{...defTrk(),...p.trk[r.rowId]}:defTrk();recomp(r);});
     E.srch.value=p.f?.q||'';E.typeF.value=p.f?.t||'all';E.specD.value=p.f?.sp||'';
-    E.fromD.value=p.f?.fr||'';E.toD.value=p.f?.to||'';E.statF.value=p.f?.st||'all';if(E.errF)E.errF.value=p.f?.err||'all';if(E.sortDateF)E.sortDateF.value=p.f?.sort||'none';
+    E.fromD.value=p.f?.fr||'';E.toD.value=p.f?.to||'';E.statF.value=p.f?.st||'all';
+    if(E.errTypeF) E.errTypeF.value=p.f?.et||'all';
+    if(E.sortD) E.sortD.value=p.f?.sd||'oldest';
   }catch(_){}
+}
+
+
+/* ═══ FULL EXCEL EXPORT — ALL AUDIT ROWS ══════════════════════
+   Always exports the full generated audit dataset, not only visible rows.
+   Includes summary, open errors, corrected rows, and the current filter view.
+   ════════════════════════════════════════════════════════════ */
+function exportFullExcel(){
+  if(!S.raw.length){ showBan('Generate or upload an audit report first.'); return; }
+  if(typeof XLSX==='undefined'){ showBan('SheetJS failed to load. Excel export is unavailable.'); return; }
+
+  const safeSheetName = n => String(n).replace(/[\\/?*\[\]:]/g,' ').slice(0,31) || 'Sheet';
+  const checkTxt = (ok, exc, excLabel) => ok ? (exc ? `Exception - ${excLabel || ''}`.trim() : 'OK') : 'Error';
+  const auditHeaders = [
+    'Ticket Number','Source Row','Ticket Type','Assigned Company','Filter Date',
+    'Inside Edge & FN Status','Inside Edge FE Name','Inside Edge Due Date','Inside Edge Due Time','Inside Edge Scheduled Date','Inside Edge Scheduled Time',
+    'FN Status','FN FE Name','FN Scheduled Date','FN Scheduled Time',
+    'Status Check','Date Check','Time Check','Name Check','Exception','Validation Result','Error Type / Details','Correction Note','Corrected','Corrected At'
+  ];
+  const auditRow = r => [
+    r.ticket,r.srcRow,r.type,r.company,r.filterDate,
+    r.ieFnStatus,r.ieFEN,r.ieDueDate,r.ieDueTime,r.ieSD,r.ieST,
+    r.fnStatus,r.fnFEN,r.fnSD,r.fnST,
+    r.sOk ? 'OK' : 'Error',
+    checkTxt(r.dVal,r.dExc,'ITD Date'),
+    checkTxt(r.tVal,r.tExc,`${r.type || ''} Time`),
+    r.nVal ? 'OK' : 'Error',
+    r.excA ? r.excT : '',
+    r.fRes,r.det,r.note,
+    r.trk && r.trk.correctedMarked ? 'Yes' : 'No',
+    r.trk && r.trk.correctedAt ? r.trk.correctedAt : ''
+  ];
+
+  const allRows = S.raw;
+  const filteredRows = S.filtered && S.filtered.length ? S.filtered : [];
+  const errorRows = allRows.filter(r => r.fRes === 'Error');
+  const correctedRows = allRows.filter(r => r.fRes === 'Corrected');
+  const matchedRows = allRows.filter(r => r.fRes === 'Matched');
+  const exceptionRows = allRows.filter(r => r.excA);
+  const sAll = calcStats(allRows);
+  const sFiltered = calcStats(S.filtered || []);
+
+  const wb = XLSX.utils.book_new();
+  const summaryAoA = [
+    ['Validation Report 0001 — Full Excel Export'],
+    ['Exported At', nowStr()],
+    ['Source File', S.fileMeta ? S.fileMeta.name : 'Multi-File Validation'],
+    ['Active Filters', activeFilterSummary()],
+    [],
+    ['Metric','All Tickets','Current Filter View'],
+    ['Total Tickets', sAll.n, sFiltered.n],
+    ['Matched', sAll.m, sFiltered.m],
+    ['Corrected', sAll.c, sFiltered.c],
+    ['Open Errors', sAll.e, sFiltered.e],
+    ['Exceptions', sAll.x, sFiltered.x],
+    ['Completion %', sAll.cp, sFiltered.cp],
+    ['Status Errors', sAll.se, sFiltered.se],
+    ['Date Errors', sAll.de, sFiltered.de],
+    ['Time Errors', sAll.te, sFiltered.te],
+    ['Name Errors', sAll.ne, sFiltered.ne],
+    [],
+    ['Export Notes'],
+    ['Full Audit Data includes all generated tickets, even when UI filters are active.'],
+    ['Current Filter View is included as a separate sheet for review convenience.']
+  ];
+
+  const appendAoA = (name, aoa, widths) => {
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!freeze'] = {xSplit:0,ySplit:1};
+    ws['!autofilter'] = {ref:XLSX.utils.encode_range(XLSX.utils.decode_range(ws['!ref'] || 'A1:A1'))};
+    ws['!cols'] = (widths || []).map(w => ({wch:w}));
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+    for(let C=range.s.c; C<=range.e.c; C++){
+      const cell = ws[XLSX.utils.encode_cell({r:0,c:C})];
+      if(cell) cell.s = {font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'0F172A'}},alignment:{horizontal:'center',vertical:'center'}};
+    }
+    XLSX.utils.book_append_sheet(wb, ws, safeSheetName(name));
+    return ws;
+  };
+
+  const auditWidths = [18,10,12,20,13,22,22,15,15,18,18,14,22,16,16,14,14,14,14,18,18,34,26,11,22];
+  appendAoA('Summary', summaryAoA, [34,18,18]);
+  appendAoA('Full Audit Data', [auditHeaders, ...allRows.map(auditRow)], auditWidths);
+  appendAoA('Open Errors', [auditHeaders, ...errorRows.map(auditRow)], auditWidths);
+  appendAoA('Corrected', [auditHeaders, ...correctedRows.map(auditRow)], auditWidths);
+  appendAoA('Matched', [auditHeaders, ...matchedRows.map(auditRow)], auditWidths);
+  appendAoA('Exceptions', [auditHeaders, ...exceptionRows.map(auditRow)], auditWidths);
+  if(filteredRows.length || hasActiveFilters()) appendAoA('Current Filter View', [auditHeaders, ...filteredRows.map(auditRow)], auditWidths);
+
+  const fname = 'Dispatch_Hub_Audit_Full_Export_' + stamp() + '.xlsx';
+  XLSX.writeFile(wb, fname);
+  showBan('📊 Full Excel exported: ' + fname, 'warn');
 }
 
 /* ═══ EXPORT — MANAGEMENT PDF ════════════════════════════════
@@ -1260,8 +1364,8 @@ async function exportPDF(){
     doc.setFont('helvetica','normal');
     doc.setFontSize(6.5);
     doc.setTextColor(...C.mid);
-    doc.text('KPI cards above reflect ALL tickets within this period, regardless of status filter.',PW-M-98,Y+7);
-    doc.text(`UI status filter "${E.statF.value||'all'}" and type filter "${E.typeF.value||'all'}" affect the anomaly table (page 2) only.`,PW-M-98,Y+13);
+    doc.text('KPI cards, charts, and detail table reflect the current filter view.',PW-M-98,Y+7);
+    doc.text(`Current scope: ${filterLabel}`,PW-M-98,Y+13);
 
     Y+=24;
 
@@ -1286,23 +1390,23 @@ async function exportPDF(){
     doc.setFont('helvetica','normal');
     doc.setFontSize(8);
     doc.setTextColor(...C.mid);
-    // Use filteredRows for the table — anomalies in the currently filtered view
-    const anomalyRows=filteredRows.filter(r=>r.fRes!=='Matched'||(r.excA&&r.fRes==='Matched'));
+    // Use the exact current filtered + sorted view for the table.
+    // This makes Export Management PDF match the selected filters and Sort Date control.
+    const detailRows=filteredRows.slice();
     const filterBanner = hasAnyFilter ? `Filters: ${filterLabel}` : 'Scope: All Data (no filters)';
-    doc.text(`${filterBanner}  |  ${anomalyRows.length} anomalies out of ${filteredRows.length} filtered tickets.`,M,Y);
+    doc.text(`${filterBanner}  |  Exporting ${detailRows.length} of ${fullDataset.length} tickets in current sorted view.`,M,Y);
     Y+=8;
 
     // Table header
     const cols=[
-      {label:'Ticket',    w:24},
-      {label:'Type',      w:12},
-      {label:'IE Due Date',w:22},
-      {label:'FN Date',   w:22},
-      {label:'IE Name',   w:27},
-      {label:'FN Name',   w:27},
-      {label:'Result',    w:20},
-      {label:'Details',   w:28},
-      {label:'Note',      w:CW-24-12-22-22-27-27-20-28},
+      {label:'Ticket',    w:28},
+      {label:'Type',      w:14},
+      {label:'Inside Edge Due Date',w:26},
+      {label:'FN Date',   w:26},
+      {label:'IE Name',   w:32},
+      {label:'FN Name',   w:32},
+      {label:'Result',    w:22},
+      {label:'Details',   w:CW-28-14-26-26-32-32-22},
     ];
     const tableX=M;
     const rowH=7.5;
@@ -1325,15 +1429,15 @@ async function exportPDF(){
     doc.setFont('helvetica','normal');
     doc.setFontSize(6.5);
 
-    if(!anomalyRows.length){
+    if(!detailRows.length){
       doc.setFillColor(...C.bg);
       doc.rect(tableX,Y,CW,10,'F');
       doc.setTextColor(...C.mid);
-      doc.text('No anomalies found in current filter view — all tickets matched.',tableX+4,Y+6.5);
+      doc.text('No rows found in current filter view.',tableX+4,Y+6.5);
       Y+=10;
     }
 
-    anomalyRows.forEach((r,idx)=>{
+    detailRows.forEach((r,idx)=>{
       // Page break check
       if(Y>PH-20){
         doc.addPage();
@@ -1408,14 +1512,8 @@ async function exportPDF(){
 
       // Details (truncated)
       doc.setTextColor(...C.mid);
-      const detStr=String(r.det||'').substring(0,28);
+      const detStr=String(r.det||'').substring(0,52);
       doc.text(detStr,rx,Y+5);
-      rx+=cols[7].w;
-
-      // User note from the editable Note column
-      const noteStr=String(r.trk?.note||r.note||'').substring(0,22);
-      doc.setTextColor(...C.dark);
-      doc.text(noteStr,rx,Y+5);
 
       Y+=rowH;
     });
@@ -1472,7 +1570,7 @@ async function exportPDF(){
 /* ═══ SELF-TEST ════════════════════════════════════════════════ */
 function selfTest(){
   const iss=[];
-  if(typeof XLSX==='undefined') iss.push('SheetJS not loaded — Excel files cannot be processed');
+  if(typeof XLSX==='undefined') iss.push('SheetJS not loaded — Excel files/export will not work');
   if(typeof Chart==='undefined') iss.push('Chart.js not loaded — charts will not render');
   if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined') iss.push('jsPDF not loaded — PDF export will not work');
   if(typeof html2canvas==='undefined') iss.push('html2canvas not loaded — chart images in PDF unavailable');
@@ -1494,12 +1592,12 @@ function bindAll(){
   dz.addEventListener('drop',ev=>{ev.preventDefault();dz.classList.remove('dr');const f=ev.dataTransfer.files?.[0];if(f)handleWB(f);});
   $('applyBtn').addEventListener('click',applyFilters);
   $('clearBtn').addEventListener('click',clearF);
+  $('excelBtn').addEventListener('click',exportFullExcel);
   $('pdfBtn').addEventListener('click',exportPDF);
-  ['srch','typeF','statF','errF','sortDateF','specD','fromD','toD'].forEach(id=>{
+  ['srch','typeF','statF','errTypeF','sortD','specD','fromD','toD'].forEach(id=>{
     $(id).addEventListener('input',applyFilters);$(id).addEventListener('change',applyFilters);
   });
   E.tbody.addEventListener('click',ev=>{const b=ev.target.closest('[data-cid]');if(b)markCorrected(b.getAttribute('data-cid'));});
-  E.tbody.addEventListener('input',ev=>{const n=ev.target.closest('[data-noteid]');if(n)updateNote(n.getAttribute('data-noteid'),n.value);});
   window.addEventListener('error',ev=>{console.error('[VRA]',ev.error||ev.message);showBan(`Error: ${ev.message||'Unknown'}`);});
   window.addEventListener('unhandledrejection',ev=>{console.error('[VRA]',ev.reason);showBan(`Async error: ${ev.reason?.message||ev.reason||'Unknown'}`);});
 
@@ -1844,31 +1942,26 @@ function mfSplitDateTime(v){
   if(v==null || v==='') return {date:'', time:''};
   return { date: mfParseDate(v), time: mfParseTime(v) };
 }
-function mfExcelSerialFromYMD(ymdStr){
-  // Return Excel date serial as a plain number, not a JS Date object.
-  // This prevents browser timezone shifts in exported Excel files.
-  const s = String(ymdStr || '').trim();
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if(!m) return '';
-  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
-  const utc = Date.UTC(y, mo - 1, d);
-  const epoch = Date.UTC(1899, 11, 31);
-  let serial = Math.floor((utc - epoch) / 86400000);
-  if(serial >= 60) serial += 1; // Excel 1900 leap-year bug
-  return serial;
-}
 function mfDateOnlyValue(v){
   if(v==null || v==='') return '';
+  if(typeof v === 'number' && Number.isFinite(v)){
+    const d = mfSerialDateYMD(v);
+    if(!d) return '';
+    const parts = d.split('-').map(Number);
+    return new Date(parts[0], parts[1]-1, parts[2]);
+  }
+  if(v instanceof Date && !isNaN(v)) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
   const d = mfParseDate(v);
-  return d ? mfExcelSerialFromYMD(d) : '';
+  if(!d) return '';
+  const parts = d.split('-').map(Number);
+  return new Date(parts[0], parts[1]-1, parts[2]);
 }
 function mfTimeOnlyValue(v){
   if(v==null || v==='') return '';
   const t = mfParseTime(v);
   if(!t) return '';
   const parts = t.split(':').map(Number);
-  const h = parts[0] || 0, m = parts[1] || 0;
-  return ((h * 60) + m) / 1440;
+  return new Date(1899, 11, 30, parts[0] || 0, parts[1] || 0, 0);
 }
 function mfExcelDate(v){ return mfDateOnlyValue(v); }
 function mfExcelTime(v){ return mfTimeOnlyValue(v); }
@@ -1948,8 +2041,7 @@ function mfStatusStyle(v){
   return null;
 }
 function mfMasterColumnWidths(){
-  // Wider date/time columns prevent Excel from showing hashed values (#####).
-  return [9.2,9,10.2,10.2,10.5,6.2,8,12.5,12.5,12.5,12.5,5.4,12.5,21.8,13.2,47.7,9.8,9.8,12.5,12.5,12.5,12.5,9.2,19.5,9.3,9.8,9.8,9.8,9.8,9.3,9.3,37,18.5,11.2,9.5,37,18.5,11.2,10.7];
+  return [9.2,9,10.2,10.2,10.5,6.2,8,8.8,8.8,9.7,9.7,5.4,12.5,21.8,13.2,47.7,9.8,9.8,9.3,9.3,9.3,9.3,9.2,19.5,9.3,9.8,9.8,9.8,9.8,9.3,9.3,37,18.5,11.2,9.5,37,18.5,11.2,10.7];
 }
 function mfApplyMasterReportFormat(ws, isFormula){
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
