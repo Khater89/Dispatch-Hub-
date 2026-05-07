@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Validation Report 0001 — Excel Auditor</title>
+  <!-- PDF Detail Error Type Column Added -->
+  <!-- Final Combined Update: PDF Result + Correct column between FN and Validation -->
+  <!-- PDF Result Update: title/file name changed; corrected error types shown in existing PDF details table -->
   <meta name="description" content="IE vs Field Nation side-by-side audit. Upload Excel, review mismatches, track corrections, export." />
 
   <!--
@@ -531,13 +534,15 @@
             <th class="gc" colspan="5">Core</th>
             <th class="gi" colspan="5">Inside Edge</th>
             <th class="gf" colspan="4">Field Nation (FN)</th>
-            <th class="gv" colspan="9">Validation &amp; Tracking</th>
+            <th class="gc" colspan="1">Correct</th>
+            <th class="gv" colspan="8">Validation &amp; Tracking</th>
           </tr>
           <tr class="cr">
             <th>Row#</th><th class="ticket-col">Ticket</th><th>Type</th><th>Company</th><th>Filter Date</th>
             <th>Inside Edge &amp; FN Status</th><th>Inside Edge FE Name</th><th>Inside Edge Due Date</th><th>Inside Edge Due Time</th><th>Inside Edge Scheduled</th>
             <th>FN Status</th><th>FN FE Name</th><th>FN Sched. Date</th><th>FN Sched. Time</th>
-            <th>Status✓</th><th>Date✓</th><th>Time✓</th><th>Name✓</th><th>Exception</th><th>Result</th><th>Details</th><th>Note</th><th>Action</th>
+            <th>Action</th>
+            <th>Status✓</th><th>Date✓</th><th>Time✓</th><th>Name✓</th><th>Exception</th><th>Result</th><th>Details</th><th>Note</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -959,6 +964,7 @@ function renderTable(rows){
       <td class="${mc(r.nVal,false)}">${esc(r.fnFEN)}</td>
       <td class="mn ${mc(r.dVal,r.dExc)}">${esc(r.fnSD)}</td>
       <td class="mn ${mc(r.tVal,r.tExc)}">${esc(r.fnST)}</td>
+      <td>${act}</td>
       <td>${r.sOk?pill('ok','OK'):pill('er','Error')}</td>
       <td>${r.dVal?pill(r.dExc?'wn':'ok',r.dExc?'ITD':'OK'):pill('er','Error')}</td>
       <td>${r.tVal?pill(r.tExc?'wn':'ok',r.tExc?r.type:'OK'):pill('er','Error')}</td>
@@ -967,7 +973,6 @@ function renderTable(rows){
       <td>${rPill(r)}</td>
       <td class="dcl2">${esc(r.det)}</td>
       <td class="ncl">${esc(r.note)}</td>
-      <td>${act}</td>
     </tr>`;
   }).join('');
 }
@@ -1122,6 +1127,19 @@ function roundRect(doc,x,y,w,h,r,fill,stroke){
   doc.roundedRect(x,y,w,h,r,r,fill&&stroke?'FD':fill?'F':stroke?'D':'S');
 }
 
+
+function pdfErrorTypeSummary(r){
+  const parts = [];
+  if(!r.sOk) parts.push('Status');
+  if(!r.dVal) parts.push('Date');
+  if(!r.tVal) parts.push('Time');
+  if(!r.nVal) parts.push('Name');
+  if(r.excA) parts.push('Exception: ' + (r.excT || 'ITD/ITR'));
+  if(!parts.length && r.fRes === 'Corrected') parts.push('Corrected');
+  if(!parts.length) parts.push('Matched');
+  return parts.join(', ');
+}
+
 async function exportPDF(){
   if(!S.raw.length){ showBan('Upload a file first.'); return; }
   if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined'){
@@ -1198,12 +1216,12 @@ async function exportPDF(){
     doc.setTextColor(...C.white);
     doc.setFont('helvetica','bold');
     doc.setFontSize(16);
-    doc.text('Data Validation & Audit Summary',M+2,11);
+    doc.text('Validation Report Result',M+2,11);
 
     doc.setFont('helvetica','normal');
     doc.setFontSize(8);
     doc.setTextColor(...C.light);
-    doc.text('Field Nation  ×  Internal Entity — Management Report',M+2,17.5);
+    doc.text('Field Nation  ×  Inside Edge Entity — Validation Report Result',M+2,17.5);
     doc.text(`Generated: ${now}  |  Period: ${periodLabel}  |  Source: ${fname}`,M+2,22.5);
 
     // IE / FN badges (top right)
@@ -1383,7 +1401,7 @@ async function exportPDF(){
     doc.setTextColor(...C.white);
     doc.setFont('helvetica','bold');
     doc.setFontSize(13);
-    doc.text('Audit Details — Anomalies & Resolution Status',M+2,13);
+    doc.text('Validation Report Result — Errors & Corrected Items',M+2,13);
     Y=26;
 
     // Section subtitle
@@ -1394,7 +1412,7 @@ async function exportPDF(){
     // This makes Export Management PDF match the selected filters and Sort Date control.
     const detailRows=filteredRows.slice();
     const filterBanner = hasAnyFilter ? `Filters: ${filterLabel}` : 'Scope: All Data (no filters)';
-    doc.text(`${filterBanner}  |  Exporting ${detailRows.length} of ${fullDataset.length} tickets in current sorted view.`,M,Y);
+    doc.text(`${filterBanner}  |  Exporting ${detailRows.length} tickets, including open errors, exceptions, matched, and corrected items.`,M,Y);
     Y+=8;
 
     // Table header
@@ -1405,8 +1423,9 @@ async function exportPDF(){
       {label:'FN Date',   w:26},
       {label:'IE Name',   w:32},
       {label:'FN Name',   w:32},
-      {label:'Result',    w:22},
-      {label:'Details',   w:CW-28-14-26-26-32-32-22},
+      {label:'Result',    w:20},
+      {label:'Error Type',w:24},
+      {label:'Details',   w:CW-28-14-26-26-32-32-20-24},
     ];
     const tableX=M;
     const rowH=7.5;
@@ -1510,9 +1529,15 @@ async function exportPDF(){
       doc.setFontSize(6.5);
       rx+=cols[6].w;
 
+      // Error Type column
+      doc.setTextColor(...C.mid);
+      const errTypeStr=String(pdfErrorTypeSummary(r)||'').substring(0,18);
+      doc.text(errTypeStr,rx,Y+5);
+      rx+=cols[7].w;
+
       // Details (truncated)
       doc.setTextColor(...C.mid);
-      const detStr=String(r.det||'').substring(0,52);
+      const detStr=String(`${r.det||''}${r.fRes==='Corrected' ? ' | ' + (r.note||'Corrected') : ''}`).substring(0,42);
       doc.text(detStr,rx,Y+5);
 
       Y+=rowH;
@@ -1551,12 +1576,12 @@ async function exportPDF(){
       doc.setFont('helvetica','normal');
       doc.setFontSize(6.5);
       doc.setTextColor(...C.light);
-      doc.text(`Validation Report 0001  |  Field Nation × Internal Entity Audit  |  ${now}`,M,PH-4.5);
+      doc.text(`Validation Report Result  |  Field Nation × Internal Entity Audit  |  ${now}`,M,PH-4.5);
       doc.text(`Page ${pg} of ${pgCount}`,PW-M-16,PH-4.5);
     }
 
     // ── SAVE ─────────────────────────────────────────
-    doc.save(`management_audit_report_${stamp()}.pdf`);
+    doc.save(`validation_report_result_${stamp()}.pdf`);
 
   } catch(err){
     console.error('[VRA PDF]',err);
