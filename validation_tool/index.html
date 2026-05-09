@@ -1780,7 +1780,7 @@ function mfUpdateGenBtn(){
   const ready = MF.ie.rows && MF.ie2.rows && MF.fn.rows;
   $('mfGenBtn').disabled = !ready;
   $('mfHint').textContent = ready
-    ? 'All three files loaded. Click Generate. Only tickets existing in both Inside Edge and Field Nation will be counted.'
+    ? 'All three files loaded. Click Generate. Software view will show only tickets where Assigned Company = Field Nation. Export Master Excel remains unchanged.'
     : `Upload ${['ie','ie2','fn'].filter(k=>!MF[k].rows).length} more file(s) to enable generation.`;
 }
 
@@ -2318,7 +2318,8 @@ function mfGenerateReport(){
 
   // Export scope must match the original/manual Master count:
   // one Report row for every Inside Edge ticket row with a ticket number.
-  // Dashboard/software view remains optimized: shared Field Nation tickets only.
+  // Dashboard/software view shows Assigned Company = Field Nation tickets only.
+  // IMPORTANT: Do not require a FN Report match for UI visibility.
   for(let ieIndex = 0; ieIndex < ieRows.length; ieIndex++){
     const ie = ieRows[ieIndex];
     const ticket = mfPickField(ie, ['Tkt Num','Ticket','Ticket Number']);
@@ -2334,9 +2335,10 @@ function mfGenerateReport(){
     masterRows.push(built.values);
     masterFormulaIeRows.push(excelIeRow);
 
-    // Software/Dashboard: shared Field Nation tickets only.
+    // Software/Dashboard: show only rows assigned to Field Nation.
+    // Do NOT require the ticket to exist in FN Report.
     if(!m.isFN){ skippedNonFN++; continue; }
-    if(!m.hasFN){ skippedNoFNMatch++; continue; }
+    if(!m.hasFN){ skippedNoFNMatch++; }
 
     dashboardMasterRows.push(built.values);
     dashboardFormulaIeRows.push(excelIeRow);
@@ -2369,7 +2371,7 @@ function mfGenerateReport(){
 
   const errCount = out.filter(r=>r.fRes==='Error').length;
   const excCount = out.filter(r=>r.excA).length;
-  showBan('✅ Dashboard generated ' + out.length.toLocaleString() + ' shared tickets only. Excel export will include all ' + masterRows.length.toLocaleString() + ' Inside Edge ticket rows to match the original/manual source count. Skipped from dashboard: ' + skippedNonFN.toLocaleString() + ' non-Field-Nation rows, ' + skippedNoFNMatch.toLocaleString() + ' IE tickets not found in FN. ' + errCount + ' errors, ' + excCount + ' ITD/ITR exceptions.');
+  showBan('✅ Dashboard generated ' + out.length.toLocaleString() + ' Field Nation-assigned tickets only. Excel export will include all ' + masterRows.length.toLocaleString() + ' Inside Edge ticket rows to match the original/manual source count. Hidden from dashboard: ' + skippedNonFN.toLocaleString() + ' non-Field-Nation rows. Field Nation-assigned tickets not found in FN Report but still shown: ' + skippedNoFNMatch.toLocaleString() + '. ' + errCount + ' errors, ' + excCount + ' ITD/ITR exceptions.');
   setTimeout(()=>{ const el = $('dash'); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); }, 200);
 }
 
