@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Contractor by State (B–J)</title>
+  <style>
+    /* Purple + White + Blue theme */
+    :root {
+      --bg1: #f6f1ff;
+      --bg2: #eef4ff;
+      --ink: #111827;
+      --muted: #4b5563;
+      --card: rgba(255,255,255,0.88);
+      --p: #a855f7;
+      --b: #3b82f6;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 24px;
+      color: var(--ink);
+      background: linear-gradient(135deg, var(--bg1), var(--bg2));
+    }
+
+    .card {
+      max-width: 980px;
+      margin: 0 auto;
+      background: var(--card);
+      border-radius: 18px;
+      padding: 18px;
+      border: 1px solid rgba(99,102,241,0.22);
+      box-shadow: 0 14px 40px rgba(17, 24, 39, 0.08);
+      backdrop-filter: blur(6px);
+    }
+
+    h1 { margin: 0 0 6px 0; font-size: 22px; }
+    .muted { color: var(--muted); margin: 6px 0 0 0; line-height: 1.5; }
+
+    label { display:block; margin-top:14px; margin-bottom:6px; font-weight:800; }
+
+    input {
+      width:100%;
+      padding:11px 12px;
+      border-radius:12px;
+      border:1px solid rgba(168,85,247,0.32);
+      outline:none;
+      background:#fff;
+      box-sizing:border-box;
+    }
+    input:focus {
+      border-color: rgba(59,130,246,0.70);
+      box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
+    }
+
+    .row {
+      margin-top: 12px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .pill {
+      display:inline-block;
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid rgba(59,130,246,0.22);
+      background: rgba(59,130,246,0.06);
+      font-size:12px;
+      font-weight:800;
+    }
+
+    .btn {
+      display:inline-block;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(168,85,247,0.28);
+      background: linear-gradient(135deg, rgba(168,85,247,0.10), rgba(59,130,246,0.10));
+      cursor:pointer;
+      user-select:none;
+      font-weight:800;
+    }
+    .btn:hover { filter: brightness(1.03); }
+
+    .contractor-card {
+      margin-top: 14px;
+      border-radius: 18px;
+      padding: 14px;
+      background: #fff;
+      border: 1px solid rgba(168,85,247,0.18);
+      box-shadow: 0 12px 30px rgba(17, 24, 39, 0.07);
+    }
+
+    .header {
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:baseline;
+      margin-bottom: 10px;
+    }
+
+    .name {
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 0.2px;
+    }
+
+    .badge {
+      font-size: 12px;
+      font-weight: 900;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(59,130,246,0.22);
+      background: rgba(168,85,247,0.08);
+      white-space: nowrap;
+    }
+
+    .kvgrid {
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap:10px 14px;
+    }
+    @media (max-width: 860px) {
+      .kvgrid { grid-template-columns: 1fr; }
+    }
+
+    .kv {
+      border-radius: 14px;
+      border: 1px solid rgba(59,130,246,0.14);
+      border-left: 4px solid rgba(168,85,247,0.55);
+      padding: 10px;
+      background: linear-gradient(135deg, rgba(168,85,247,0.05), rgba(59,130,246,0.05));
+    }
+
+    .k { font-size: 12px; font-weight: 900; color: var(--muted); margin-bottom: 4px; }
+    .v { font-size: 14px; font-weight: 700; word-break: break-word; }
+
+    .empty {
+      margin-top: 14px;
+      border: 1px dashed rgba(59,130,246,0.35);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(255,255,255,0.75);
+    }
+
+    code {
+      background: rgba(59,130,246,0.08);
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid rgba(59,130,246,0.14);
+    }
+  </style>
+
+  <style>
+    /* Kill Chrome autofill yellow background + suppress autocomplete UI */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+      box-shadow: 0 0 0 1000px transparent inset !important;
+      transition: background-color 5000s ease-in-out 0s !important;
+      -webkit-text-fill-color: inherit !important;
+    }
+  </style>
+  <script>
+    /* Defeat Chrome autofill / address suggestions on all inputs */
+    (function(){
+      function killAutofill(){
+        var inputs = document.querySelectorAll('input');
+        inputs.forEach(function(el){
+          var t = (el.type||'text').toLowerCase();
+          if(['file','radio','checkbox','submit','button','hidden','reset'].indexOf(t)===-1){
+            if(t!=='date'&&t!=='number'){
+              el.setAttribute('autocomplete','new-password');
+            }
+            /* readonly trick: Chrome won't show suggestions on readonly fields */
+            if(!el.readOnly && !el.disabled){
+              el.setAttribute('readonly','');
+              el.addEventListener('focus',function(){
+                this.removeAttribute('readonly');
+              },{once:false});
+              el.addEventListener('blur',function(){
+                this.setAttribute('readonly','');
+              });
+            }
+          }
+        });
+      }
+      if(document.readyState==='loading'){
+        document.addEventListener('DOMContentLoaded',killAutofill);
+      } else {
+        killAutofill();
+      }
+      /* Also run after any dynamic content might be added */
+      setTimeout(killAutofill, 500);
+      setTimeout(killAutofill, 1500);
+    })();
+  </script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style id="acuative-dark-theme">
+/* ═══ ACUATIVE DARK OVERRIDE ═══ */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#060C18!important;--bg1:#060C18!important;--bg2:#0B1220!important;
+  --bg3:#111827!important;--card:#111827!important;--card2:#0f172a!important;
+  --surface:rgba(255,255,255,.05)!important;--surface2:rgba(255,255,255,.09)!important;
+  --panel:#111827!important;--panel-bg:#111827!important;
+  --text:#F1F5F9!important;--text2:#94A3B8!important;--text3:#475569!important;
+  --ink:#F1F5F9!important;--muted:#94A3B8!important;--muted2:#cbd5e1!important;
+  --border:rgba(255,255,255,.10)!important;--border2:rgba(255,255,255,.16)!important;
+  --accent:#F97316!important;--accent-rgb:249,115,22!important;
+  --primary:#F97316!important;--p:#F97316!important;--b:#F97316!important;
+  --ie:#F97316!important;--fn:#F97316!important;
+  --shadow:0 14px 40px rgba(0,0,0,.5)!important;
+  --radius:16px!important;--r:16px!important;--rsm:10px!important;
+}
+*{box-sizing:border-box}
+html,body{
+  font-family:'Syne',system-ui,sans-serif!important;
+  background:#060C18!important;
+  color:#F1F5F9!important;
+  min-height:100vh;
+}
+body{
+  background:
+    radial-gradient(900px 600px at 10% 0%,rgba(249,115,22,.08),transparent 60%),
+    radial-gradient(700px 500px at 90% 100%,rgba(249,115,22,.05),transparent 55%),
+    #060C18!important;
+}
+/* Cards & Surfaces */
+.card,.card2,.panel,.glass-card,.glass-panel,.table-wrap,
+.contractor-card,.na-card,.warn-card,.result,
+.kv,.kvgrid .kv,.tablebox,
+[class*="card"],[class*="panel"],[class*="surface"]{
+  background:rgba(17,24,39,.75)!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+  border-radius:16px!important;
+  backdrop-filter:blur(12px)!important;
+  box-shadow:0 14px 40px rgba(0,0,0,.35)!important;
+  color:#F1F5F9!important;
+}
+/* Headers */
+h1,h2,h3,h4,h5,h6{color:#F1F5F9!important}
+/* Text */
+p,span,div,label,small,.muted,.hint,.sub,.mutEd{color:inherit}
+.muted,.hint,.sub,.text-muted,[class*="muted"]{color:#94A3B8!important}
+/* Inputs */
+input,select,textarea{
+  background:rgba(15,23,42,.8)!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  color:#F1F5F9!important;
+  border-radius:12px!important;
+  font-family:'Syne',sans-serif!important;
+}
+input::placeholder,textarea::placeholder{color:#475569!important}
+input:focus,select:focus,textarea:focus{
+  border-color:#F97316!important;
+  box-shadow:0 0 0 3px rgba(249,115,22,.15)!important;
+  outline:none!important;
+}
+/* Buttons */
+button,.btn{
+  font-family:'Syne',sans-serif!important;
+  border-radius:12px!important;
+  transition:all .2s!important;
+}
+button.primary,.btn.primary,[class*="primary-btn"],[class*="btn-primary"]{
+  background:linear-gradient(135deg,#F97316,rgba(249,115,22,.7))!important;
+  border:none!important;color:#fff!important;
+  box-shadow:0 4px 16px rgba(249,115,22,.35)!important;
+}
+button.primary:hover,.btn.primary:hover{
+  box-shadow:0 8px 24px rgba(249,115,22,.5)!important;
+  transform:translateY(-1px)!important;
+}
+/* Pills & Badges */
+.pill,.badge,.tag,.count,.abtn{
+  background:rgba(249,115,22,.12)!important;
+  border:1px solid rgba(249,115,22,.25)!important;
+  color:#F97316!important;
+  border-radius:999px!important;
+}
+/* Tables */
+table{border-collapse:collapse!important}
+th{
+  background:rgba(249,115,22,.10)!important;
+  color:#F97316!important;
+  border-bottom:1px solid rgba(249,115,22,.25)!important;
+  font-family:'JetBrains Mono',monospace!important;
+  font-size:11px!important;letter-spacing:.08em!important;text-transform:uppercase!important;
+}
+td{border-bottom:1px solid rgba(255,255,255,.06)!important;color:#F1F5F9!important}
+tr:hover td{background:rgba(249,115,22,.05)!important}
+/* Top accent line */
+body::before{
+  content:'';position:fixed;top:0;left:0;right:0;height:2px;z-index:9999;
+  background:linear-gradient(90deg,#F97316,rgba(249,115,22,.3),transparent);
+  pointer-events:none;
+}
+/* Navbar/topbar */
+.top-credit,.topbar,.navbar,.header-bar,[class*="topbar"],[class*="navbar"]{
+  background:rgba(6,12,24,.85)!important;
+  border-bottom:1px solid rgba(255,255,255,.08)!important;
+  backdrop-filter:blur(16px)!important;
+}
+/* Progress bar */
+.bar,.progress-bar{background:#F97316!important}
+.progress{background:rgba(255,255,255,.08)!important}
+/* Vendor row / item rows */
+.na-item,.vendor-row,.row-item{
+  background:rgba(15,23,42,.6)!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+}
+/* Links */
+a{color:#F97316!important;text-decoration:none!important}
+a:hover{opacity:.8!important}
+/* Stat numbers */
+.svl,.stat-val,.count-big{color:#F97316!important}
+/* File upload */
+.file,.upload{
+  background:rgba(15,23,42,.6)!important;
+  border:1px dashed rgba(255,255,255,.15)!important;
+  border-radius:12px!important;
+}
+/* Select options */
+option{background:#111827!important;color:#F1F5F9!important}
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:rgba(255,255,255,.03)}
+::-webkit-scrollbar-thumb{background:rgba(249,115,22,.3);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:rgba(249,115,22,.6)}
+</style></head>
+
+<body>
+
+<style id="back-btn-style">
+.hub-back-btn {
+  position: fixed;
+  top: 14px;
+  left: 16px;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: rgba(6,12,24,.85);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 10px;
+  color: #F1F5F9;
+  font-family: 'Syne', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-decoration: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all .2s ease;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,.35);
+}
+.hub-back-btn:hover {
+  background: rgba(15,23,42,.95);
+  border-color: rgba(255,255,255,.28);
+  transform: translateX(-2px);
+  color: #fff;
+}
+.hub-back-btn svg { flex-shrink: 0; }
+</style>
+<a href="index.html" class="hub-back-btn">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 12H5M12 5l-7 7 7 7"/>
+  </svg>
+  Hub
+</a>
+
+  <div class="card">
+    <h1>Contractor by State (B–J fields)</h1>
+    <p class="muted">
+      Type or select a <strong>State short code</strong> like <code>CA</code>, <code>TX</code>, <code>NY</code>.
+      The page will list <strong>all contractor info from column B to J</strong>, exactly in the same order as the sheet.
+    </p>
+
+    <label for="stateInput">State (short code)</label>
+    <input id="stateInput" list="stateList" placeholder="Example: CA"  autocomplete="new-password"/>
+    <datalist id="stateList">
+      <option value="AK"></option>
+<option value="AL"></option>
+<option value="AR"></option>
+<option value="AZ"></option>
+<option value="BE"></option>
+<option value="CA"></option>
+<option value="CE"></option>
+<option value="CO"></option>
+<option value="CT"></option>
+<option value="DA"></option>
+<option value="DC"></option>
+<option value="DI"></option>
+<option value="EA"></option>
+<option value="ER"></option>
+<option value="ES"></option>
+<option value="FL"></option>
+<option value="GA"></option>
+<option value="HE"></option>
+<option value="HI"></option>
+<option value="IA"></option>
+<option value="ID"></option>
+<option value="IL"></option>
+<option value="IO"></option>
+<option value="IS"></option>
+<option value="KS"></option>
+<option value="KY"></option>
+<option value="LA"></option>
+<option value="LE"></option>
+<option value="LI"></option>
+<option value="MA"></option>
+<option value="MD"></option>
+<option value="ME"></option>
+<option value="MI"></option>
+<option value="MN"></option>
+<option value="MO"></option>
+<option value="MS"></option>
+<option value="NA"></option>
+<option value="NB"></option>
+<option value="NC"></option>
+<option value="ND"></option>
+<option value="NG"></option>
+<option value="NH"></option>
+<option value="NJ"></option>
+<option value="NO"></option>
+<option value="NV"></option>
+<option value="NY"></option>
+<option value="OH"></option>
+<option value="OK"></option>
+<option value="PA"></option>
+<option value="PI"></option>
+<option value="PR"></option>
+<option value="PU"></option>
+<option value="RE"></option>
+<option value="RG"></option>
+<option value="RI"></option>
+<option value="RN"></option>
+<option value="RR"></option>
+<option value="RT"></option>
+<option value="SB"></option>
+<option value="SC"></option>
+<option value="SD"></option>
+<option value="SE"></option>
+<option value="SI"></option>
+<option value="SO"></option>
+<option value="ST"></option>
+<option value="SU"></option>
+<option value="TE"></option>
+<option value="TI"></option>
+<option value="TN"></option>
+<option value="TX"></option>
+<option value="UR"></option>
+<option value="US"></option>
+<option value="UT"></option>
+<option value="VA"></option>
+<option value="VI"></option>
+<option value="VT"></option>
+<option value="WA"></option>
+<option value="WE"></option>
+<option value="WI"></option>
+<option value="WV"></option>
+<option value="XA"></option>
+<option value="XI"></option>
+    </datalist>
+
+    <div class="row">
+      <div class="pill" id="countPill">0 contractors</div>
+      <div class="btn" id="clearBtn">Clear</div>
+    </div>
+
+    <div id="results"></div>
+
+    <p class="muted" style="margin-top:16px;">
+      Match rule: your input must appear inside <code>States Covered</code> as a token (so <code>CA</code> matches "AK, NV, CA").
+    </p>
+  </div>
+
+  <script>
+    // Data (ONLY columns B–J)
+    const ROWS = [{"contractor_firm_name": "A&A General LLC", "tech_id": "13163", "states_covered": "AK", "company_location": "Palmer, AK", "phone": "907-715-8947", "poc": "Amy Kurka  907-715-8947\nChristian Kurka 719-551-8720", "email": "aandageneral@gmail.com", "coverage_remarks": "Alaska", "standard_pricing": "$80/hr per tech, 2 hour minimum"}, {"contractor_firm_name": "SCOTTYS SHOP", "tech_id": "14467", "states_covered": "AK", "company_location": "ANCHORAGE, AK", "phone": "907-885-7700", "poc": "Scott Rees  907-885-7700", "email": "reesinalaska@gmail.com", "coverage_remarks": "Alaska", "standard_pricing": "$75/hr."}, {"contractor_firm_name": "Advent Communication Systems", "tech_id": "12975", "states_covered": "PA", "company_location": "Washington, PA", "phone": "Main#: 724-916-2500", "poc": "Ken Eglberger  724-916-2502 or Joyce Lemley 724-916-2527", "email": "Xkeglberger@adventcom.com or jlemley@adventcom.com", "coverage_remarks": "PA - Pittsburgh area", "standard_pricing": "CM/Definity $180/hr, IP Office $120/hr., Merlin $120/hr, Partner $95/hr, Nortel $120/hr, Nortel CS1000 $180/hr, Wiring $75/hr, Fiber $90/hr., Paging $80/hr., Blue Wave $120/hr, Product Management $120/hr, Life Size Video Conf $120/hr, PRI/TI cut-over $120/hr.   NOTE: On Site Labor is billed at 1 hr minimum.  On Site service orders carry a $75.00/hr trip charge."}, {"contractor_firm_name": "Allstar Communications", "tech_id": "11960", "states_covered": "AK, NV, CA", "company_location": "Anchorage, AK & Las Vegas,  NV", "phone": "Office:  907-770-5720; Janet Fischer AK cell 907-250-5811, NV cell 702-825-1954; Kandice Pytrysson 610-451-8040 PA Cell, 702-825-0310 NV cell.    Kelly Fisher mobile: 907-717-3992", "poc": "Janet Fischer 907-770-5720-907-250-5811:   Kelly Fisher mobile: 907-717-3992", "email": "service@allstar-alaska.com      jfischer@allstar-alaska.com", "coverage_remarks": "Anchorage,  Wasilla  and state of AK .  Also has office and techs in Las Vegas, NV. CA AREAS  Los Angeles, San Diego, Ventura, and Barstow/Victorville areas", "standard_pricing": "75.00 an hr  4 hr lead time (Alaska pricing)  $45/hr Vegas Pricing  PLUS $25 trip charge PER TECH.   Remit to Address as of 5/15/17:  Allstar Advantage, Inc., 2121 W. Imperial Hwy, Ste E-467, La Habra, CA  90631"}, {"contractor_firm_name": "All State Communications", "tech_id": "13191", "states_covered": "MN, ND, SD, Northern Iowa & Western Wisconsin", "company_location": "Sauk Rapids, MN", "phone": "320-203-1511", "poc": "Craig Dahlke at 612-619-8946", "email": "craig.dahlke@allstatecom.com", "coverage_remarks": "MN, ND, SD, Northern Iowa & Western Wisconsin", "standard_pricing": "Voice/Date - $66/hr        Fire/Video Install - $85/hr       Fire/Video Programming  - $100 /hr"}, {"contractor_firm_name": "Allied Technology Consulting Group", "tech_id": "13216", "states_covered": "PR & US Virgin Islands", "company_location": "Bayamon, PR 00960", "phone": "Main: 787-705-0555", "poc": "Acuative Contact - \nAngie Stefany Gonzalez - 787-918-0555 X213; sgonzalez@alliedtechpr.com\nRonald Martinez - rmartinez@alliedtechpr.com 787-918-0555 (Director)\nManuel Miranda 787-649-8710\nLeticia Perez <lperez@alliedtechpr.com> - \nAfter Hours call main line 787-705-0555 to reach on call technician", "email": "tickets@alliedtechpr.com \nAngie Stefany Gonzalez Peralta <sgonzalez@alliedtechpr.com>\nRonald Martinez <rmartinez@alliedtechpr.com>\nManuel Miranda <mmiranda@alliedtechpr.com>\nLeticia Perez <lperez@alliedtechpr.com>\nacuative@alliedtechpr.com", "coverage_remarks": "PR, US Virgin Islands", "standard_pricing": "M-F 9 a.m. - 6 p.m. NBH: $65/hr plus $40/hr for travel outside of 15 mile radius"}, {"contractor_firm_name": "Applied Communications Grp, Inc.", "tech_id": "11325", "states_covered": "IL", "company_location": "Roselle IL", "phone": "630-529-1020", "poc": "", "email": "ccozza@getacg.com mmellahn@getacg.com", "coverage_remarks": "IL  Lead time 48 hrs.  Reg Working Hours 7 to 3:30 PM (Avail for off Peak hrs IBEW Local 701, 134,150,461,364", "standard_pricing": "Journeman $78.50 hr.: Forman Labor Travel $78.00 hr: Eme or off shifts hrs $114.75 Auto Surchaarge $15.00 2 hr Minimum on ea dispatch call."}, {"contractor_firm_name": "Bombard Electric", "tech_id": "", "states_covered": "", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "", "standard_pricing": ""}, {"contractor_firm_name": "Boise Networks--when dispatching for Cisco, review Cisco UCS tab", "tech_id": "11762", "states_covered": "ID", "company_location": "Boise, ID", "phone": "208-514-4030 - Office\n208-863-6013 - Cell", "poc": "David Feller: 208-514-4030 office/ 208-863-6013 cell", "email": "david@boisenetworks.net & operations@boisenetworks.net", "coverage_remarks": "TRIP charge of $45 is the current standard for the local area (Boise, Meridian, Nampa, Caldwell, Eagle, Garden City).  For any dispatches outside of the area, the trip charge will be based primarily on travel time and any extended trip expenses such as hotels if overnights are needed.", "standard_pricing": "Normal Business Hours (M-F, 8am - 5pm, no holidays): $65\nPLUS $45 trip charge."}, {"contractor_firm_name": "CaTech Systems Ltd.", "tech_id": "12143", "states_covered": "Canada", "company_location": "CANADA/Markham, Ontario", "phone": "", "poc": "Main Number: 905-944-0000 or 1-800-267-1919                                                Thomas Kesteven                                                   p: 905-305-4191\nc: 905-621-8669\ne: tkesteven@catech-systems.com", "email": "Send request for dispatch to:    serviceaccount@catech-systems.com", "coverage_remarks": "Canada:  Offices in the following cities:  Victoria, BC; Vancouver BC; Edmonton AB, Calgary AB, Saskatoon, SK; Regina SK & Winnipeg MB; Toronto ON; Ottawa ON; London ON; Sault Ste Marie ON; Sudbury ON; Windsor ON; Montreal QC; Quebec QC; Halifax, NS; Moncton NB; Fredericton NB; Saint John NB; Bathurst NB; St John's NFLD", "standard_pricing": "See link to all pricing in premium pricing column. Admin fee and travel applies to all dispatches & hourly rates only apply after first 2 hours on site.  NOTE: for Cisco UCS Tech rates see CA Tech on the Cisco UCS tab ****NOTE: TRIP CHARGE FOR GM PLANT IN ST. CATHARINES IS $50 ONLY."}, {"contractor_firm_name": "CaTech Systems Ltd.", "tech_id": "12143", "states_covered": "Canada", "company_location": "CANADA/Markham, Ontario", "phone": "", "poc": "Damian Persaud 905-305-4162", "email": "Kellie Whittaker <kwhittaker@catech-systems.com>; smcphail@catech-systems.com", "coverage_remarks": "", "standard_pricing": "Will send quotes"}, {"contractor_firm_name": "Progressive  (Taking over for Converged)", "tech_id": "14199", "states_covered": "HI", "company_location": "Big Island (Hilo/Kona)  – (1) Tech Oahu (5) techs);", "phone": "808-845-0000", "poc": "Wendi Okano (808) 845-0000", "email": "wokano@progressive-hi.com", "coverage_remarks": "HI", "standard_pricing": "$150.00/hr NBH of 8am-4:45pm - 2 hr min.\nNO Service order fee                                     \nPlus TRAVEL\n\n$ 300.00 an hour (minimum 2 hours) for any requested needed within 48 hours of the initial request made\n\nClick-Here for Rate Chart"}, {"contractor_firm_name": "Creative Cabling Solutions Inc.", "tech_id": "12060", "states_covered": "NY, NJ", "company_location": "NY", "phone": "516-867-5577", "poc": "Peter F. Stoddard, 516-867-5577 Ext. 202 or 516-375-2060 (cell)", "email": "pstoddard@creativecablingsolutions.com", "coverage_remarks": "NY Metro Area, Long Island and New Jersey", "standard_pricing": "Cable Tech: $65/hr.  Fiber Tech: $75/hr.  Large projects priced on a per job basis. Plus Site Visit Charge of $35. Site Survey Rate: $70/hr"}, {"contractor_firm_name": "DittComm Technologies", "tech_id": "11386", "states_covered": "OK,TX", "company_location": "Lago Vista TX", "phone": "Don's cell: 512-422-8818 (best way to reach them)", "poc": "Don Ditto 512-422-8818/ Austin: Brian Ditto 512-785-7903/Houston:  Chad Satterfield", "email": "Don's email address is:  dditto@dittcomm.com\n> Cell 512-422-8818", "coverage_remarks": "OK,TX (Dittcomm has 12 techs spread over 4 metro areas:  Austin, Houston and San Antonio", "standard_pricing": "$55/hr, plus $40 trip charge"}, {"contractor_firm_name": "ECHO 24 INC.", "tech_id": "11826", "states_covered": "OH and surronding states Also Licesed in FL", "company_location": "", "phone": "740-964-7081", "poc": "Anthony Gunter 740-964-7081 ext 2101", "email": "tgunter@echo24.com", "coverage_remarks": "OH and surronding states Also Licesed in FL", "standard_pricing": "Lead Time 2 wks (could be quicker) $56.00 Structiured Cabling Tech $65.00 Fiber Optic Tech $88.00 Telephoney Tech"}, {"contractor_firm_name": "Eagle Communications", "tech_id": "11131", "states_covered": "NV", "company_location": "Las Vegas, NV", "phone": "702-885-0805  cell", "poc": "Jerry Kaminski", "email": "jerryk@eaglecominc.com ; gwy99k@gmail.com", "coverage_remarks": "NV", "standard_pricing": "$70.00 an hr. Minimum 2 hr. charge"}, {"contractor_firm_name": "E-Touch Services, LLC", "tech_id": "13214", "states_covered": "NYC, NJ, CT and PA", "company_location": "Bronx, NY", "phone": "347-206-0360", "poc": "Elias Colon", "email": "elias@etouchllc.com", "coverage_remarks": "NYC, NJ, CT, PA", "standard_pricing": "Negotiate per job.  Typical night rate is $55/hr. plus travel"}, {"contractor_firm_name": "Everyday Data", "tech_id": "13404", "states_covered": "Puerto Rico", "company_location": "Ponce, PR", "phone": "787-840-6190", "poc": "Carlos Santiago or Elder Rodrigues or Jorge Bermudez", "email": "support@everydaydata.net", "coverage_remarks": "extensive throughout the island", "standard_pricing": "On-site technical support regular charge $55 per hour  M-F 8am-5pm"}, {"contractor_firm_name": "Global Network Solutions, LLC (G.N.S.)", "tech_id": "12041", "states_covered": "NY, NJ, CT", "company_location": "New York, NY", "phone": "631-567-0808", "poc": "Jim Russo", "email": "gnsllc@procabling.net; jim.russo@procabling.net", "coverage_remarks": "Metro NYC area (NY zip codes beginning with 100-108, 100-119; NJ zip codes beginning with 070-079, 085, 088-089; CT (zip codes beginning with 064, 066-068)", "standard_pricing": "Non-union rates $70/hr.reg hrs. plus $45 trip charge for up to 50 miles.  Union Tech rate $95/hr, plus $45 trip charge up to 50 miles and parking if applicaable.   $105/hr. for OT and emergency.  Call Jim Russo for Union rates."}, {"contractor_firm_name": "GT Telecom", "tech_id": "12967", "states_covered": "PA", "company_location": "Pipersville, PA", "phone": "215-376-5540", "poc": "Michael Ragan or Jim Dors", "email": "mragan@gt-tele.com or jdors@gt-tele.com", "coverage_remarks": "Eastern PA, NJ (Princeton & South), DE", "standard_pricing": "Regular hours:  7 a.m. - 3:30 pm  $118 /hr."}, {"contractor_firm_name": "Holmes", "tech_id": "", "states_covered": "", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "", "standard_pricing": ""}, {"contractor_firm_name": "Intelligent Visibility, Inc.", "tech_id": "12965", "states_covered": "NC", "company_location": "Browns Summit, NC", "phone": "866-840-5456", "poc": "Robert Misor  336-408-9643, email:  rj@intelligentvisibility.com", "email": "P.O.'s to sales@intelligentvisibility.com", "coverage_remarks": "PROGRAMMING TECH - REMOTE SUPPORT", "standard_pricing": "Quoted by Project"}, {"contractor_firm_name": "IT Solutions Club", "tech_id": "449229", "states_covered": "Alberta, CA", "company_location": "CALGARY, AB, Canada", "phone": "(587) 229-9990", "poc": "Oleg Panainte 587-229-9990", "email": "itsg.dispatch@gmail.com", "coverage_remarks": "Alberta, CA (for now)", "standard_pricing": "Standard Hourly - $75/hr."}, {"contractor_firm_name": "Leer Electric", "tech_id": "11634", "states_covered": "PA", "company_location": "Dillsburg, PA", "phone": "717-432-9756", "poc": "David Grace or Kerry Preun", "email": "dgrace@leerelectric.com or kpreun@leerelectric.com", "coverage_remarks": "Central PA: Specifically, Chambersburg, Gettysburg, Mechanicsburg, Harrisburg, Hanover, Hershey, York, Lancaster and all areas in between.", "standard_pricing": "Get Quote"}, {"contractor_firm_name": "Leighton A. White Inc.", "tech_id": "12116", "states_covered": "ME, NH, VT, MA", "company_location": "Milford, NH-  USE FOR COMCAST ONLY DISPATCHES.", "phone": "603-673-2294", "poc": "Austin White (603-305-3193)", "email": "austin.white@leightonawhite.com\nsupport@leightonawhite.com", "coverage_remarks": "Maine, New Hampshire, Vermont & Massachusetts -", "standard_pricing": "$85/hr. portal to portal (6 hr. minimum - 10 hr. maximum).  If overnight stay is required $150 per diem for lodging & meals."}, {"contractor_firm_name": "Lighthouse Electrical Consulting Inc.", "tech_id": "12906", "states_covered": "MA", "company_location": "Rockland, MA", "phone": "781-261-9711", "poc": "Ron Lapido or Ivy White at 781-261-9711", "email": "rlapido@lighthouse-electrical.com or ivy@lighthouse-electrical.com", "coverage_remarks": "Eastern Massachusetts", "standard_pricing": "NOTE:  Working hours are M-F: 6 a.m - 2:30 p.m. or 7 a.m. - 3:30 p.m.   Anything outside of those hours will incur OT.  Journeyman $107.30 (RBH)    Foreman $114.25 (RBH)  General Foreman $121.20 (RBH)   For Projects: $95/hr."}, {"contractor_firm_name": "Midwest Construction Inc.", "tech_id": "13202", "states_covered": "Pierre, SD", "company_location": "Pierre SD", "phone": "605-224-6345", "poc": "Byron Eaton  605-220-0422", "email": "bryoneaton@zmidwest.com", "coverage_remarks": "Pierre, SD", "standard_pricing": "$80/hr"}, {"contractor_firm_name": "NetCom Technologies, Inc", "tech_id": "11393", "states_covered": "MD, VA, DC", "company_location": "", "phone": "", "poc": "Bill lambros / Mark Barber", "email": "'blambros@netcomtech.com'; 'mbarber@netcontech.com'", "coverage_remarks": "MD, Northern VA, DC (big jobs only >$50K)", "standard_pricing": "$50/hr"}, {"contractor_firm_name": "Netview, Inc.", "tech_id": "13152", "states_covered": "US", "company_location": "Charlotte, NC", "phone": "866-369-3006 Main #", "poc": "Lance Goff  704-621-8173 or Carla Guincho  727-940-8007", "email": "lance.goff@teamnetview.com  or carla.guincho@teamnetview.com", "coverage_remarks": "US", "standard_pricing": "Negotiate but try for $40-$45/hr for Assist Tech and $50-$55/hr for Lead"}, {"contractor_firm_name": "PC Services", "tech_id": "11745", "states_covered": "CO", "company_location": "Colorado", "phone": "630-235-5555", "poc": "Tom Roth", "email": "1.tomroth@gmail.com", "coverage_remarks": "Pueblo West   Negotiable", "standard_pricing": "$65/hr."}, {"contractor_firm_name": "Progressive  (Taking over for Converged)", "tech_id": "14199", "states_covered": "HI", "company_location": "Big Island (Hilo/Kona)  – (1) Tech Oahu (5) techs);", "phone": "808-845-0000", "poc": "Wendi Okano (808) 845-0000", "email": "wokano@progressive-hi.com", "coverage_remarks": "HI", "standard_pricing": "$150.00/hr NBH of 8am-4:45pm - 2 hr min.                                             NO Service order fee                                     \nPlus TRAVEL"}, {"contractor_firm_name": "Reliable Cable", "tech_id": "11540", "states_covered": "FL", "company_location": "", "phone": "954-484-9606", "poc": "Clinton Singleton  cell: 954-448-5325", "email": "csingleton@reliablecable.com", "coverage_remarks": "SE FL - West Palm Beach, Ft. Lauderdale, Miami, Naples, the Keys", "standard_pricing": "$60/hr"}, {"contractor_firm_name": "Reinhold Electric", "tech_id": "13244", "states_covered": "MO", "company_location": "Louis, MO", "phone": "314-631-1158", "poc": "Jason Meyer  314-520-5189", "email": "jmeyer@reinholdelectric.com", "coverage_remarks": "Missouri & Illinois", "standard_pricing": "$94/HR"}, {"contractor_firm_name": "Rogers Electric", "tech_id": "13147", "states_covered": "US", "company_location": "Alpharetta, GA", "phone": "Main: 770-772-3400", "poc": "Main POC: Matt King, 770-772-3422, Cell: 470-208-9327", "email": "mking@lrogerselectric.com", "coverage_remarks": "Continental US", "standard_pricing": "Zone A: $70/hr    Zone B: $75/hr      Zone C: $85/hr    ABN Project pricing $250 per outlet if it is for 4 or more outlets, quoted otherwise"}, {"contractor_firm_name": "SMI Cable Systems", "tech_id": "11427", "states_covered": "CO", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "CO (Denver, Colorado Springs, Ft. Collins, Vail/Eagle, Summit County)", "standard_pricing": "$48.50/hr"}, {"contractor_firm_name": "SRS Networks", "tech_id": "11681", "states_covered": "CA", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "Flexible", "standard_pricing": "Need to get updated rates"}, {"contractor_firm_name": "TSL Networks - needs long lead time typically", "tech_id": "11750", "states_covered": "RI, MA", "company_location": "Rhode Island", "phone": "401-595-3302", "poc": "Tom Lombardo", "email": "tlombardo938@gmail.com", "coverage_remarks": "RI & MA Avail for Call out", "standard_pricing": "$60.00 HR"}, {"contractor_firm_name": "Techni-Logic Communications Inc.", "tech_id": "12282", "states_covered": "MO", "company_location": "Missouri", "phone": "972-455-5500", "poc": "Richard Cole or Kellie Wesbrooks", "email": "support@tlcworld.com", "coverage_remarks": "Missouri", "standard_pricing": "$90/hr, (2 hr. minimum for first dispatch of the day) plus $65/hr Site Visit Charge to GM Wentzville Plant.   Call for other travel rates if needed.  Note:  Billing is to nearest half hour.  For \"Remote\" tickets rate is $90/hr. - no minimim and not site visit fee."}, {"contractor_firm_name": "Teksync Technologies", "tech_id": "11903", "states_covered": "TX, MO", "company_location": "Houston TX , St. Louis MO", "phone": "713-589-9019", "poc": "Scenes Byrd (aka Byrd) 832-473-7576 or Mekia Byrd 281-853-6396", "email": "clientservices@teksync.com      byrdmekia@yahoo.com, scenesbyrd@gmail.com", "coverage_remarks": "Houston TX", "standard_pricing": "Houston: $45.00 p/hr lead or solo  $40.00 p/hr assist    Outside Houston: $55.00 p/hr plus travel"}, {"contractor_firm_name": "Training & Technology Group of NY", "tech_id": "12421", "states_covered": "NY, NJ, CT", "company_location": "Holbrook, NY", "phone": "631-750-5145 (main) Gail: 917-579-5123 or 914-373-4312", "poc": "Gail Ferreira", "email": "gf@ttgny.com", "coverage_remarks": "Charges $.55/mile after 1st 50 miles", "standard_pricing": "$750 full day on site training ; $550 half day on site trainng;  $300 for Webex training (2 hrs); ACD/Call Queuing WebEx $175; FireBar and Mass Announcement Training $150"}, {"contractor_firm_name": "Verigent, LLC - temporary staffing co.", "tech_id": "11947", "states_covered": "US", "company_location": "Huntersville, NC", "phone": "704-658-9101", "poc": "Randy Cloninger (704-658-3273) or 704-402-2666", "email": "rcloninger@verigent.com", "coverage_remarks": "US.", "standard_pricing": "Negotiated by project"}, {"contractor_firm_name": "Access 1 - Dean Sperlik", "tech_id": "12121", "states_covered": "MI", "company_location": "Field Nation Tech ID 66216 (access1 LLC/12121)", "phone": "616-438-9222,             mobile 616-558-6399", "poc": "Dean Sperlik", "email": "Dean Sperlik <Dean@access1.org>", "coverage_remarks": "Call him to check availability.", "standard_pricing": "Call him to check availability."}, {"contractor_firm_name": "Assist Telcom Networks", "tech_id": "13840", "states_covered": "CA", "company_location": "Direct", "phone": "925-931-4610 Main         Paul direct 510-599-7802", "poc": "Paul James", "email": "pjames@assisttelcom.com", "coverage_remarks": "Most of California - call for availability", "standard_pricing": "$95/ hour NBH - price could vary if less than 15 day notice"}, {"contractor_firm_name": "", "tech_id": "", "states_covered": "", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "", "standard_pricing": ""}, {"contractor_firm_name": "", "tech_id": "", "states_covered": "", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "", "standard_pricing": ""}, {"contractor_firm_name": "", "tech_id": "", "states_covered": "", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "", "standard_pricing": ""}, {"contractor_firm_name": "", "tech_id": "", "states_covered": "", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "", "standard_pricing": ""}, {"contractor_firm_name": "", "tech_id": "", "states_covered": "", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "", "standard_pricing": ""}, {"contractor_firm_name": "", "tech_id": "", "states_covered": "", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "", "standard_pricing": ""}, {"contractor_firm_name": "NOTE PRICE AND CONTACTS NOT UP TO DATE", "tech_id": "", "states_covered": "", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "", "standard_pricing": ""}, {"contractor_firm_name": "A2Z Datacom LLC", "tech_id": "12556", "states_covered": "TN", "company_location": "Nashville, TN", "phone": "615-752-2939    Christopher's mobile is 615-268-1355", "poc": "Call Office first  or send email to ops@a2zdatacom.com asking if they have a tech available for requested dispatch date and time.  If no answer in a reasonable amount of time escalate to Chris Aschnewitz.", "email": "ops@a2zdatacom.com", "coverage_remarks": "Hermitage/Nashville, TN.", "standard_pricing": "Voice/Data Tech $45 hr.  Network/Lead Tech: $55 hr  Fiber Tech: $55 hr  Phone System Tech: $95 hr (programming)"}, {"contractor_firm_name": "Alcan Electrical & Engineering, Inc.", "tech_id": "13193", "states_covered": "AK", "company_location": "Anchorage", "phone": "Brad Baker (Juneau)  907-780-4404   Main Office Anchorage: 907-563-3787", "poc": "Brad Baker (Juneau)  907-780-4404   Main Office Anchorage: 907-563-3787", "email": "bbaker@alcanelectric.com; jyasumiishi@alcanelectric.com", "coverage_remarks": "Anchorage, Wasilla, Juneau and Fairbanks offices", "standard_pricing": "NBH: $105/hr"}, {"contractor_firm_name": "ALPHASYS Inc", "tech_id": "11904", "states_covered": "GA", "company_location": "Alpharetta GA", "phone": "678-468-6283 mobile", "poc": "Chris Deltcheve", "email": "alphasys.company@yahoo.com", "coverage_remarks": "Atlanta Metro ,North Georgia", "standard_pricing": "$50.00 hr. / Mon thru Friday 7:00 AM to 7:00 PM : Weekends @ x 1.5 hr."}, {"contractor_firm_name": "American Tele-Connect Services Inc.", "tech_id": "13003", "states_covered": "RI, MA", "company_location": "Cranston, RI", "phone": "401-941-9000", "poc": "Vicki Silveira", "email": "service@atseagle.com", "coverage_remarks": "RI and MA", "standard_pricing": "$65/hr plus travel at same labor rate during normal business hours."}, {"contractor_firm_name": "Andie Electric Corp", "tech_id": "13175", "states_covered": "NJ", "company_location": "Red Bank, NJ", "phone": "732-741-0828", "poc": "Al DiBenedetto", "email": "aldielectriccorp@comcast.net", "coverage_remarks": "State of NJ", "standard_pricing": "NBH: M-F 7 a.m - 4 p.m. $87.50 per man hour"}, {"contractor_firm_name": "Big State Electric, Ltd.", "tech_id": "12372", "states_covered": "TX", "company_location": "San Antonio, TX", "phone": "210-735-1051", "poc": "Darin Pape for Telecom and Daryl Real for Electrical", "email": "darin@bigstateelectric.com; daryl@bigstateelectric.com", "coverage_remarks": "San Antonio, Austin and south Central TX", "standard_pricing": "Telecom Tech $55/hr, Electrical Tech $70/hr"}, {"contractor_firm_name": "Braun Enterprises, LLC", "tech_id": "13161", "states_covered": "AL, LA, MS, parts of TN, OK, KY, IN", "company_location": "Greenwell Springs, LA", "phone": "225-806-8246", "poc": "David Braun  225-806-8246", "email": "braunlc@braunlc.com", "coverage_remarks": "Note: This contractor usually books out 1-2 weeks so long lead time is requested.  Braun Enterprises Coverage Area - Zip Codes", "standard_pricing": "$50/hr, plus $40 trip charge within 25 miles of office location - see Coverage Remarks column."}, {"contractor_firm_name": "Business Communications Services Inc.", "tech_id": "11675", "states_covered": "FL", "company_location": "Odessa, FL", "phone": "888-227-1699", "poc": "Bill Smith 813-416-4710 or Kevin Boyd 727-560-5956", "email": "service@bcsflorida.com", "coverage_remarks": "Central Florida", "standard_pricing": "$50/hr per Ash Patel"}, {"contractor_firm_name": "Clark Powell Inc", "tech_id": "12745", "states_covered": "NC, SC, ME", "company_location": "North Carolina", "phone": "Main # 336-760-4932.", "poc": "Michael Sorenson 336-760-4932, msorenson@clark-powell.com", "email": "msorenson@clark-powell.com", "coverage_remarks": "Office Locations:  Winston, Salem, Raleigh, Charlotte, Columbia, Scarborough Maine", "standard_pricing": "NC/SC: $110/hr   ME: $145 /hr      M-F 8 a.m. - 5 p.m.  Note: Remote support is billed at the same hourly rates."}, {"contractor_firm_name": "Com-Net Services, Inc", "tech_id": "11442", "states_covered": "LA, MS, TX", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "LA, MS, TX (southeast)", "standard_pricing": "$45/hr labor\nMaterial is cost +15%"}, {"contractor_firm_name": "Computer Cable Connect, Inc", "tech_id": "11407", "states_covered": "KS, MO, NB, IA, FL", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "KS, MO, NB, IA, FL", "standard_pricing": "$43.00/hr\n$55/hr overnight stay jobs"}, {"contractor_firm_name": "Converged Telcom LLC", "tech_id": "11031", "states_covered": "HI", "company_location": "Big Island (Hilo/Kona)  – (1) Tech Oahu (5) techs);", "phone": "808-521-0000", "poc": "Wendi Okano-Kim  (808) 440-5117 - direct", "email": "support@convergedtelcom.com or wkim2@convergedtelcom.com", "coverage_remarks": "HI", "standard_pricing": "$120.00 hr NBH of 8am-4:45pm - 2 hr min.  Addition oof a $30 per order admin fee effect 3/1/2023"}, {"contractor_firm_name": "Core Technologies Solutions, LLC", "tech_id": "11422", "states_covered": "US, Canada", "company_location": "Parsippany, NJ", "phone": "", "poc": "Elizabeth Dodds 973-334-8800, 973-334-5031 fax 973-334-0090", "email": "Emarkley@core-techs.com", "coverage_remarks": "All 50 States & Canada (subcontractor)", "standard_pricing": "T&M and Fixed"}, {"contractor_firm_name": "DBS Communications Inc.", "tech_id": "12732", "states_covered": "OH", "company_location": "OH", "phone": "Dave Schrembeck:  216-265-3233   Justin Flick:  216-265-3244", "poc": "Dave Schrembeck or Justin Flick  216-265-2300 (main #).", "email": "daves@dbscommunications.net", "coverage_remarks": "OH and other  areas remotely", "standard_pricing": "$65/hr. NBH.  Travel is billed at same rate."}, {"contractor_firm_name": "Data Network Systems, Inc", "tech_id": "11413", "states_covered": "AR, MS, TN", "company_location": "", "phone": "901-266-0015", "poc": "Donnie Hutto  m: 901-461-3282", "email": "donnie@datanetworksystems.net", "coverage_remarks": "AR, MS, TN", "standard_pricing": "$39/hr"}, {"contractor_firm_name": "David Clark (Onforce ID 109491)", "tech_id": "109491", "states_covered": "Texas", "company_location": "Dallas", "phone": "214-876-5416", "poc": "David Clark 214-876-5416", "email": "david.clark2@sbcglobal.net", "coverage_remarks": "Willing to travel  in Texas, parts of OK and Lousiana", "standard_pricing": "$35-$40/hr for Assist Tech ($40/hr for less than 4 hrs.)  $45-$50/hr for Lead Tech - depending on Project"}, {"contractor_firm_name": "Dell-Comm", "tech_id": "11389", "states_covered": "MN,ND,SD", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "MN,ND,SD", "standard_pricing": ""}, {"contractor_firm_name": "Digital One Technology", "tech_id": "12996", "states_covered": "VA", "company_location": "Lynchburg, VA", "phone": "434-509-1515", "poc": "Mark Lindy or Salina Williams", "email": "info@digitalonetechnology.com", "coverage_remarks": "Within 100 miles of Lynchburg, VA", "standard_pricing": "$45/hr, plus mileage at $.56/mile after deducting 50 miles per day"}, {"contractor_firm_name": "F2onsite", "tech_id": "13396", "states_covered": "", "company_location": "Plano, TX", "phone": "MAIN 469-737-1700                          Ken 469-476-6300", "poc": "Ken Bowser  469-476-6300 Alternate Angelo Simao 781-290-9741", "email": "ken.bowser@f2onsite.com    angelo.simao@f2onsite.com", "coverage_remarks": "All of the US and 8 Major metros in Canada", "standard_pricing": "Varies depending on skill level, geographies, project scope and other factors. We can work with hourly T&M, per site, per device pricing models. Available - Mon-Fri 8AM-6PM"}, {"contractor_firm_name": "FatPipe, Inc.", "tech_id": "12881", "states_covered": "US & International", "company_location": "Salt Lake City, UT", "phone": "801-281-3434", "poc": "Doug Prowse  801-281-3434, ext. 2264", "email": "dougp@fatpipeinc.com", "coverage_remarks": "US & International", "standard_pricing": "$1000 per day PLUS expenses"}, {"contractor_firm_name": "Fiber Solutions", "tech_id": "11425", "states_covered": "FL, GA", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "FL (has electric permit), GA", "standard_pricing": "$55/hr cable\n$68/hr telephony\n$75/hr network tech\n$120/hr network engineer"}, {"contractor_firm_name": "Field Engineer", "tech_id": "13190", "states_covered": "US", "company_location": "New York, NY", "phone": "646-992-8115", "poc": "Gary McCauley", "email": "gmccauley@fieldengineer.com", "coverage_remarks": "US", "standard_pricing": "Online platform like OnForce"}, {"contractor_firm_name": "Foothills NetCom, Inc.", "tech_id": "11426", "states_covered": "TN, AL, GA, IN, KY, NC, SC, VA, WV", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "TN (will also go to AL,GA,IN,KY,NC,SC,VA,WV)", "standard_pricing": "$65/hr\n$50/hr sub contractor"}, {"contractor_firm_name": "Gage Telecom", "tech_id": "12905", "states_covered": "TX", "company_location": "Waco, TX  76703", "phone": "254-772-3400", "poc": "Sara McGaugh,  Resource Scheduler", "email": "projects@gagetelecom.com", "coverage_remarks": "TX  and will also travel", "standard_pricing": "Get quotes for Projects."}, {"contractor_firm_name": "GTS Communications", "tech_id": "12174", "states_covered": "OH", "company_location": "Strongsville, OH", "phone": "440-878-8866", "poc": "Kelli Briggs (440-878-8866) email: kellib@gtscommunications.com", "email": "kellib@gtscommunications.com", "coverage_remarks": "Northeast Ohio", "standard_pricing": "$62/hr. plus $49.95 travel charge for the 1st hour"}, {"contractor_firm_name": "High Wire Networks", "tech_id": "11991", "states_covered": "US", "company_location": "Expensive, but have W2 techs like Acuative", "phone": "952-974-4000", "poc": "Service Group (service@highwirenetworks.com).", "email": "service@highwirenetworks.com; nick.garifalis@highwirenetworks.com", "coverage_remarks": "US", "standard_pricing": "Acuative Rate Card 2014"}, {"contractor_firm_name": "HTC Communications, LLC", "tech_id": "13092", "states_covered": "OH", "company_location": "Brunswick, OH", "phone": "440-523-1400", "poc": "Justin Healey 440-523-1400 or 440-523-9578 or Caroline Healey 440-523-1400 or 440-429-9775", "email": "jhealey@htcohio.com  or admin@htcohio.com", "coverage_remarks": "OH and western PA", "standard_pricing": "NBH: $60/hr   OT: $75/hr"}, {"contractor_firm_name": "IMG Technologies, Inc.", "tech_id": "13074", "states_covered": "IL, CA, MA, DC, VA", "company_location": "Downers Grove, IL", "phone": "630-737-9800", "poc": "Lisa Shoulders or Liz Arway", "email": "lshoulders@imgtechnologies.net and larway@imgtechnologies.net", "coverage_remarks": "Chicago Metro Area, San Francisco Greater Bay Area,Boston, Washington DC & Arlington, VA", "standard_pricing": "Staight Time - 7:00am-3:30pm M-F $99 per hour min of (1) charge; Any work required out side of straight time hours M-F or Saturday $148.50 min of (4) charge, Holidays, Sunday, Emergency Service $198 per hour min (4) hour charge"}, {"contractor_firm_name": "Integrated Solutions and Essentials LLC", "tech_id": "12982", "states_covered": "US and parts of Canada", "company_location": "Mentor, OH", "phone": "Main: 440-352-7090                        Service Dept:  440-210-4772", "poc": "SERVICE DEPT", "email": "service@isepc.com", "coverage_remarks": "US and parts of Canada", "standard_pricing": "$125/hr2  They do offer discounts and flat rates if negotiated and with enough volume."}, {"contractor_firm_name": "Interconnect, Inc.", "tech_id": "12705", "states_covered": "AZ, NV", "company_location": "Scottsdale, AZ", "phone": "480-282-3750 or 520-401-5618", "poc": "Dave Ginsburg or Lee Sherwood", "email": "logistics@interconnect1.com", "coverage_remarks": "Greater Phoenix & Tucson Regions.  Will travel statewide but charge for it. Las Vegas, NV.", "standard_pricing": "$50/hr. Lead Tech; $45/hr Assist Tech (2 hr. minimum)"}, {"contractor_firm_name": "ISAT Telecomunicacions (Telecommunications)", "tech_id": "12181", "states_covered": "Mexico", "company_location": "Nojoa No. 51, Col. Rancho Memetia, Distrito Federal 05330", "phone": "52 (55) 5814-9301", "poc": "Victor Vargas +52 (55) 5814-9301 victor.vargas@isat.com.mx", "email": "victor.vargas@isat.com.mx and cat@isat.com.mx to request service", "coverage_remarks": "Chihuahua, Gaudalajara, Hermosillo, Leon, Merida, Monterrey, Puebla and Tijuana", "standard_pricing": "O:\\Contractor Partner Information Folders\\ISAT TELECOMUNICACIONES - MEXICO\\GM Price Guide 010612.xlsx"}, {"contractor_firm_name": "Linder and Associates Inc.", "tech_id": "12486", "states_covered": "KS", "company_location": "Wichita, KS", "phone": "316-265-1616", "poc": "Joe Dold Service Manager 316-265-1616", "email": "joe@linderandassociates.com", "coverage_remarks": "20 mile radius of Wichita, KS, including Newton, derby, Andover, Agusta, Eldoralo, Maize, Colwich, Andale, Halsted, Godard, Haysville", "standard_pricing": "$69/HR 8-5 M-F, $95/hr after 8 hrs M-F & 8 hrs on Sat.  $121/hr. after 12 hrs M-F & after 8 hrs on Saturday, All Day Sunday & Holidays"}, {"contractor_firm_name": "LNR Professional Services, Inc.", "tech_id": "13426", "states_covered": "LA", "company_location": "SHREVEPORT,LA", "phone": "318- 469-8723", "poc": "Jamie Longino", "email": "Jamie@LNRprofessionalservices.com", "coverage_remarks": "On Boarded for support on Altice (Lightpath)", "standard_pricing": "LNR Professional Services, LLC - LA\\LNR Price List"}, {"contractor_firm_name": "LRM-COM, INC. (aka Mall-Com)", "tech_id": "136058", "states_covered": "CO", "company_location": "Aurora, CO", "phone": "720-274-5184", "poc": "Larry Monger 720-614-1825", "email": "larry@lrmcom.com", "coverage_remarks": "", "standard_pricing": "Quoted by Project"}, {"contractor_firm_name": "Meridian IT (fomerly MAC Source Communications)", "tech_id": "12822", "states_covered": "NY", "company_location": "Syracuse, NY", "phone": "315-362-9200", "poc": "Paul Stengel  716-961-5913 or Lisa Keller 716-961-5924", "email": "paul.stengel@meridianitinc.com", "coverage_remarks": "Buffalo, Rochester, Syracuse & Albany NY", "standard_pricing": "CABLE TECH:  $75/hr (reg)  Phone Switch Tech: $175 /hr"}, {"contractor_firm_name": "Mangieri Electric, Inc.", "tech_id": "13139", "states_covered": "IL (Galesburg area)", "company_location": "Galesburg, IL", "phone": "309-342-7340", "poc": "Joe Mangieri 309-342-7340 or cell: 309-221-8390", "email": "jmangieri@mangierielectric.com", "coverage_remarks": "60 mile radius of Galesburg, IL", "standard_pricing": "Normal business hours:  7 a.m. - 3:30 p.m. NBH: $85/hr for Journeyman and $75/hr for apprentince"}, {"contractor_firm_name": "Mobile Mounting Solutions, Inc.", "tech_id": "13065", "states_covered": "US", "company_location": "McKinney, TX", "phone": "214-693-3611 (Larry's mobile)  Main #972-542-7456", "poc": "Larry Alexander   214-693-3611", "email": "larry@mobilemounts.com", "coverage_remarks": "US", "standard_pricing": "Quoted by Project"}, {"contractor_firm_name": "MPS Technical Services", "tech_id": "12391", "states_covered": "CO", "company_location": "Centennial, CO", "phone": "Office: 303-990-9915 Cellular: 303-949-7200", "poc": "Mitch Parascand", "email": "TEAM_MPS@msn.com", "coverage_remarks": "CO", "standard_pricing": "$40/Hr. for Lead or ONLY Tech,  $32.50/hr for Assist Tech (M-F 8 a.m.-5 p.m.)  (plus appropriate travel charges after first 50 miles)  $65/hr  for (2) Assist Techs."}, {"contractor_firm_name": "One Source Building Technologies", "tech_id": "12549", "states_covered": "US & International", "company_location": "", "phone": "Joe Wakefield 713-895-1796, cell 281-844-8927; Duke Poore 832-782-6155, cell 713-540-2072  OSBT Call Center:  713-895-1799, Daniel Scsavnicki 281-902-3416", "poc": "", "email": "dpoore@osbt.com and jwakefield@osbt.com; dscsavnicki@onesourcebt.com", "coverage_remarks": "US and International", "standard_pricing": "One Source_Price Book_v1.xls"}, {"contractor_firm_name": "PMTelco, LLC", "tech_id": "12870", "states_covered": "NY, NJ, CT, VA", "company_location": "Alexandria, VA (national co)", "phone": "Main: 703-639-6115; Donald Wilburn  907-360-8499; Donn Rosselet: 614-447-0358", "poc": "Donald Wilburn 907-360-8499 or Donn Rosselet at 614-447-0358", "email": "donald.wilburn@teamrg.com or don.rosselet@teamrg.com", "coverage_remarks": "National presence, but will be using them for Lightpath Training  Email Donald Wilburn to check Trainer availability.", "standard_pricing": "2017 Pricing Structure:  System Admin (2 hrs Webex) - $140, Onsite Support 1/2 day - $270, Onsite Support Full Day $520.  Mileage to be charged portal to portal at IRS rates, tolls, parking and ferry costs reimbursed with receipts or screen shots."}, {"contractor_firm_name": "Power Plus Engineering, Inc.", "tech_id": "13085", "states_covered": "MI, OH, IN", "company_location": "Novi, MI", "phone": "248-344-0200 (Main)", "poc": "Pat Stevens 248-832-7837 or Rhonda Romanek 248-344-0200", "email": "pat.stevens@resapower.com", "coverage_remarks": "MI, OH, IN", "standard_pricing": "NBH: $125/hr.    ."}, {"contractor_firm_name": "Premises Control - OH (formerly Advanced Cable Technologies)\nCabling Concepts, Inc. - MI", "tech_id": "11161", "states_covered": "MI,OH", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "MI,OH", "standard_pricing": "$55/hr Installer\n$75/hr Technician"}, {"contractor_firm_name": "Pro-Tech Cabling Systems Inc.", "tech_id": "12286", "states_covered": "MI", "company_location": "Clare, MI", "phone": "989-386-3722", "poc": "Bob Zenz, 989-386-3722 or 989-429-6116 (cell)", "email": "bob@protech-cabling.com", "coverage_remarks": "MI", "standard_pricing": "Project Foreman: $65/hr., Lead Tech $64/hr.  Assist Tech: $62/hr."}, {"contractor_firm_name": "Pro-Tech Communications LLC", "tech_id": "12483", "states_covered": "MI", "company_location": "Commerce Twp., MI", "phone": "248-926-9000", "poc": "Richard Stewart, 248-926-9000, email rstewart@pro-techcomm.com", "email": "rstewart@pro-techcomm.com", "coverage_remarks": "MI", "standard_pricing": "$100/HR  , plus travel charges billed at hourly rate .  $75/hr for remote support"}, {"contractor_firm_name": "R&L Network Solutions", "tech_id": "11424", "states_covered": "UT", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "UT (DS3 demarc for Ernst & Young)", "standard_pricing": "$60/hr"}, {"contractor_firm_name": "Randstad Technologies LP - Temporary Staffing Co.", "tech_id": "12706", "states_covered": "ALL", "company_location": "Frisco, TX", "phone": "972-980-6200 (Main); Andy  815-708-9283; Robin 972-489-3018", "poc": "Andy Ziehr or Robin Rodriguez", "email": "andrew.ziehr@randstadusa.com or robin.rodriguez@randstadusa.com", "coverage_remarks": "United States", "standard_pricing": "Get quote"}, {"contractor_firm_name": "RightTech Corporation - Temporary Staffing Co.", "tech_id": "11220", "states_covered": "US", "company_location": "Woodbridge, NJ", "phone": "", "poc": "", "email": "", "coverage_remarks": "NJ, Nationwide (EF&I uses - subcontractor)  Staffing Company", "standard_pricing": "Negotiable"}, {"contractor_firm_name": "Rock Electric Datacom Inc.", "tech_id": "13154", "states_covered": "MA", "company_location": "New Bedford, MA", "phone": "Main: 508-996-5261", "poc": "Tim Rock", "email": "tim@rockelectricinc.com", "coverage_remarks": "MA", "standard_pricing": "NBH: M-F 8 a.m. - 4:30 p.m.      $70/hr plus $70/hr for travel"}, {"contractor_firm_name": "Rodrigues Electric LLC", "tech_id": "13143", "states_covered": "CT, NY", "company_location": "Danbury, CT", "phone": "203-744-5573 or cell: 203-240-6854", "poc": "Doug Cooke", "email": "dcre182212@comcast.net", "coverage_remarks": "All of CT and parts of NY", "standard_pricing": "$100/hr"}, {"contractor_firm_name": "Royal Communication", "tech_id": "11197", "states_covered": "AR", "company_location": "", "phone": "", "poc": "Donna Fleharty  501-978-7492", "email": "", "coverage_remarks": "AR", "standard_pricing": ""}, {"contractor_firm_name": "SASCO", "tech_id": "11408", "states_covered": "CA, WA", "company_location": "", "phone": "", "poc": "Mike Korthals\nmkorthals@SASCO.com\n12900 Alondra Blvd\nCerritos, CA 90703\nPhone: 562-926-0900\nMike Cimino\nmimino@SASCO.com\n3508 Bassett St.\nSanta Clara, CA 95054\nPhone: 408-970-8300 Ext 3223\nEvert Magnuson\nemagnuson@SASCO.com\n16650 Woodinville, WA 98072\nPhone: 425-806-8400", "email": "", "coverage_remarks": "CA (northern & southern), WA", "standard_pricing": "$65/hr"}, {"contractor_firm_name": "Sky Communications Inc.", "tech_id": "11975", "states_covered": "National (US)", "company_location": "Flower Mound, TX", "phone": "Steve Young: (512) 844-4412", "poc": "Fax: 501-978-7493", "email": "steve.young@skycomglobal.com", "coverage_remarks": "National", "standard_pricing": "$100/hr. for Avaya Tech; $125 for Cisco Tech; $65/hr. for General Dynamics Support.  Projects are quotable."}, {"contractor_firm_name": "TKM Serve LLC", "tech_id": "12468..", "states_covered": "NY", "company_location": "Floral Park, NY", "phone": "516-328-9090", "poc": "Kathy Kurz or Carol LaGarde 516-328-9090", "email": "kathy@tkmserve.com or carol@tkmserve.com", "coverage_remarks": "Tri-state Area, White Plains, Westchester - based on Long Island", "standard_pricing": "$65/HR non-union; $75/hr Union CWA; $115/hr IBEW"}, {"contractor_firm_name": "Tectic Inc.", "tech_id": "12139", "states_covered": "KS", "company_location": "Olathe, KS", "phone": "913-226-8881", "poc": "Scott Hampton", "email": "shampton@tectic.com", "coverage_remarks": "Kansas or will travel", "standard_pricing": "$95/Hr regular rate $125/hr emergency rate - PLUS TRAVEL"}, {"contractor_firm_name": "Telewiring", "tech_id": "11291", "states_covered": "MO", "company_location": "", "phone": "314-426-5005 / 877-794-7464", "poc": "Dean Cooley cell # 314-568-0245 Tim 314-426-5005 or 877-494-7464", "email": "deanc@telewiring.com", "coverage_remarks": "Overland MO (union cabling)", "standard_pricing": ""}, {"contractor_firm_name": "Trans American Communications", "tech_id": "12057", "states_covered": "TX", "company_location": "El Paso, TX (200 miles coverage area)", "phone": "Main #: 915-593-3500", "poc": "Mike Cloud 915-241-7725 email is service@transaminc.com.  Main #915-593-3500", "email": "service@transaminc.com", "coverage_remarks": "Within 200 miles of El Paso, TX", "standard_pricing": "Lead time requested is 24-48 hrs. ahead $76/hr. reg. hrs; $114 for OT, $144 for same day call out.  Note: $48/hr for travel time."}, {"contractor_firm_name": "TransTel Communications Inc. - provides remote support for Transtel phone system", "tech_id": "12053", "states_covered": "", "company_location": "PROVIDES REMOTE SUPPORT FOR TRANSTEL PHONE SYSTEM FROM FLORIDA", "phone": "561-767-4466", "poc": "Lloyd Hanson: 561-747-4466, ext. 112", "email": "lloyd@transtelcommunications.com", "coverage_remarks": "", "standard_pricing": "$37.50 PER 15 MINUTES/REMOTE SUPPORT ONLY"}, {"contractor_firm_name": "Triple E Electric", "tech_id": "13155", "states_covered": "OH", "company_location": "Bedford, OH", "phone": "440-232-9046", "poc": "Carrie Monachino", "email": "cmtriplee@aol.com", "coverage_remarks": "Bedford OH area", "standard_pricing": "Get quote"}, {"contractor_firm_name": "The Tri-M Group, LLC", "tech_id": "11419", "states_covered": "PA, MD, NJ, OH, IN, KY", "company_location": "", "phone": "937-312-1530", "poc": "", "email": "", "coverage_remarks": "PA, MD (northeast), NJ (south/central), OH, IN (southeast incl Indianapolis), KY", "standard_pricing": "$65/hr cable tech\n$75 service tech\n$99/hr engineer"}, {"contractor_firm_name": "Western Digicom", "tech_id": "11406", "states_covered": "CA, WA", "company_location": "", "phone": "", "poc": "", "email": "", "coverage_remarks": "CA (southern)", "standard_pricing": "$55/hr cabling\n$140 first hr and $75/hr after that for telephony, circuit extensions, cross connects"}, {"contractor_firm_name": "Wirecentric Inc.", "tech_id": "12834", "states_covered": "NC", "company_location": "Durham, NC", "phone": "Main: 919-797-0616", "poc": "Rodney Williams 919-272-7134 or Gwen Blue 919-624-5739 or TC McKeithan  919-797-0616", "email": "rwilliams@wirecentric.net; gblue@wirecentric.net.  Backup for Rodney Williams is TC McKeithan, cmckeithan@wirecentric.net", "coverage_remarks": "NC, SC & VA .  Note: they do not do Fiber", "standard_pricing": "$37/hr for job over 1 hr.  If less than 1 hr - flat rate of $75."}, {"contractor_firm_name": "Zach Piragnoli", "tech_id": "13751", "states_covered": "", "company_location": "", "phone": "(973) 525-6209", "poc": "", "email": "zpiragnoli@gmail.com", "coverage_remarks": "", "standard_pricing": "$75/hr"}, {"contractor_firm_name": "WJ Global LLC (Cradle Point Site Services) - quoted jobs only", "tech_id": "12700", "states_covered": "US & International", "company_location": "Morrisville, NC", "phone": "919-465-1811", "poc": "Chris Michell at 919-228-2418 or Jennifer Keller at 919-465-1811", "email": "christopher.michell@wjglobalit.com or jennifer.keller@wjglobalit.com", "coverage_remarks": "All", "standard_pricing": "CradlePoint Proprietary Cellular Site Survey $470, CradlePoint Standard Equipment Installation: $470/site.  All projects are to be quoted."}];
+    const COLUMNS = [{"label": "Contractor Firm Name", "key": "contractor_firm_name"}, {"label": "Tech ID", "key": "tech_id"}, {"label": "States Covered", "key": "states_covered"}, {"label": "Company Location", "key": "company_location"}, {"label": "Phone", "key": "phone"}, {"label": "POC", "key": "poc"}, {"label": "Email", "key": "email"}, {"label": "Coverage remarks", "key": "coverage_remarks"}, {"label": "Standard Pricing", "key": "standard_pricing"}];
+
+    // Keys (auto from B–J set)
+    const NAME_KEY = "contractor_firm_name";
+    const ID_KEY = "tech_id";
+    const STATES_KEY = "states_covered";
+
+    const stateInput = document.getElementById("stateInput");
+    const resultsDiv = document.getElementById("results");
+    const countPill = document.getElementById("countPill");
+    const clearBtn = document.getElementById("clearBtn");
+
+    function matchesState(row, st) {
+      const z = (st || "").trim().toUpperCase();
+      if (!z) return false;
+      const states = (row[STATES_KEY] || "").toUpperCase();
+
+      // Match token-like: CA should match ", CA", "CA," or " CA "
+      const re = new RegExp(`(^|[^A-Z])${z}([^A-Z]|$)`);
+      return re.test(states);
+    }
+
+    function render(list, st) {
+      countPill.textContent = `${list.length} contractors`;
+
+      if (!st) {
+        resultsDiv.innerHTML = "";
+        countPill.textContent = "0 contractors";
+        return;
+      }
+
+      if (list.length === 0) {
+        resultsDiv.innerHTML = `
+          <div class="empty">
+            <p><strong>No contractors found</strong> for state <code>${st}</code>.</p>
+            <p class="muted">Try another state code.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const html = list.map(row => {
+        const displayName = (row[NAME_KEY] || "Unknown Contractor").trim();
+        const displayId = (row[ID_KEY] || "").trim();
+        const badgeText = displayId ? `Tech ID: ${displayId} • State: ${st}` : `State: ${st}`;
+
+        // Render fields B–J in the SAME order as the sheet
+        const kvs = COLUMNS.map(col => {
+          const val = (row[col.key] || "").trim();
+          return `
+            <div class="kv">
+              <div class="k">${col.label}</div>
+              <div class="v">${val || "—"}</div>
+            </div>
+          `;
+        }).join("");
+
+        return `
+          <div class="contractor-card">
+            <div class="header">
+              <div class="name">${displayName}</div>
+              <div class="badge">${badgeText}</div>
+            </div>
+            <div class="kvgrid">${kvs}</div>
+          </div>
+        `;
+      }).join("");
+
+      resultsDiv.innerHTML = html;
+    }
+
+    function update() {
+      const st = (stateInput.value || "").trim().toUpperCase();
+      if (!st) {
+        render([], "");
+        return;
+      }
+      const filtered = ROWS.filter(row => matchesState(row, st));
+      render(filtered, st);
+    }
+
+    stateInput.addEventListener("input", update);
+
+    clearBtn.addEventListener("click", () => {
+      stateInput.value = "";
+      resultsDiv.innerHTML = "";
+      countPill.textContent = "0 contractors";
+      stateInput.focus();
+    });
+  </script>
+</body>
+</html>

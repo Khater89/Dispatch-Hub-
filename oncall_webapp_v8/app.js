@@ -1851,6 +1851,12 @@ $('btnLoadOncall').addEventListener('click', async ()=>{
     const {meta,sheet}=await loadOncall(f);
     setStatus(`OnCall Ready — Sheet: ${sheet} | Markets: ${meta.markets.length} | Weeks: ${meta.weeks.length}`);
     try{ $('dateInput').dispatchEvent(new Event('change')); }catch(_){ }
+    // Cache for navigation persistence
+    try {
+      sessionStorage.setItem('_oncall_aoa', JSON.stringify(oncallSheetAOA));
+      sessionStorage.setItem('_oncall_meta', JSON.stringify(meta));
+      sessionStorage.setItem('_oncall_fname', f.name);
+    } catch(e) { /* quota exceeded – skip cache */ }
   }catch(e){
     setProg('oncallProg', 0);
     setStatus(String(e.message||e), true);
@@ -1976,3 +1982,29 @@ document.querySelectorAll('input[name="ampm"]').forEach(el => {
 
 // Build the Ticket Time dropdown (96 options, every 15 minutes).
 populateTicketTimeOptions();
+
+// ── Restore OnCall data from sessionStorage on page load ─────────────────────
+(function restoreOncallCache() {
+  try {
+    const raw = sessionStorage.getItem('_oncall_aoa');
+    const fname = sessionStorage.getItem('_oncall_fname') || 'cached file';
+    if (!raw) return;
+    oncallSheetAOA = JSON.parse(raw);
+    oncallMeta = parseOncallAOA(oncallSheetAOA);
+    if (!oncallMeta) return;
+    const prog = document.getElementById('oncallProg');
+    if (prog) prog.style.width = '100%';
+    const nameEl = document.getElementById('oncallName');
+    if (nameEl) nameEl.textContent = fname + '  ✓ cached';
+    const btn = document.getElementById('btnLoadOncall');
+    if (btn) { btn.textContent = 'Loaded ✓'; btn.disabled = true; btn.style.opacity = '.7'; }
+    const status = document.getElementById('statusMsg') || document.querySelector('.status');
+    const msg = `OnCall cached — Markets: ${oncallMeta.markets.length} | Weeks: ${oncallMeta.weeks.length}`;
+    if (status) status.textContent = msg;
+    try { document.getElementById('dateInput')?.dispatchEvent(new Event('change')); } catch(_) {}
+  } catch(e) {
+    sessionStorage.removeItem('_oncall_aoa');
+    sessionStorage.removeItem('_oncall_meta');
+    sessionStorage.removeItem('_oncall_fname');
+  }
+})();

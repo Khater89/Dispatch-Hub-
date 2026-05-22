@@ -168,8 +168,182 @@ document.addEventListener('DOMContentLoaded', function(){
       setTimeout(killAutofill, 1500);
     })();
   </script>
-</head>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style id="acuative-dark-theme">
+/* ═══ ACUATIVE DARK OVERRIDE ═══ */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#060C18!important;--bg1:#060C18!important;--bg2:#0B1220!important;
+  --bg3:#111827!important;--card:#111827!important;--card2:#0f172a!important;
+  --surface:rgba(255,255,255,.05)!important;--surface2:rgba(255,255,255,.09)!important;
+  --panel:#111827!important;--panel-bg:#111827!important;
+  --text:#F1F5F9!important;--text2:#94A3B8!important;--text3:#475569!important;
+  --ink:#F1F5F9!important;--muted:#94A3B8!important;--muted2:#cbd5e1!important;
+  --border:rgba(255,255,255,.10)!important;--border2:rgba(255,255,255,.16)!important;
+  --accent:#EF4444!important;--accent-rgb:239,68,68!important;
+  --primary:#EF4444!important;--p:#EF4444!important;--b:#EF4444!important;
+  --ie:#EF4444!important;--fn:#EF4444!important;
+  --shadow:0 14px 40px rgba(0,0,0,.5)!important;
+  --radius:16px!important;--r:16px!important;--rsm:10px!important;
+}
+*{box-sizing:border-box}
+html,body{
+  font-family:'Syne',system-ui,sans-serif!important;
+  background:#060C18!important;
+  color:#F1F5F9!important;
+  min-height:100vh;
+}
+body{
+  background:
+    radial-gradient(900px 600px at 10% 0%,rgba(239,68,68,.08),transparent 60%),
+    radial-gradient(700px 500px at 90% 100%,rgba(239,68,68,.05),transparent 55%),
+    #060C18!important;
+}
+/* Cards & Surfaces */
+.card,.card2,.panel,.glass-card,.glass-panel,.table-wrap,
+.contractor-card,.na-card,.warn-card,.result,
+.kv,.kvgrid .kv,.tablebox,
+[class*="card"],[class*="panel"],[class*="surface"]{
+  background:rgba(17,24,39,.75)!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+  border-radius:16px!important;
+  backdrop-filter:blur(12px)!important;
+  box-shadow:0 14px 40px rgba(0,0,0,.35)!important;
+  color:#F1F5F9!important;
+}
+/* Headers */
+h1,h2,h3,h4,h5,h6{color:#F1F5F9!important}
+/* Text */
+p,span,div,label,small,.muted,.hint,.sub,.mutEd{color:inherit}
+.muted,.hint,.sub,.text-muted,[class*="muted"]{color:#94A3B8!important}
+/* Inputs */
+input,select,textarea{
+  background:rgba(15,23,42,.8)!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  color:#F1F5F9!important;
+  border-radius:12px!important;
+  font-family:'Syne',sans-serif!important;
+}
+input::placeholder,textarea::placeholder{color:#475569!important}
+input:focus,select:focus,textarea:focus{
+  border-color:#EF4444!important;
+  box-shadow:0 0 0 3px rgba(239,68,68,.15)!important;
+  outline:none!important;
+}
+/* Buttons */
+button,.btn{
+  font-family:'Syne',sans-serif!important;
+  border-radius:12px!important;
+  transition:all .2s!important;
+}
+button.primary,.btn.primary,[class*="primary-btn"],[class*="btn-primary"]{
+  background:linear-gradient(135deg,#EF4444,rgba(239,68,68,.7))!important;
+  border:none!important;color:#fff!important;
+  box-shadow:0 4px 16px rgba(239,68,68,.35)!important;
+}
+button.primary:hover,.btn.primary:hover{
+  box-shadow:0 8px 24px rgba(239,68,68,.5)!important;
+  transform:translateY(-1px)!important;
+}
+/* Pills & Badges */
+.pill,.badge,.tag,.count,.abtn{
+  background:rgba(239,68,68,.12)!important;
+  border:1px solid rgba(239,68,68,.25)!important;
+  color:#EF4444!important;
+  border-radius:999px!important;
+}
+/* Tables */
+table{border-collapse:collapse!important}
+th{
+  background:rgba(239,68,68,.10)!important;
+  color:#EF4444!important;
+  border-bottom:1px solid rgba(239,68,68,.25)!important;
+  font-family:'JetBrains Mono',monospace!important;
+  font-size:11px!important;letter-spacing:.08em!important;text-transform:uppercase!important;
+}
+td{border-bottom:1px solid rgba(255,255,255,.06)!important;color:#F1F5F9!important}
+tr:hover td{background:rgba(239,68,68,.05)!important}
+/* Top accent line */
+body::before{
+  content:'';position:fixed;top:0;left:0;right:0;height:2px;z-index:9999;
+  background:linear-gradient(90deg,#EF4444,rgba(239,68,68,.3),transparent);
+  pointer-events:none;
+}
+/* Navbar/topbar */
+.top-credit,.topbar,.navbar,.header-bar,[class*="topbar"],[class*="navbar"]{
+  background:rgba(6,12,24,.85)!important;
+  border-bottom:1px solid rgba(255,255,255,.08)!important;
+  backdrop-filter:blur(16px)!important;
+}
+/* Progress bar */
+.bar,.progress-bar{background:#EF4444!important}
+.progress{background:rgba(255,255,255,.08)!important}
+/* Vendor row / item rows */
+.na-item,.vendor-row,.row-item{
+  background:rgba(15,23,42,.6)!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+}
+/* Links */
+a{color:#EF4444!important;text-decoration:none!important}
+a:hover{opacity:.8!important}
+/* Stat numbers */
+.svl,.stat-val,.count-big{color:#EF4444!important}
+/* File upload */
+.file,.upload{
+  background:rgba(15,23,42,.6)!important;
+  border:1px dashed rgba(255,255,255,.15)!important;
+  border-radius:12px!important;
+}
+/* Select options */
+option{background:#111827!important;color:#F1F5F9!important}
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:rgba(255,255,255,.03)}
+::-webkit-scrollbar-thumb{background:rgba(239,68,68,.3);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:rgba(239,68,68,.6)}
+</style></head>
 <body>
+
+<style id="back-btn-style">
+.hub-back-btn {
+  position: fixed;
+  top: 14px;
+  left: 16px;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: rgba(6,12,24,.85);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 10px;
+  color: #F1F5F9;
+  font-family: 'Syne', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-decoration: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all .2s ease;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,.35);
+}
+.hub-back-btn:hover {
+  background: rgba(15,23,42,.95);
+  border-color: rgba(255,255,255,.28);
+  transform: translateX(-2px);
+  color: #fff;
+}
+.hub-back-btn svg { flex-shrink: 0; }
+</style>
+<a href="../index.html" class="hub-back-btn">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 12H5M12 5l-7 7 7 7"/>
+  </svg>
+  Hub
+</a>
+
   <div class="topbar">
     <div class="leaf" aria-hidden="true">🍁</div>
     <div class="titlewrap">

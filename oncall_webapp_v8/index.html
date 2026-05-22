@@ -70,8 +70,57 @@ document.addEventListener('DOMContentLoaded', function(){
       setTimeout(killAutofill, 1500);
     })();
   </script>
-</head>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style id="acuative-dark-theme">
+:root{--primary:#8B5CF6!important;--primary2:#6D28D9!important;}
+html,body{font-family:'Syne',system-ui,sans-serif!important}
+button.primary{background:linear-gradient(135deg,#8B5CF6,#6D28D9)!important;box-shadow:0 4px 16px rgba(139,92,246,.35)!important}
+.dot{background:#8B5CF6!important;box-shadow:0 0 0 3px rgba(139,92,246,.15)!important}
+body::before{content:'';position:fixed;top:0;left:0;right:0;height:2px;z-index:9999;background:linear-gradient(90deg,#8B5CF6,rgba(139,92,246,.3),transparent);pointer-events:none;}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:rgba(255,255,255,.03)}::-webkit-scrollbar-thumb{background:rgba(139,92,246,.4);border-radius:99px}
+</style></head>
 <body>
+
+<style id="back-btn-style">
+.hub-back-btn {
+  position: fixed;
+  top: 14px;
+  left: 16px;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: rgba(6,12,24,.85);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 10px;
+  color: #F1F5F9;
+  font-family: 'Syne', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-decoration: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all .2s ease;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,.35);
+}
+.hub-back-btn:hover {
+  background: rgba(15,23,42,.95);
+  border-color: rgba(255,255,255,.28);
+  transform: translateX(-2px);
+  color: #fff;
+}
+.hub-back-btn svg { flex-shrink: 0; }
+</style>
+<a href="../index.html" class="hub-back-btn">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 12H5M12 5l-7 7 7 7"/>
+  </svg>
+  Hub
+</a>
+
 
   <div class="container">
     <header class="hero">
