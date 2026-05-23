@@ -1755,12 +1755,26 @@ function resolveInlineDateOverride(cellText, selectedDateYmd, weekStartYmd) {
 }
 
 function extractMainTechId(cellText) {
-  // Remove all parenthetical override segments, then find first tech ID.
-  const stripped = cellText
-    .replace(/\([^)]*\d{1,2}\/\d{1,2}[^)]*\)/gi, '')  // parenthetical with dates
-    .replace(/\([^)]*\d{1,2}-\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[^)]*\)/gi, '')
-    .replace(/\([^)]*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{1,2}[^)]*\)/gi, '');
-  const m = stripped.match(/\b(\d{4,6})\b/);
+  // Bracket-depth-aware extraction:
+  // Collect only characters that are OUTSIDE all parenthetical blocks,
+  // then find the first tech ID (4-6 digits) in that "outside" text.
+  // This correctly handles nested parens like "(5/15 (5pm-11:59pm) 12343 Smith) 12009 Prucak"
+  // → outside text is " 12009 Prucak" → returns 12009
+  let depth = 0;
+  let outside = [];
+  for (let i = 0; i < cellText.length; i++) {
+    const ch = cellText[i];
+    if (ch === '(') {
+      depth++;
+    } else if (ch === ')') {
+      if (depth > 0) depth--;
+      // skip the closing paren even if depth was already 0 (orphan close)
+    } else if (depth === 0) {
+      outside.push(ch);
+    }
+  }
+  const outsideText = outside.join('');
+  const m = outsideText.match(/\b(\d{4,6})\b/);
   return m ? m[1] : null;
 }
 
