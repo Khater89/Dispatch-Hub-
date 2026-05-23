@@ -1,420 +1,198 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Canada Dispatch W2</title>
-  <style>
-    :root{
-      --red:#d80621;
-      --red2:#b9001a;
-      --white:#ffffff;
-      --ink:#0f172a;
-      --muted:#64748b;
-      --card:#ffffff;
-      --bg:#f6f7fb;
-      --border:rgba(15,23,42,.12);
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
-      background:linear-gradient(180deg, #fff 0%, var(--bg) 100%);
-      color:var(--ink);
-    }
-    .topbar{
-      display:flex; align-items:center; gap:12px;
-      padding:14px 16px;
-      background:linear-gradient(90deg, var(--red) 0%, var(--red2) 60%, var(--red) 100%);
-      color:#fff;
-      box-shadow:0 6px 18px rgba(0,0,0,.12);
-    }
-    .leaf{font-size:22px; line-height:1}
-    .titlewrap{display:flex; flex-direction:column; gap:2px}
-    .title{font-weight:800; letter-spacing:.2px}
-    .subtitle{font-size:12px; opacity:.9}
-    .wrap{max-width:1100px; margin:18px auto; padding:0 16px;}
-    .grid{display:grid; grid-template-columns: 1.2fr .8fr; gap:14px;}
-    @media (max-width: 980px){ .grid{grid-template-columns: 1fr;} }
-    .card{
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:14px;
-      padding:14px;
-      box-shadow:0 10px 26px rgba(15,23,42,.06);
-    }
-    .card h3{margin:0 0 10px 0; font-size:14px; color:var(--muted); font-weight:800; text-transform:uppercase; letter-spacing:.6px}
-    label{display:block; font-size:12px; color:var(--muted); margin:10px 0 6px}
-    textarea, input{
-      width:100%;
-      padding:10px 11px;
-      border:1px solid var(--border);
-      border-radius:10px;
-      font:inherit;
-      background:#fff;
-    }
-    textarea{min-height:120px; resize:vertical}
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end}
-    .row > div{flex:1 1 180px}
-    .btnrow{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap}
-    button{
-      border:0;
-      border-radius:12px;
-      padding:10px 12px;
-      font-weight:800;
-      cursor:pointer;
-    }
-    .btn-primary{background:var(--red); color:#fff;}
-    .btn-primary:hover{background:var(--red2);}
-    .btn-ghost{background:#fff; border:1px solid var(--border); color:var(--ink);}
-    .btn-ghost:hover{background:#f3f4f6;}
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:7px 10px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:#fff;
-      color:var(--muted);
-      font-size:12px;
-    }
-    .kpi{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 0}
-    .kpi b{color:var(--ink)}
-    .resultTitle{font-weight:900; font-size:16px; margin:0 0 6px}
-    .muted{color:var(--muted); font-size:12px}
-    .warn{color:#b45309; font-weight:800}
-    .ok{color:#15803d; font-weight:800}
-    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-    .list{
-      margin-top:10px;
-      border-top:1px dashed var(--border);
-      padding-top:10px;
-      display:grid;
-      gap:8px;
-    }
-    .item{
-      display:flex; justify-content:space-between; gap:10px;
-      padding:10px;
-      border:1px solid var(--border);
-      border-radius:12px;
-      background:#fff;
-    }
-    .item .left{min-width:0}
-    .item .name{font-weight:900}
-    .item .meta{font-size:12px; color:var(--muted)}
-    .item .right{text-align:right; font-size:12px; color:var(--muted)}
-    .smallnote{font-size:11px; color:var(--muted); margin-top:8px; line-height:1.35}
-  </style>
+  <title>Canada Dispatch W2 · Acuative RA/VM Hub</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css"/>
+
+  <!-- Theme persistence -->
   <script>(function(){try{var t=localStorage.getItem('dispatchhub-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();</script>
-  <link rel="stylesheet" href="../assets/theme.css" />
+  <link rel="stylesheet" href="../assets/theme.css"/>
   <link rel="stylesheet" href="../assets/glass.css">
   <script defer src="../assets/theme.js"></script>
-<script defer src="../assets/glass.js"></script>
-
-<script src="../assets/auth-config.js"></script>
-<script defer src="../assets/auth-client.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-  if (window.UFHAuth) {
-    window.UFHAuth.init({ appName: "Unified Finder Hub \u2014 Canada Dispatch", mountUserBadge: true });
-  }
-});
-</script>
-
-
-  <style>
-    /* Kill Chrome autofill yellow background + suppress autocomplete UI */
-    input:-webkit-autofill,
-    input:-webkit-autofill:hover,
-    input:-webkit-autofill:focus,
-    input:-webkit-autofill:active {
-      -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
-      box-shadow: 0 0 0 1000px transparent inset !important;
-      transition: background-color 5000s ease-in-out 0s !important;
-      -webkit-text-fill-color: inherit !important;
-    }
-  </style>
+  <script defer src="../assets/glass.js"></script>
+  <script src="../assets/auth-config.js"></script>
+  <script defer src="../assets/auth-client.js"></script>
   <script>
-    /* Defeat Chrome autofill / address suggestions on all inputs */
-    (function(){
-      function killAutofill(){
-        var inputs = document.querySelectorAll('input');
-        inputs.forEach(function(el){
-          var t = (el.type||'text').toLowerCase();
-          if(['file','radio','checkbox','submit','button','hidden','reset'].indexOf(t)===-1){
-            if(t!=='date'&&t!=='number'){
-              el.setAttribute('autocomplete','new-password');
-            }
-            /* readonly trick: Chrome won't show suggestions on readonly fields */
-            if(!el.readOnly && !el.disabled){
-              el.setAttribute('readonly','');
-              el.addEventListener('focus',function(){
-                this.removeAttribute('readonly');
-              },{once:false});
-              el.addEventListener('blur',function(){
-                this.setAttribute('readonly','');
-              });
-            }
-          }
-        });
+    document.addEventListener('DOMContentLoaded', function(){
+      if(window.UFHAuth){
+        window.UFHAuth.init({appName:"Unified Finder Hub \u2014 Canada W2",mountUserBadge:true});
       }
-      if(document.readyState==='loading'){
-        document.addEventListener('DOMContentLoaded',killAutofill);
-      } else {
-        killAutofill();
-      }
-      /* Also run after any dynamic content might be added */
-      setTimeout(killAutofill, 500);
-      setTimeout(killAutofill, 1500);
-    })();
+    });
   </script>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style id="acuative-dark-theme">
-/* ═══ ACUATIVE DARK OVERRIDE ═══ */
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-:root{
-  --bg:#060C18!important;--bg1:#060C18!important;--bg2:#0B1220!important;
-  --bg3:#111827!important;--card:#111827!important;--card2:#0f172a!important;
-  --surface:rgba(255,255,255,.05)!important;--surface2:rgba(255,255,255,.09)!important;
-  --panel:#111827!important;--panel-bg:#111827!important;
-  --text:#F1F5F9!important;--text2:#94A3B8!important;--text3:#475569!important;
-  --ink:#F1F5F9!important;--muted:#94A3B8!important;--muted2:#cbd5e1!important;
-  --border:rgba(255,255,255,.10)!important;--border2:rgba(255,255,255,.16)!important;
-  --accent:#EF4444!important;--accent-rgb:239,68,68!important;
-  --primary:#EF4444!important;--p:#EF4444!important;--b:#EF4444!important;
-  --ie:#EF4444!important;--fn:#EF4444!important;
-  --shadow:0 14px 40px rgba(0,0,0,.5)!important;
-  --radius:16px!important;--r:16px!important;--rsm:10px!important;
-}
-*{box-sizing:border-box}
-html,body{
-  font-family:'Syne',system-ui,sans-serif!important;
-  background:#060C18!important;
-  color:#F1F5F9!important;
-  min-height:100vh;
-}
-body{
-  background:
-    radial-gradient(900px 600px at 10% 0%,rgba(239,68,68,.08),transparent 60%),
-    radial-gradient(700px 500px at 90% 100%,rgba(239,68,68,.05),transparent 55%),
-    #060C18!important;
-}
-/* Cards & Surfaces */
-.card,.card2,.panel,.glass-card,.glass-panel,.table-wrap,
-.contractor-card,.na-card,.warn-card,.result,
-.kv,.kvgrid .kv,.tablebox,
-[class*="card"],[class*="panel"],[class*="surface"]{
-  background:rgba(17,24,39,.75)!important;
-  border:1px solid rgba(255,255,255,.10)!important;
-  border-radius:16px!important;
-  backdrop-filter:blur(12px)!important;
-  box-shadow:0 14px 40px rgba(0,0,0,.35)!important;
-  color:#F1F5F9!important;
-}
-/* Headers */
-h1,h2,h3,h4,h5,h6{color:#F1F5F9!important}
-/* Text */
-p,span,div,label,small,.muted,.hint,.sub,.mutEd{color:inherit}
-.muted,.hint,.sub,.text-muted,[class*="muted"]{color:#94A3B8!important}
-/* Inputs */
-input,select,textarea{
-  background:rgba(15,23,42,.8)!important;
-  border:1px solid rgba(255,255,255,.12)!important;
-  color:#F1F5F9!important;
-  border-radius:12px!important;
-  font-family:'Syne',sans-serif!important;
-}
-input::placeholder,textarea::placeholder{color:#475569!important}
-input:focus,select:focus,textarea:focus{
-  border-color:#EF4444!important;
-  box-shadow:0 0 0 3px rgba(239,68,68,.15)!important;
-  outline:none!important;
-}
-/* Buttons */
-button,.btn{
-  font-family:'Syne',sans-serif!important;
-  border-radius:12px!important;
-  transition:all .2s!important;
-}
-button.primary,.btn.primary,[class*="primary-btn"],[class*="btn-primary"]{
-  background:linear-gradient(135deg,#EF4444,rgba(239,68,68,.7))!important;
-  border:none!important;color:#fff!important;
-  box-shadow:0 4px 16px rgba(239,68,68,.35)!important;
-}
-button.primary:hover,.btn.primary:hover{
-  box-shadow:0 8px 24px rgba(239,68,68,.5)!important;
-  transform:translateY(-1px)!important;
-}
-/* Pills & Badges */
-.pill,.badge,.tag,.count,.abtn{
-  background:rgba(239,68,68,.12)!important;
-  border:1px solid rgba(239,68,68,.25)!important;
-  color:#EF4444!important;
-  border-radius:999px!important;
-}
-/* Tables */
-table{border-collapse:collapse!important}
-th{
-  background:rgba(239,68,68,.10)!important;
-  color:#EF4444!important;
-  border-bottom:1px solid rgba(239,68,68,.25)!important;
-  font-family:'JetBrains Mono',monospace!important;
-  font-size:11px!important;letter-spacing:.08em!important;text-transform:uppercase!important;
-}
-td{border-bottom:1px solid rgba(255,255,255,.06)!important;color:#F1F5F9!important}
-tr:hover td{background:rgba(239,68,68,.05)!important}
-/* Top accent line */
-body::before{
-  content:'';position:fixed;top:0;left:0;right:0;height:2px;z-index:9999;
-  background:linear-gradient(90deg,#EF4444,rgba(239,68,68,.3),transparent);
-  pointer-events:none;
-}
-/* Navbar/topbar */
-.top-credit,.topbar,.navbar,.header-bar,[class*="topbar"],[class*="navbar"]{
-  background:rgba(6,12,24,.85)!important;
-  border-bottom:1px solid rgba(255,255,255,.08)!important;
-  backdrop-filter:blur(16px)!important;
-}
-/* Progress bar */
-.bar,.progress-bar{background:#EF4444!important}
-.progress{background:rgba(255,255,255,.08)!important}
-/* Vendor row / item rows */
-.na-item,.vendor-row,.row-item{
-  background:rgba(15,23,42,.6)!important;
-  border:1px solid rgba(255,255,255,.08)!important;
-}
-/* Links */
-a{color:#EF4444!important;text-decoration:none!important}
-a:hover{opacity:.8!important}
-/* Stat numbers */
-.svl,.stat-val,.count-big{color:#EF4444!important}
-/* File upload */
-.file,.upload{
-  background:rgba(15,23,42,.6)!important;
-  border:1px dashed rgba(255,255,255,.15)!important;
-  border-radius:12px!important;
-}
-/* Select options */
-option{background:#111827!important;color:#F1F5F9!important}
-/* Scrollbar */
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:rgba(255,255,255,.03)}
-::-webkit-scrollbar-thumb{background:rgba(239,68,68,.3);border-radius:99px}
-::-webkit-scrollbar-thumb:hover{background:rgba(239,68,68,.6)}
-</style></head>
+</head>
 <body>
 
-<style id="back-btn-style">
-.hub-back-btn {
-  position: fixed;
-  top: 14px;
-  left: 16px;
-  z-index: 9999;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 14px;
-  background: rgba(6,12,24,.85);
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 10px;
-  color: #F1F5F9;
-  font-family: 'Syne', system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .03em;
-  text-decoration: none;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transition: all .2s ease;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0,0,0,.35);
-}
-.hub-back-btn:hover {
-  background: rgba(15,23,42,.95);
-  border-color: rgba(255,255,255,.28);
-  transform: translateX(-2px);
-  color: #fff;
-}
-.hub-back-btn svg { flex-shrink: 0; }
-</style>
-<a href="../index.html" class="hub-back-btn">
+<!-- Animated background -->
+<div class="bg-mesh">
+  <div class="mesh-orb mesh-orb-1"></div>
+  <div class="mesh-orb mesh-orb-2"></div>
+  <div class="mesh-orb mesh-orb-3"></div>
+</div>
+
+<!-- Back button -->
+<a href="../index.html" class="back-btn">
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M19 12H5M12 5l-7 7 7 7"/>
   </svg>
   Hub
 </a>
 
-  <div class="topbar">
-    <div class="leaf" aria-hidden="true">🍁</div>
-    <div class="titlewrap">
-      <div class="title">Canada Dispatch W2</div>
-      <div class="subtitle">Find closest W2 tech by Canadian postal code (straight-line + driving-adjusted ETA)</div>
+<!-- Status bar -->
+<div class="status-bar">
+  <span class="status-dot"></span>
+  <span id="status" class="status-text">Ready — Enter a postal code or paste a ticket</span>
+</div>
+
+<div class="app">
+
+  <!-- ── HEADER ── -->
+  <header class="app-header">
+    <div class="header-eyebrow">🍁 Acuative RA/VM Hub</div>
+    <h1 class="header-title">Canada Dispatch W2</h1>
+    <p class="header-sub">Find the nearest W2 technician in Canada by postal code — haversine or ORS driving distance.</p>
+  </header>
+
+  <!-- ── INPUT CARD ── -->
+  <section class="input-card">
+
+    <!-- Ticket text -->
+    <div class="field-block">
+      <label class="field-label" for="ticketText">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Ticket Text
+        <span class="label-hint">Paste full ticket — postal code auto-extracted</span>
+      </label>
+      <textarea id="ticketText" class="ticket-input" placeholder="Paste ticket content here…&#10;Postal code will be extracted automatically." rows="5" spellcheck="false"></textarea>
     </div>
-  </div>
 
-  <div class="wrap">
-    <div class="grid">
-      <div class="card">
-        <h3>Ticket input</h3>
-        <label for="ticketText">Paste ticket text (optional) — we will extract Canadian postal code</label>
-        <textarea id="ticketText" placeholder="Paste ticket details here..."></textarea>
+    <!-- Postal + settings row -->
+    <div class="input-row">
 
-        <div class="row">
-          <div>
-            <label for="postalInput">Ticket postal code (A1A1A1 or A1A 1A1)</label>
-            <input id="postalInput" placeholder="e.g., H7V 1X3" autocomplete="new-password"/>
-          </div>
-          <div>
-            <label for="driveFactor">Driving correction factor (base)</label>
-            <input id="driveFactor" type="number" min="0.8" max="5" step="0.05" value="1.25" autocomplete="off"/>
-          </div>
-          <div>
-            <label for="speedKmh">Avg speed (km/h)</label>
-            <input id="speedKmh" type="number" min="20" max="130" step="5" value="80" autocomplete="off"/>
-          </div>
-        </div>
-
-        <div class="btnrow">
-          <button class="btn-primary" id="btnFind">Find closest</button>
-          <button class="btn-ghost" id="btnExtract">Extract postal from ticket</button>
-          <button class="btn-ghost" id="btnClear">Clear</button>
-        </div>
-
-        <div class="smallnote">
-          Notes: By default this uses Haversine (great-circle) distance, then multiplies by a <b>driving factor</b> to approximate road distance. If the <b>driving API</b> is available (OpenRouteService via <code>/api/canada/ors_matrix</code>), it will use real driving distance & ETA. If the ticket postal can only be resolved at province-level, an additional <b>auto correction</b> is applied.
+      <div class="postal-group">
+        <label class="field-label" for="postalInput">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Canadian Postal Code
+        </label>
+        <div class="postal-wrap">
+          <input id="postalInput" class="postal-input mono" placeholder="e.g. M5V 2T6" maxlength="7" autocomplete="off" spellcheck="false"/>
+          <span class="postal-flag">🇨🇦</span>
         </div>
       </div>
 
-      <div class="card">
-        <h3>Result</h3>
-        <div id="status" class="pill">Ready</div>
-
-        <div style="margin-top:12px">
-          <div class="resultTitle" id="resTitle">—</div>
-          <div class="muted" id="resMeta">—</div>
-
-          <div class="kpi" id="kpiRow" style="display:none">
-            <div class="pill">Miles: <b id="miles">—</b></div>
-            <div class="pill">KM: <b id="km">—</b></div>
-            <div class="pill">Driving KM: <b id="driveKm">—</b></div>
-            <div class="pill">ETA: <b id="eta">—</b></div>
-          </div>
-
-          <label for="checkBox" style="margin-top:14px">Check this</label>
-          <textarea id="checkBox" class="mono" placeholder="Check this: ... (auto-generated)"></textarea>
-          <div class="btnrow">
-            <button class="btn-primary" id="btnCopy">Copy “Check this”</button>
-          </div>
-
-          <div class="list" id="topList" style="display:none"></div>
+      <div class="settings-row">
+        <div class="setting-field">
+          <label class="field-label" for="driveFactor">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Drive Factor
+          </label>
+          <input id="driveFactor" class="setting-input mono" type="number" value="1.25" min="0.8" max="5" step="0.05" autocomplete="off"/>
+        </div>
+        <div class="setting-field">
+          <label class="field-label" for="speedKmh">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Speed (km/h)
+          </label>
+          <input id="speedKmh" class="setting-input mono" type="number" value="80" min="20" max="130" step="5" autocomplete="off"/>
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- Hidden copy field -->
+    <textarea id="checkBox" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;" aria-hidden="true" tabindex="-1"></textarea>
+
+    <!-- Action buttons -->
+    <div class="action-row">
+      <button id="btnFind" class="btn-find">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        Find Closest Tech
+      </button>
+      <button id="btnExtract" class="btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Extract Postal
+      </button>
+      <button id="btnCopy" class="btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        Copy Result
+      </button>
+      <button id="btnClear" class="btn-clear">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+        Clear
+      </button>
+    </div>
+  </section>
+
+  <!-- ── RESULT CARD ── -->
+  <section class="result-card">
+
+    <!-- Tech identity -->
+    <div class="result-identity">
+      <div class="result-icon">🧑‍🔧</div>
+      <div class="result-text">
+        <div id="resTitle" class="res-title">—</div>
+        <div id="resMeta" class="res-meta muted">Enter a postal code above and click Find.</div>
+      </div>
+    </div>
+
+    <!-- KPI stats row -->
+    <div id="kpiRow" class="kpi-row" style="display:none">
+      <div class="kpi-card">
+        <div class="kpi-label">Miles</div>
+        <div id="miles" class="kpi-value mono">—</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Kilometres</div>
+        <div id="km" class="kpi-value mono">—</div>
+      </div>
+      <div class="kpi-card kpi-accent">
+        <div class="kpi-label">Drive Distance</div>
+        <div id="driveKm" class="kpi-value mono">—</div>
+      </div>
+      <div class="kpi-card kpi-primary">
+        <div class="kpi-label">ETA</div>
+        <div id="eta" class="kpi-value mono">—</div>
+      </div>
+    </div>
+
+    <!-- Top list header -->
+    <div class="list-header">
+      <span class="list-label">Nearest Technicians</span>
+      <span class="list-hint">Top 8 by distance</span>
+    </div>
+
+    <!-- Top list (populated by app.js) -->
+    <div id="topList" class="top-list" style="display:none"></div>
+
+    <!-- Empty state -->
+    <div class="result-empty" id="emptyState">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity=".25">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+      </svg>
+      <span class="muted">Results will appear here after lookup.</span>
+    </div>
+  </section>
+
+  <footer class="app-footer">
+    <p class="muted">Uses FSA coordinate lookup with province-aware scoring. ORS routing activated when API is available.</p>
+  </footer>
+</div>
 
 <script src="config.js"></script>
-<script src="ca_w2_techdb.js"></script>
 <script src="ca_postal_prov_db.js"></script>
+<script src="ca_w2_techdb.js"></script>
+<script src="ca_fsa_coords.js"></script>
 <script src="cloud_bootstrap.js"></script>
 </body>
 </html>
