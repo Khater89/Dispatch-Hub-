@@ -1575,236 +1575,10 @@ function pickWeekIndexForDate(dateStr, ampm){
   throw new Error('Date is outside Start/End ranges.');
 }
 
-
-function weekStartYmd(week) {
-  // Helper: get week start as YYYY-MM-DD from week object
-  if (!week) return null;
-  if (week.start) {
-    const d = new Date(week.start);
-    if (!isNaN(d)) return d.toISOString().slice(0,10);
-  }
-  if (oncallMeta && oncallMeta.weeks && week.weekIdx != null) {
-    const w = oncallMeta.weeks[week.weekIdx];
-    if (w && w.start) {
-      const d = new Date(w.start);
-      if (!isNaN(d)) return d.toISOString().slice(0,10);
-    }
-  }
-  return null;
-}
-
-// ── Inline date-range override resolver ─────────────────────────────────────
-// Handles patterns like:
-//   "12973 McGlothern (8/2+3 14370 Ngo)"          → override on Aug 2,3
-//   "10909 Norton (4/14-18 Sarshar 13171)"         → override Apr 14-18
-//   "14238 Oshinowo 12/20-12/22 12283 Gibson"      → override Dec 20-22
-//   "(9/5-9/8 13860 Avdyli) 11742 Lewis"           → override Sep 5-8
-//   "14245 Bower 13805 Maier 2/4-2/6"              → override Feb 4-6
-//   "(21-23 Feb 11980 Edberg)"                     → override Feb 21-23
-
-const MONTH_NAMES = {
-  jan:1,feb:2,mar:3,apr:4,may:5,jun:6,
-  jul:7,aug:8,sep:9,oct:10,nov:11,dec:12,
-  january:1,february:2,march:3,april:4,june:6,
-  july:7,august:8,september:9,october:10,november:11,december:12
-};
-
-function _parseInlineDate(tok, refYear, refMonth) {
-  // tok is something like "8/2", "12/22", "4/18", "3" (day only), "Feb", "NOV"
-  tok = tok.trim();
-  const monthWord = MONTH_NAMES[tok.toLowerCase()];
-  if (monthWord) return { m: monthWord, d: null }; // month name only
-  const slash = tok.match(/^(\d{1,2})\/(\d{1,2})$/);
-  if (slash) return { m: parseInt(slash[1]), d: parseInt(slash[2]) };
-  const dayOnly = tok.match(/^(\d{1,2})$/);
-  if (dayOnly) return { m: refMonth, d: parseInt(dayOnly[1]) };
-  return null;
-}
-
-function _makeDateStr(m, d, refYmd) {
-  // Build YYYY-MM-DD, inferring year from refYmd (weekStart)
-  const refY = parseInt(refYmd.slice(0,4));
-  const refM = parseInt(refYmd.slice(5,7));
-  // If month is much earlier than ref month, we might be in next year
-  let y = refY;
-  if (m < refM - 6) y = refY + 1;
-  if (m > refM + 6) y = refY - 1;
-  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-}
-
-function _dateInRange(dateYmd, startYmd, endYmd) {
-  return dateYmd >= startYmd && dateYmd <= endYmd;
-}
-
-function resolveInlineDateOverride(cellText, selectedDateYmd, weekStartYmd) {
-  // Returns the matching override segment text, or null if no override matches.
-  const refY = parseInt(weekStartYmd.slice(0,4));
-  const refM = parseInt(weekStartYmd.slice(5,7));
-
-  // ── Pattern library ──────────────────────────────────────────────────────
-  // We try multiple regex patterns in order of specificity.
-  const patterns = [
-    // 1) (MM/DD-MM/DD ...) or (MM/DD+MM/DD ...)  e.g. (12/6-12/8 14238 Oshinowo)
-    /\(\s*(\d{1,2}\/\d{1,2})\s*[-+]\s*(\d{1,2}\/\d{1,2})[^)]*\)/gi,
-    // 2) (MM/DD-DD ...)  e.g. (4/14-18 Sarshar 13171)
-    /\(\s*(\d{1,2}\/\d{1,2})\s*-\s*(\d{1,2})[^/)][^)]*\)/gi,
-    // 3) (DD-DD MonthName ...) or (MonthName DD-DD ...) e.g. (21-23 Feb 11980 Edberg)
-    /\(\s*(\d{1,2})\s*[-–]\s*(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[^)]*\)/gi,
-    /\(\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2})\s*[-–]\s*(\d{1,2})[^)]*\)/gi,
-    // 4) Bare: MM/DD-MM/DD outside parens (e.g. 14238 Oshinowo 12/20-12/22 12283 Gibson)
-    /(?<!\()\b(\d{1,2}\/\d{1,2})\s*[-]\s*(\d{1,2}\/\d{1,2})\b/gi,
-    // 5) Bare: MM/DD-DD outside parens (e.g. 12/20-22 ...)
-    /(?<!\()\b(\d{1,2}\/\d{1,2})\s*-\s*(\d{1,2})\b/gi,
-    // 6) Single bare date: MM/DD followed immediately by a tech ref (rare)
-    /\((\d{1,2}\/\d{1,2})\s+[^)]+\d{4,6}[^)]*\)/gi,
-  ];
-
-  // Helper: parse a matched segment and check if selectedDate is in range
-  function checkSegment(segment, startTok, endTok, monthHint) {
-    let startM, startD, endM, endD;
-
-    // startTok and endTok are strings like "12/6", "18", "Feb", etc.
-    const s1 = _parseInlineDate(startTok, refY, monthHint || refM);
-    const s2 = endTok ? _parseInlineDate(endTok, refY, s1 ? s1.m : refM) : null;
-
-    if (!s1 || !s1.d) return false;
-    startM = s1.m; startD = s1.d;
-
-    if (s2 && s2.d) {
-      endM = s2.m || startM; endD = s2.d;
-    } else {
-      // Single date — treat as a 1-day range
-      endM = startM; endD = startD;
-    }
-
-    const startStr = _makeDateStr(startM, startD, weekStartYmd);
-    const endStr   = _makeDateStr(endM,   endD,   weekStartYmd);
-
-    // Swap if inverted (e.g., 8/2+3 parsed weird)
-    const [s, e] = startStr <= endStr ? [startStr, endStr] : [endStr, startStr];
-    return _dateInRange(selectedDateYmd, s, e);
-  }
-
-  // ── Pattern 1 & 4: MM/DD-MM/DD ──────────────────────────────────────────
-  for (const re of [
-    /\((\s*(\d{1,2}\/\d{1,2})\s*[-+]\s*(\d{1,2}\/\d{1,2}))[^)]*\)/gi,
-    /\b((\d{1,2}\/\d{1,2})\s*-\s*(\d{1,2}\/\d{1,2}))\b/gi,
-  ]) {
-    let m;
-    re.lastIndex = 0;
-    while ((m = re.exec(cellText)) !== null) {
-      if (checkSegment(m[0], m[2], m[3], null)) {
-        return m[0]; // matched
-      }
-    }
-  }
-
-  // ── Pattern 2 & 5: MM/DD-DD (same month) ────────────────────────────────
-  for (const re of [
-    /\(\s*(\d{1,2}\/\d{1,2})\s*-\s*(\d{1,2})(?![\/\d])[^)]*\)/gi,
-    /\b(\d{1,2}\/\d{1,2})\s*-\s*(\d{1,2})(?![\/\d])/gi,
-  ]) {
-    let m;
-    re.lastIndex = 0;
-    while ((m = re.exec(cellText)) !== null) {
-      const month = parseInt(m[1].split('/')[0]);
-      const startDay = parseInt(m[1].split('/')[1]);
-      const endDay   = parseInt(m[2]);
-      const startStr = _makeDateStr(month, startDay, weekStartYmd);
-      const endStr   = _makeDateStr(month, endDay,   weekStartYmd);
-      if (_dateInRange(selectedDateYmd, startStr, endStr)) return m[0];
-    }
-  }
-
-  // ── Pattern 3: (DD-DD MonthName) or (MonthName DD-DD) ───────────────────
-  {
-    const re1 = /\(\s*(\d{1,2})\s*[-–]\s*(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[^)]*\)/gi;
-    const re2 = /\(\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2})\s*[-–]\s*(\d{1,2})[^)]*\)/gi;
-    let m;
-    re1.lastIndex = 0;
-    while ((m = re1.exec(cellText)) !== null) {
-      const mo = MONTH_NAMES[m[3].toLowerCase().slice(0,3)];
-      if (!mo) continue;
-      const s2 = _makeDateStr(mo, parseInt(m[1]), weekStartYmd);
-      const e2 = _makeDateStr(mo, parseInt(m[2]), weekStartYmd);
-      if (_dateInRange(selectedDateYmd, s2 <= e2 ? s2 : e2, s2 <= e2 ? e2 : s2)) return m[0];
-    }
-    re2.lastIndex = 0;
-    while ((m = re2.exec(cellText)) !== null) {
-      const mo = MONTH_NAMES[m[1].toLowerCase().slice(0,3)];
-      if (!mo) continue;
-      const s2 = _makeDateStr(mo, parseInt(m[2]), weekStartYmd);
-      const e2 = _makeDateStr(mo, parseInt(m[3]), weekStartYmd);
-      if (_dateInRange(selectedDateYmd, s2 <= e2 ? s2 : e2, s2 <= e2 ? e2 : s2)) return m[0];
-    }
-  }
-
-  // ── Pattern 6: MM/DD+day1 e.g. "8/2+3" ──────────────────────────────────
-  {
-    const re = /\b(\d{1,2})\/(\d{1,2})\+(\d{1,2})\b/g;
-    let m;
-    while ((m = re.exec(cellText)) !== null) {
-      const mo = parseInt(m[1]), d1 = parseInt(m[2]), d2 = parseInt(m[3]);
-      const s2 = _makeDateStr(mo, d1, weekStartYmd);
-      const e2 = _makeDateStr(mo, d2, weekStartYmd);
-      if (_dateInRange(selectedDateYmd, s2, e2)) return m[0];
-    }
-  }
-
-  return null; // no override matched
-}
-
-function extractMainTechId(cellText) {
-  // Bracket-depth-aware extraction:
-  // Collect only characters that are OUTSIDE all parenthetical blocks,
-  // then find the first tech ID (4-6 digits) in that "outside" text.
-  // This correctly handles nested parens like "(5/15 (5pm-11:59pm) 12343 Smith) 12009 Prucak"
-  // → outside text is " 12009 Prucak" → returns 12009
-  let depth = 0;
-  let outside = [];
-  for (let i = 0; i < cellText.length; i++) {
-    const ch = cellText[i];
-    if (ch === '(') {
-      depth++;
-    } else if (ch === ')') {
-      if (depth > 0) depth--;
-      // skip the closing paren even if depth was already 0 (orphan close)
-    } else if (depth === 0) {
-      outside.push(ch);
-    }
-  }
-  const outsideText = outside.join('');
-  const m = outsideText.match(/\b(\d{4,6})\b/);
-  return m ? m[1] : null;
-}
-
-function parseTechCell(cellValue, selectedDateYmd, weekStartYmd){
+function parseTechCell(cellValue){
   const s=String(cellValue??'').trim();
   if(!s) return null;
   const reserved=/reserve/i.test(s);
-
-  // ── Date-aware override resolution ──────────────────────────────────────
-  if (selectedDateYmd && weekStartYmd) {
-    const overrideSegment = resolveInlineDateOverride(s, selectedDateYmd, weekStartYmd);
-    if (overrideSegment) {
-      // Extract tech ID from the matched override segment
-      const ovMatch = overrideSegment.match(/\b(\d{4,6})\b/);
-      if (ovMatch) {
-        return {
-          raw: s,
-          techId: ovMatch[1],
-          reserved,
-          overrideApplied: true,
-          overrideText: overrideSegment.trim()
-        };
-      }
-    }
-    // No override matched — use the main tech (strip out parenthetical overrides)
-    const mainId = extractMainTechId(s);
-    if (mainId) return { raw: s, techId: mainId, reserved, overrideApplied: false };
-  }
-
-  // ── Fallback: original simple parse ─────────────────────────────────────
   const idMatch=s.match(/\b(\d{4,6})\b/);
   return {raw:s, techId:idMatch?idMatch[1]:null, reserved};
 }
@@ -1817,7 +1591,6 @@ function renderResult({inputZip,dateStr,enteredDateStr,ampm,marketDetected,week,
   const requireChoice = (!marketDetected?.userSelected) && !!marketDetected?.secondMarket && (cLower === 'low' || cLower === 'medium');
 
   const reservedBadge = techCell?.reserved ? '<span class="badge">RESERVED</span>' : '';
-  const overrideBadge = techCell?.overrideApplied ? `<span class="badge" style="background:rgba(249,115,22,.15);color:#F97316;border:1px solid rgba(249,115,22,.3)">DATE OVERRIDE: ${escapeHtml(techCell.overrideText||'')}</span>` : '';
   const techFoundBadge = reservedBlocked ? '' : (tech ? '' : '<span class="badge">NOT FOUND IN TECH DB</span>');
   const reservedBlockHtml = reservedBlocked ? `<div class="warn-card">
           <div class="warn-title">🚫 OnCall Reserved</div>
@@ -1904,7 +1677,7 @@ $('result').innerHTML = `
       <div class="badge">Range: ${ymd(week.start)} → ${ymd(week.end)}</div>
     </div>
     <hr style="border:0;border-top:1px solid rgba(148,163,184,.18);margin:12px 0">
-    ${requireChoice ? `<div class="warn-card"><div class="warn-title">⚠️ Confirmation required</div><div class="warn-body">Two options were found     On‑Call. Please choose one from the <b>Top 2</b> options below.</div></div>` : `<div><b>On‑Call Cell</b>: ${techCell ? (techCell.raw+' '+reservedBadge+' '+overrideBadge) : '<span class="muted">Empty</span>'}</div>`}
+    ${requireChoice ? `<div class="warn-card"><div class="warn-title">⚠️ Confirmation required</div><div class="warn-body">Two options were found     On‑Call. Please choose one from the <b>Top 2</b> options below.</div></div>` : `<div><b>On‑Call Cell</b>: ${techCell ? (techCell.raw+' '+reservedBadge) : '<span class="muted">Empty</span>'}</div>`}
     ${requireChoice ? '' : `<div class="tech-na-grid" style="margin-top:10px;display:grid;grid-template-columns:1.4fr 1fr;gap:14px;align-items:start;">
       <div>
         <b>Tech Details</b> ${techFoundBadge}
@@ -1979,8 +1752,7 @@ function lookupWithChosenMarket(choice){
   const week = oncallMeta.weeks[weekIdx];
 
   const chosenMarket = choice.market;
-  const weekStartForParse2 = oncallMeta.weeks[week.weekIdx]?.start ? ymd(oncallMeta.weeks[week.weekIdx].start) : weekStartYmd(week);
-  const techCell = parseTechCell(oncallSheetAOA[chosenMarket.row][week.col], dateStr, weekStartForParse2);
+  const techCell = parseTechCell(oncallSheetAOA[chosenMarket.row][week.col]);
   const tech = techCell?.techId ? (techMap.get(techCell.techId)||null) : null;
   let techNotFoundReason = '';
   if(techCell?.techId && !tech){ techNotFoundReason = `Tech ID ${techCell.techId} not found in Tech DB. Please update Tech DB.`; }
@@ -2140,8 +1912,7 @@ $('btnLookup').addEventListener('click', async ()=>{
     const marketDetected=detectMarketForZip(inputZip, selectedState, week, dateStr);
     __lastLookup = { inputZip, dateStr, enteredDateStr, ampm, selectedState, baseDetected: marketDetected, ticketTimeStr };
 
-    const weekStartForParse = oncallMeta.weeks[week.weekIdx]?.start ? ymd(oncallMeta.weeks[week.weekIdx].start) : weekStartYmd(week);
-    const techCell=parseTechCell(oncallSheetAOA[marketDetected.market.row][week.col], dateStr, weekStartForParse);
+    const techCell=parseTechCell(oncallSheetAOA[marketDetected.market.row][week.col]);
     const tech = techCell?.techId ? (techMap.get(techCell.techId)||null) : null;
     let techNotFoundReason = '';
     if(techCell?.techId && !tech){ techNotFoundReason = `Tech ID ${techCell.techId} not found in Tech DB. Please upload the updated Tech DB.`; }
