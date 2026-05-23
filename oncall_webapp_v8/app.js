@@ -1995,9 +1995,9 @@ populateTicketTimeOptions();
     const prog = document.getElementById('oncallProg');
     if (prog) prog.style.width = '100%';
     const nameEl = document.getElementById('oncallName');
-    if (nameEl) nameEl.textContent = fname + '  ✓ cached';
+    if (nameEl) nameEl.textContent = '📂 ' + fname + '  (cached — load new to replace)';
     const btn = document.getElementById('btnLoadOncall');
-    if (btn) { btn.textContent = 'Loaded ✓'; btn.disabled = true; btn.style.opacity = '.7'; }
+    if (btn) { btn.textContent = '↺ Change File'; btn.disabled = false; btn.style.opacity = '1'; }
     const status = document.getElementById('statusMsg') || document.querySelector('.status');
     const msg = `OnCall cached — Markets: ${oncallMeta.markets.length} | Weeks: ${oncallMeta.weeks.length}`;
     if (status) status.textContent = msg;
