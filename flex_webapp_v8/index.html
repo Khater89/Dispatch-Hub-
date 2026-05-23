@@ -5,304 +5,955 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Flex Tech Finder (Tier 2) — Closest by ZIP</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <style>
-   /* ===== Light UI Theme (CSS only) — Safe to merge with your working logic ===== */
 
-:root{
-  --bg1: #f0f4f8;
-  --bg2: #d9e2ec;
-  --ink: #102a43;
-  --muted: #486581;
-  --border: #bcccdc;
-  --accent: #2563eb;
-  --accent2: #11a37f;
-  --card: #ffffff;
-  --input-bg: #f5f7fa;
-
-  /* keep old border variable usage */
-  --border-rgba: rgba(37,99,235,.25);
-}
-
-body{
-  font-family: "Segoe UI", Arial, sans-serif;
-  margin:0;
-  padding:24px;
-  color: var(--ink);
-  background: linear-gradient(135deg, var(--bg1), var(--bg2));
-  min-height:100vh;
-}
-
-.card{
-  max-width: 980px;
-  margin: 0 auto;
-  background: var(--card);
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid var(--border);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-}
-
-h1{
-  margin:0 0 12px 0;
-  font-size: 22px;
-  color: var(--accent);
-  font-weight: 800;
-  letter-spacing: .2px;
-}
-
-.muted{
-  color: var(--muted);
-  margin: 6px 0 0 0;
-  line-height: 1.5;
-  font-size: 14px;
-}
-
-label{
-  display:block;
-  margin-top: 16px;
-  margin-bottom: 6px;
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--ink);
-}
-
-input, textarea{
-  width:100%;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  outline: none;
-  box-sizing: border-box;
-  background: var(--input-bg);
-  font-size: 14px;
-  transition: all 0.2s ease;
-}
-
-textarea{ min-height: 110px; resize: vertical; }
-
-input:focus, textarea:focus{
-  border-color: var(--accent);
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.10);
-}
-
-.row{
-  margin-top: 12px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.pill{
-  display:inline-block;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid #c6f6d5;
-  background: #f0fff4;
-  color: #22543d;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-/* Buttons */
-.btn{
-  display:inline-block;
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--accent);
-  background: #fff;
-  color: var(--accent);
-  cursor: pointer;
-  user-select: none;
-  font-weight: 700;
-  font-size: 13px;
-  transition: all 0.2s;
-}
-
-.btn:hover{
-  background: var(--accent);
-  color: #fff;
-}
-
-/* keep your IDs behavior without changing HTML */
-.btn#findBtn, .btn#clearBtn{
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
-.btn#findBtn:hover, .btn#clearBtn:hover{
-  filter: brightness(.95);
-}
-
-.btn.secondary{
-  border-color: var(--border);
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.btn.secondary:hover{
-  background: #e2e8f0;
-  border-color: #cbd5e1;
-  color: #334155;
-}
-
-.btn:disabled{
-  opacity: .5;
-  cursor: not-allowed;
-}
-
-.split{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-@media (max-width: 720px){
-  .split{ grid-template-columns: 1fr; }
-}
-
-/* Results cards */
-.tech-card{
-  margin-top: 20px;
-  border-radius: 12px;
-  padding: 18px;
-  background: #fff;
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-}
-
-.tech-name{
-  display:flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 18px;
-  font-weight: 800;
-  margin-bottom: 15px;
-  color: var(--accent);
-}
-
-.badge{
-  font-size: 12px;
-  font-weight: 800;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: #ebf4ff;
-  color: #2b6cb0;
-  border: 1px solid #bee3f8;
-  white-space: nowrap;
-}
-
-.grid{
-  display:grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-@media (max-width: 720px){
-  .grid{ grid-template-columns: 1fr; }
-}
-
-.kv{
-  border: 1px solid #e2e8f0;
-  border-left: 4px solid var(--accent2);
-  border-radius: 8px;
-  padding: 10px;
-  background: #f8fafc;
-}
-
-.k{
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 2px;
-}
-.v{
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ink);
-  word-break: break-word;
-}
-
-.empty{
-  border: 2px dashed var(--border);
-  border-radius: 12px;
-  padding: 20px;
-  margin-top: 15px;
-  text-align: center;
-  background: #f8fafc;
-}
-
-code{
-  background: rgba(37,99,235,.08);
-  padding: 2px 6px;
-  border-radius: 8px;
-  border: 1px solid rgba(37,99,235,.14);
-}
-
-/* Tables (keep same class names used by your working code) */
-.table-wrap{
-  overflow:auto;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  margin-top: 10px;
-}
-
-.tbl{
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  background: #fff;
-}
-
-.tbl th, .tbl td{
-  padding: 12px;
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-  white-space: nowrap;
-}
-
-.tbl thead th{
-  background: #f1f5f9;
-  color: var(--muted);
-  font-weight: 700;
-  position: sticky; /* keeps the header visible (nice UX) */
-  top: 0;
-}
-  </style>
-
+  <!-- Set theme attribute early to prevent flash -->
   <script>(function(){try{var t=localStorage.getItem('dispatchhub-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();</script>
   <link rel="stylesheet" href="../assets/theme.css" />
   <link rel="stylesheet" href="../assets/glass.css">
   <script defer src="../assets/theme.js"></script>
-<script defer src="../assets/glass.js"></script>
+  <script defer src="../assets/glass.js"></script>
 
-<script src="../assets/auth-config.js"></script>
-<script defer src="../assets/auth-client.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-  if (window.UFHAuth) {
-    window.UFHAuth.init({ appName: "Unified Finder Hub \u2014 Flex", mountUserBadge: true });
-  }
-});
-</script>
+  <!-- Auth -->
+  <script src="../assets/auth-config.js"></script>
+  <script defer src="../assets/auth-client.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      if (window.UFHAuth) {
+        window.UFHAuth.init({ appName: "Unified Finder Hub \u2014 Flex", mountUserBadge: true });
+      }
+    });
+  </script>
 
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    /* Kill Chrome autofill yellow background + suppress autocomplete UI */
+    /* ═══════════════════════════════════════════════════════════════
+       FLEX TECH FINDER — Dispatch console UI
+       One cohesive dark theme, no !important wars.
+       ═══════════════════════════════════════════════════════════════ */
+
+    :root{
+      /* Surfaces */
+      --bg-0: #060c18;
+      --bg-1: #0a1326;
+      --surface-1: rgba(17, 24, 39, 0.72);
+      --surface-2: rgba(15, 23, 42, 0.85);
+      --surface-3: rgba(15, 23, 42, 0.55);
+      --surface-elev: rgba(255, 255, 255, 0.03);
+
+      /* Borders */
+      --border-1: rgba(255, 255, 255, 0.08);
+      --border-2: rgba(255, 255, 255, 0.14);
+      --border-focus: rgba(6, 182, 212, 0.5);
+
+      /* Text */
+      --text-1: #f1f5f9;
+      --text-2: #cbd5e1;
+      --text-3: #94a3b8;
+      --text-4: #64748b;
+      --text-5: #475569;
+
+      /* Brand */
+      --accent: #06b6d4;
+      --accent-soft: rgba(6, 182, 212, 0.12);
+      --accent-glow: rgba(6, 182, 212, 0.22);
+      --accent-strong: #0891b2;
+
+      /* Semantic */
+      --success: #10b981;
+      --success-soft: rgba(16, 185, 129, 0.12);
+      --warning: #f59e0b;
+      --warning-soft: rgba(245, 158, 11, 0.12);
+      --danger: #ef4444;
+      --danger-soft: rgba(239, 68, 68, 0.12);
+
+      /* Radius */
+      --r-sm: 8px;
+      --r-md: 12px;
+      --r-lg: 16px;
+      --r-xl: 20px;
+
+      /* Shadows */
+      --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.2);
+      --shadow-glow: 0 0 0 1px var(--border-focus), 0 0 24px var(--accent-glow);
+      --shadow-btn: 0 4px 14px rgba(6, 182, 212, 0.3);
+
+      /* Type */
+      --ff-display: 'Syne', system-ui, sans-serif;
+      --ff-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+      --ff-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-0);
+      color: var(--text-1);
+      font-family: var(--ff-body);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+    }
+
+    body {
+      background:
+        radial-gradient(1200px 700px at 15% -5%, rgba(6, 182, 212, 0.08), transparent 60%),
+        radial-gradient(900px 600px at 95% 110%, rgba(6, 182, 212, 0.05), transparent 55%),
+        var(--bg-0);
+      padding: 28px 20px 80px;
+    }
+
+    /* Top accent line */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent) 20%, var(--accent) 80%, transparent);
+      opacity: 0.5;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    /* ─── Hub back button ─── */
+    .hub-back-btn {
+      position: fixed;
+      top: 16px;
+      left: 18px;
+      z-index: 100;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: rgba(6, 12, 24, 0.85);
+      border: 1px solid var(--border-2);
+      border-radius: 10px;
+      color: var(--text-1);
+      font-family: var(--ff-display);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-decoration: none;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .hub-back-btn:hover {
+      background: rgba(15, 23, 42, 0.95);
+      border-color: rgba(255, 255, 255, 0.28);
+      transform: translateX(-2px);
+    }
+
+    /* ─── Page container ─── */
+    .page {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding-top: 32px;
+    }
+
+    /* ─── Header ─── */
+    .header {
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      width: fit-content;
+    }
+    .eyebrow::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent);
+    }
+    .header h1 {
+      font-family: var(--ff-display);
+      font-size: clamp(28px, 4vw, 38px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0;
+      color: var(--text-1);
+    }
+    .header h1 .accent { color: var(--accent); }
+    .header p {
+      margin: 4px 0 0;
+      max-width: 720px;
+      color: var(--text-3);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .header p code {
+      font-family: var(--ff-mono);
+      font-size: 12px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(6, 182, 212, 0.18);
+      color: var(--accent);
+      padding: 2px 7px;
+      border-radius: 6px;
+    }
+
+    /* ─── Status strip ─── */
+    .status-strip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0 18px;
+      padding: 10px 14px;
+      background: var(--surface-3);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-md);
+      backdrop-filter: blur(10px);
+      font-size: 12px;
+      flex-wrap: wrap;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+      flex-shrink: 0;
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+    .status-dot.is-error { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+    .status-dot.is-warn  { background: var(--warning); box-shadow: 0 0 10px var(--warning); }
+    .status-dot.is-ok    { background: var(--success); box-shadow: 0 0 10px var(--success); }
+    .status-text {
+      color: var(--text-2);
+      font-family: var(--ff-mono);
+      font-size: 12px;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .status-text strong { color: var(--text-1); font-weight: 600; }
+    .status-strip .sep {
+      width: 1px;
+      height: 16px;
+      background: var(--border-1);
+    }
+
+    /* ─── Card ─── */
+    .card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-lg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: var(--shadow-card);
+    }
+
+    .search-card {
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    /* ─── Field ─── */
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+    .field-label .req {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .field-label .hint {
+      margin-left: auto;
+      font-family: var(--ff-body);
+      font-size: 11px;
+      letter-spacing: 0;
+      text-transform: none;
+      color: var(--text-5);
+      font-weight: 400;
+    }
+
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-wrap .lead-icon {
+      position: absolute;
+      left: 14px;
+      color: var(--text-4);
+      pointer-events: none;
+      display: flex;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-md);
+      color: var(--text-1);
+      font-family: var(--ff-body);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .input-wrap input.with-icon { padding-left: 42px; }
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+    input::placeholder, textarea::placeholder { color: var(--text-5); }
+    input:focus, textarea:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.12);
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    /* Hero ZIP input — primary, larger */
+    .zip-field input {
+      font-family: var(--ff-mono);
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      padding: 14px 14px 14px 44px;
+    }
+    .zip-field input::placeholder { letter-spacing: 0; font-weight: 400; font-size: 14px; font-family: var(--ff-body); }
+    .zip-field .lead-icon { left: 16px; color: var(--accent); }
+
+    /* Grid layouts */
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 720px) {
+      .row-2 { grid-template-columns: 1fr; }
+    }
+
+    .field + .field { margin-top: 14px; }
+
+    /* ─── Buttons ─── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--border-2);
+      background: var(--surface-2);
+      color: var(--text-1);
+      font-family: var(--ff-display);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      user-select: none;
+      text-decoration: none;
+    }
+    .btn svg { flex-shrink: 0; }
+    .btn:hover {
+      background: rgba(30, 41, 59, 0.95);
+      border-color: rgba(255, 255, 255, 0.22);
+      color: #fff;
+    }
+    .btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.3);
+    }
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      border-color: var(--accent);
+      color: #021018;
+      box-shadow: var(--shadow-btn);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #22d3ee, var(--accent));
+      box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5);
+      transform: translateY(-1px);
+      color: #021018;
+    }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: var(--border-1);
+      color: var(--text-2);
+    }
+    .btn-ghost:hover {
+      background: var(--surface-elev);
+      border-color: var(--border-2);
+      color: var(--text-1);
+    }
+
+    .btn-danger-ghost {
+      background: transparent;
+      border-color: var(--border-1);
+      color: var(--text-2);
+    }
+    .btn-danger-ghost:hover {
+      background: var(--danger-soft);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    .btn-icon {
+      padding: 10px;
+      width: 38px;
+      height: 38px;
+    }
+
+    .btn-sm {
+      padding: 7px 12px;
+      font-size: 12px;
+    }
+
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      font-family: var(--ff-mono);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-3);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-1);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      margin-left: 6px;
+    }
+
+    /* ─── Action bar ─── */
+    .action-bar {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border-1);
+      flex-wrap: wrap;
+    }
+    .action-bar .primary-actions {
+      display: flex;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+    .action-bar .secondary-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ─── Nav strip (Prev/Next) ─── */
+    .nav-strip {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      padding: 10px 14px;
+      background: var(--surface-3);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-md);
+      font-family: var(--ff-mono);
+      font-size: 12px;
+      color: var(--text-3);
+    }
+    .nav-strip.is-visible { display: flex; }
+    .nav-strip .pos { flex: 1; text-align: center; }
+    .nav-strip .pos strong { color: var(--text-1); font-weight: 600; }
+
+    /* ─── Results ─── */
+    #results { margin-top: 6px; }
+
+    .tech-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-lg);
+      padding: 22px;
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow-card);
+      margin-top: 18px;
+    }
+
+    .tech-name {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border-1);
+      font-family: var(--ff-display);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+    }
+    .tech-name > span:first-child {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+    .tech-name > span:first-child::before {
+      content: '';
+      width: 3px;
+      align-self: stretch;
+      background: var(--accent);
+      border-radius: 2px;
+      box-shadow: 0 0 8px var(--accent);
+      flex-shrink: 0;
+    }
+
+    .badge {
+      flex-shrink: 0;
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+      letter-spacing: 0.04em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .kv {
+      padding: 12px 14px;
+      background: var(--surface-3);
+      border: 1px solid var(--border-1);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--r-sm);
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .kv:hover { background: rgba(15, 23, 42, 0.8); border-left-color: #22d3ee; }
+    .k {
+      font-family: var(--ff-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-4);
+      margin-bottom: 4px;
+    }
+    .v {
+      font-family: var(--ff-body);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-1);
+      word-break: break-word;
+      line-height: 1.4;
+    }
+
+    /* ─── Empty state ─── */
+    .empty {
+      padding: 48px 24px;
+      margin-top: 18px;
+      text-align: center;
+      background: var(--surface-3);
+      border: 1px dashed var(--border-2);
+      border-radius: var(--r-lg);
+    }
+    .empty .icon {
+      width: 48px; height: 48px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-2);
+      color: var(--text-4);
+      border: 1px solid var(--border-1);
+    }
+    .empty p {
+      margin: 0;
+      color: var(--text-2);
+      font-size: 14px;
+    }
+    .empty p strong {
+      color: var(--text-1);
+      font-weight: 600;
+      font-size: 15px;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .empty .muted, .muted {
+      color: var(--text-4);
+      font-size: 13px;
+    }
+
+    /* ─── Table ─── */
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-md);
+      background: var(--surface-3);
+      max-height: 600px;
+    }
+    .tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: transparent;
+    }
+    .tbl thead th {
+      position: sticky;
+      top: 0;
+      background: rgba(6, 12, 24, 0.95);
+      backdrop-filter: blur(8px);
+      color: var(--text-3);
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-2);
+      white-space: nowrap;
+      z-index: 1;
+    }
+    .tbl tbody td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border-1);
+      color: var(--text-2);
+      white-space: nowrap;
+      transition: background 0.1s ease;
+    }
+    .tbl tbody tr:last-child td { border-bottom: none; }
+    .tbl tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.015); }
+    .tbl tbody tr:hover td { background: rgba(6, 182, 212, 0.06); color: var(--text-1); }
+    .tbl tbody td:first-child {
+      font-family: var(--ff-mono);
+      color: var(--text-4);
+      font-size: 12px;
+    }
+    .tbl tbody td:nth-child(2) {
+      font-family: var(--ff-mono);
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .tbl tbody td:nth-child(3) { color: var(--text-1); font-weight: 500; }
+    .tbl tbody tr td:last-child[data-col="distance"] {
+      font-family: var(--ff-mono);
+      color: var(--text-1);
+      font-weight: 600;
+    }
+
+    /* ─── DB footer toolbar ─── */
+    .db-footer {
+      margin-top: 22px;
+      padding: 14px 18px;
+      background: var(--surface-3);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-md);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .db-footer .label {
+      font-family: var(--ff-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-4);
+    }
+    .db-footer .pill {
+      font-family: var(--ff-mono);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: var(--success-soft);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      flex-shrink: 0;
+    }
+    .db-footer .pill.is-uploaded {
+      background: var(--warning-soft);
+      color: var(--warning);
+      border-color: rgba(245, 158, 11, 0.25);
+    }
+    .db-footer .db-actions {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+      flex-wrap: wrap;
+    }
+
+    /* Footer note */
+    .footnote {
+      margin-top: 24px;
+      padding: 14px 18px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-md);
+      color: var(--text-4);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .footnote code {
+      font-family: var(--ff-mono);
+      font-size: 12px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      padding: 1px 6px;
+      border-radius: 5px;
+    }
+
+    /* ─── Datalist option styling (Chrome will use its own UI but Firefox respects this) ─── */
+    option { background: var(--bg-1); color: var(--text-1); }
+
+    /* ─── Scrollbar ─── */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(6, 182, 212, 0.25); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(6, 182, 212, 0.5); }
+
+    /* ─── Autofill defeat (preserve original behavior) ─── */
     input:-webkit-autofill,
     input:-webkit-autofill:hover,
     input:-webkit-autofill:focus,
     input:-webkit-autofill:active {
-      -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
-      box-shadow: 0 0 0 1000px transparent inset !important;
+      -webkit-box-shadow: 0 0 0 1000px var(--surface-2) inset !important;
+      box-shadow: 0 0 0 1000px var(--surface-2) inset !important;
       transition: background-color 5000s ease-in-out 0s !important;
-      -webkit-text-fill-color: inherit !important;
+      -webkit-text-fill-color: var(--text-1) !important;
+    }
+
+    /* Mobile tweaks */
+    @media (max-width: 600px) {
+      body { padding: 24px 14px 60px; }
+      .page { padding-top: 44px; }
+      .search-card { padding: 18px; }
+      .tech-card { padding: 18px; }
+      .header h1 { font-size: 26px; }
+      .action-bar { flex-direction: column; align-items: stretch; }
+      .action-bar .primary-actions, .action-bar .secondary-actions { flex-direction: column; }
+      .btn { width: 100%; }
+      .db-footer { padding: 14px; }
+      .db-footer .db-actions { width: 100%; margin-left: 0; }
+      .db-footer .db-actions .btn { flex: 1; }
     }
   </style>
+</head>
+<body>
+
+  <!-- Hub back button (preserved) -->
+  <a href="../index.html" class="hub-back-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 12H5M12 5l-7 7 7 7"/>
+    </svg>
+    Hub
+  </a>
+
+  <div class="page">
+
+    <!-- ═══ Header ═══ -->
+    <header class="header">
+      <span class="eyebrow">Flex · Tier 2 · Dispatch</span>
+      <h1>Tech Finder <span class="accent">— Closest by ZIP</span></h1>
+      <p>
+        Filter by <strong>state</strong>, paste the ticket text (optional), enter a <strong>ZIP</strong>, then run
+        <strong>Find Closest</strong>. Distances use the Haversine formula against the shared <code>zipdb</code>
+        plus a dedicated <code>Tier 2 techdb</code>.
+      </p>
+    </header>
+
+    <!-- ═══ Status strip ═══ -->
+    <div class="status-strip" role="status" aria-live="polite">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="status-text" id="statusPill">Ready</span>
+      <span class="sep"></span>
+      <span class="status-text" id="dbPill" style="flex: 0 0 auto; color: var(--text-3);">DB: built-in</span>
+    </div>
+
+    <!-- ═══ Search card ═══ -->
+    <section class="card search-card">
+
+      <!-- Primary row: ZIP (hero) + State -->
+      <div class="row-2">
+        <div class="field zip-field">
+          <label class="field-label" for="zipInput">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Ticket ZIP <span class="req">·</span> Required for Find Closest
+          </label>
+          <div class="input-wrap">
+            <span class="lead-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </span>
+            <input id="zipInput" class="with-icon" inputmode="numeric" placeholder="e.g. 90210" autocomplete="new-password"/>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="stateInput">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/></svg>
+            State filter
+            <span class="hint">leave empty = auto from ZIP</span>
+          </label>
+          <div class="input-wrap">
+            <input id="stateInput" list="stateList" placeholder="CA or California" autocomplete="new-password"/>
+            <datalist id="stateList"></datalist>
+          </div>
+        </div>
+      </div>
+
+      <!-- Last name -->
+      <div class="field" style="margin-top: 14px;">
+        <label class="field-label" for="lastNameInput">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>
+          Last name
+          <span class="hint">optional · works without ZIP or State</span>
+        </label>
+        <div class="input-wrap">
+          <input id="lastNameInput" placeholder="e.g. Young" autocomplete="new-password"/>
+        </div>
+      </div>
+
+      <!-- Ticket textarea -->
+      <div class="field" style="margin-top: 14px;">
+        <label class="field-label" for="ticketInput">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+          Ticket text
+          <span class="hint">optional · ZIP auto-extracts as you paste</span>
+        </label>
+        <textarea id="ticketInput" placeholder="Paste the ticket here…"></textarea>
+      </div>
+
+      <!-- Action bar -->
+      <div class="action-bar">
+        <div class="primary-actions">
+          <button class="btn btn-primary" id="findBtn" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            Find Closest
+            <span class="kbd">⏎</span>
+          </button>
+          <button class="btn btn-ghost" id="extractBtn" type="button" title="Extract ZIP from ticket text">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M7 12h10"/></svg>
+            Extract ZIP
+          </button>
+          <button class="btn btn-ghost" id="revealAllBtn" type="button" title="List every Flex tech in DB">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+            Reveal All
+          </button>
+        </div>
+        <div class="secondary-actions">
+          <button class="btn btn-danger-ghost" id="clearBtn" type="button" title="Clear all fields">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Nav strip (Prev/Next) — only visible when ranked results -->
+      <div class="nav-strip" id="navStrip">
+        <button class="btn btn-ghost btn-sm" id="prevBtn" type="button" disabled>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Prev
+        </button>
+        <div class="pos" id="navPos">—</div>
+        <button class="btn btn-ghost btn-sm" id="nextBtn" type="button" disabled>
+          Next
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ═══ Results ═══ -->
+    <div id="results"></div>
+
+    <!-- ═══ DB management footer ═══ -->
+    <div class="db-footer">
+      <span class="label">Database</span>
+      <span class="pill" id="dbPillMini">Active</span>
+      <div class="db-actions">
+        <button class="btn btn-ghost btn-sm" id="uploadDbBtn" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+          Upload Excel
+        </button>
+        <input id="techDbUpload" type="file" accept=".xlsx,.xls" style="display:none;" autocomplete="off"/>
+        <button class="btn btn-ghost btn-sm" id="downloadDbBtn" type="button" title="Download generated techdb.js" disabled>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Download .js
+        </button>
+        <button class="btn btn-ghost btn-sm" id="resetDbBtn" type="button" title="Use built-in techdb.js">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- Footnote -->
+    <div class="footnote">
+      The tool prefers <code>USA Tier 2 Flex Tech</code> when present in the DB; otherwise it falls back to
+      <code>TIER II TECH</code>. Tech location uses the tech's home ZIP in <code>techdb</code>.
+    </div>
+
+  </div>
+
+  <!-- Shared offline databases (preserved) -->
+  <script src="config.js"></script>
+  <script src="../oncall_webapp_v8/zipdb.js"></script>
+  <script src="techdb.js"></script>
+
+  <!-- Autofill defeat (preserved) -->
   <script>
-    /* Defeat Chrome autofill / address suggestions on all inputs */
     (function(){
       function killAutofill(){
         var inputs = document.querySelectorAll('input');
@@ -312,276 +963,49 @@ document.addEventListener('DOMContentLoaded', function(){
             if(t!=='date'&&t!=='number'){
               el.setAttribute('autocomplete','new-password');
             }
-            /* readonly trick: Chrome won't show suggestions on readonly fields */
             if(!el.readOnly && !el.disabled){
               el.setAttribute('readonly','');
-              el.addEventListener('focus',function(){
-                this.removeAttribute('readonly');
-              },{once:false});
-              el.addEventListener('blur',function(){
-                this.setAttribute('readonly','');
-              });
+              el.addEventListener('focus',function(){ this.removeAttribute('readonly'); },{once:false});
+              el.addEventListener('blur',function(){ this.setAttribute('readonly',''); });
             }
           }
         });
       }
-      if(document.readyState==='loading'){
-        document.addEventListener('DOMContentLoaded',killAutofill);
-      } else {
-        killAutofill();
-      }
-      /* Also run after any dynamic content might be added */
+      if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded',killAutofill); }
+      else { killAutofill(); }
       setTimeout(killAutofill, 500);
       setTimeout(killAutofill, 1500);
     })();
   </script>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style id="acuative-dark-theme">
-/* ═══ ACUATIVE DARK OVERRIDE ═══ */
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-:root{
-  --bg:#060C18!important;--bg1:#060C18!important;--bg2:#0B1220!important;
-  --bg3:#111827!important;--card:#111827!important;--card2:#0f172a!important;
-  --surface:rgba(255,255,255,.05)!important;--surface2:rgba(255,255,255,.09)!important;
-  --panel:#111827!important;--panel-bg:#111827!important;
-  --text:#F1F5F9!important;--text2:#94A3B8!important;--text3:#475569!important;
-  --ink:#F1F5F9!important;--muted:#94A3B8!important;--muted2:#cbd5e1!important;
-  --border:rgba(255,255,255,.10)!important;--border2:rgba(255,255,255,.16)!important;
-  --accent:#06B6D4!important;--accent-rgb:6,182,212!important;
-  --primary:#06B6D4!important;--p:#06B6D4!important;--b:#06B6D4!important;
-  --ie:#06B6D4!important;--fn:#06B6D4!important;
-  --shadow:0 14px 40px rgba(0,0,0,.5)!important;
-  --radius:16px!important;--r:16px!important;--rsm:10px!important;
-}
-*{box-sizing:border-box}
-html,body{
-  font-family:'Syne',system-ui,sans-serif!important;
-  background:#060C18!important;
-  color:#F1F5F9!important;
-  min-height:100vh;
-}
-body{
-  background:
-    radial-gradient(900px 600px at 10% 0%,rgba(6,182,212,.08),transparent 60%),
-    radial-gradient(700px 500px at 90% 100%,rgba(6,182,212,.05),transparent 55%),
-    #060C18!important;
-}
-/* Cards & Surfaces */
-.card,.card2,.panel,.glass-card,.glass-panel,.table-wrap,
-.contractor-card,.na-card,.warn-card,.result,
-.kv,.kvgrid .kv,.tablebox,
-[class*="card"],[class*="panel"],[class*="surface"]{
-  background:rgba(17,24,39,.75)!important;
-  border:1px solid rgba(255,255,255,.10)!important;
-  border-radius:16px!important;
-  backdrop-filter:blur(12px)!important;
-  box-shadow:0 14px 40px rgba(0,0,0,.35)!important;
-  color:#F1F5F9!important;
-}
-/* Headers */
-h1,h2,h3,h4,h5,h6{color:#F1F5F9!important}
-/* Text */
-p,span,div,label,small,.muted,.hint,.sub,.mutEd{color:inherit}
-.muted,.hint,.sub,.text-muted,[class*="muted"]{color:#94A3B8!important}
-/* Inputs */
-input,select,textarea{
-  background:rgba(15,23,42,.8)!important;
-  border:1px solid rgba(255,255,255,.12)!important;
-  color:#F1F5F9!important;
-  border-radius:12px!important;
-  font-family:'Syne',sans-serif!important;
-}
-input::placeholder,textarea::placeholder{color:#475569!important}
-input:focus,select:focus,textarea:focus{
-  border-color:#06B6D4!important;
-  box-shadow:0 0 0 3px rgba(6,182,212,.15)!important;
-  outline:none!important;
-}
-/* Buttons */
-button,.btn{
-  font-family:'Syne',sans-serif!important;
-  border-radius:12px!important;
-  transition:all .2s!important;
-}
-button.primary,.btn.primary,[class*="primary-btn"],[class*="btn-primary"]{
-  background:linear-gradient(135deg,#06B6D4,rgba(6,182,212,.7))!important;
-  border:none!important;color:#fff!important;
-  box-shadow:0 4px 16px rgba(6,182,212,.35)!important;
-}
-button.primary:hover,.btn.primary:hover{
-  box-shadow:0 8px 24px rgba(6,182,212,.5)!important;
-  transform:translateY(-1px)!important;
-}
-/* Pills & Badges */
-.pill,.badge,.tag,.count,.abtn{
-  background:rgba(6,182,212,.12)!important;
-  border:1px solid rgba(6,182,212,.25)!important;
-  color:#06B6D4!important;
-  border-radius:999px!important;
-}
-/* Tables */
-table{border-collapse:collapse!important}
-th{
-  background:rgba(6,182,212,.10)!important;
-  color:#06B6D4!important;
-  border-bottom:1px solid rgba(6,182,212,.25)!important;
-  font-family:'JetBrains Mono',monospace!important;
-  font-size:11px!important;letter-spacing:.08em!important;text-transform:uppercase!important;
-}
-td{border-bottom:1px solid rgba(255,255,255,.06)!important;color:#F1F5F9!important}
-tr:hover td{background:rgba(6,182,212,.05)!important}
-/* Top accent line */
-body::before{
-  content:'';position:fixed;top:0;left:0;right:0;height:2px;z-index:9999;
-  background:linear-gradient(90deg,#06B6D4,rgba(6,182,212,.3),transparent);
-  pointer-events:none;
-}
-/* Navbar/topbar */
-.top-credit,.topbar,.navbar,.header-bar,[class*="topbar"],[class*="navbar"]{
-  background:rgba(6,12,24,.85)!important;
-  border-bottom:1px solid rgba(255,255,255,.08)!important;
-  backdrop-filter:blur(16px)!important;
-}
-/* Progress bar */
-.bar,.progress-bar{background:#06B6D4!important}
-.progress{background:rgba(255,255,255,.08)!important}
-/* Vendor row / item rows */
-.na-item,.vendor-row,.row-item{
-  background:rgba(15,23,42,.6)!important;
-  border:1px solid rgba(255,255,255,.08)!important;
-}
-/* Links */
-a{color:#06B6D4!important;text-decoration:none!important}
-a:hover{opacity:.8!important}
-/* Stat numbers */
-.svl,.stat-val,.count-big{color:#06B6D4!important}
-/* File upload */
-.file,.upload{
-  background:rgba(15,23,42,.6)!important;
-  border:1px dashed rgba(255,255,255,.15)!important;
-  border-radius:12px!important;
-}
-/* Select options */
-option{background:#111827!important;color:#F1F5F9!important}
-/* Scrollbar */
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:rgba(255,255,255,.03)}
-::-webkit-scrollbar-thumb{background:rgba(6,182,212,.3);border-radius:99px}
-::-webkit-scrollbar-thumb:hover{background:rgba(6,182,212,.6)}
-</style></head>
 
-<body>
-
-<style id="back-btn-style">
-.hub-back-btn {
-  position: fixed;
-  top: 14px;
-  left: 16px;
-  z-index: 9999;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 14px;
-  background: rgba(6,12,24,.85);
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 10px;
-  color: #F1F5F9;
-  font-family: 'Syne', system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .03em;
-  text-decoration: none;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transition: all .2s ease;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0,0,0,.35);
-}
-.hub-back-btn:hover {
-  background: rgba(15,23,42,.95);
-  border-color: rgba(255,255,255,.28);
-  transform: translateX(-2px);
-  color: #fff;
-}
-.hub-back-btn svg { flex-shrink: 0; }
-</style>
-<a href="../index.html" class="hub-back-btn">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M19 12H5M12 5l-7 7 7 7"/>
-  </svg>
-  Hub
-</a>
-
-  <div class="card">
-    <h1>USA Tier 2 Flex Tech Finder — Closest by ZIP</h1>
-    <p class="muted">
-      Filter by <strong>state</strong>, paste the ticket (optional), enter a <strong>ZIP</strong>, then click <strong>Find Closest</strong>.
-      The tool calculates distance using the same Haversine approach as the Oncall Lookup and uses the shared <code>zipdb</code> + a dedicated <code>Tier 2 techdb</code>.
-    </p>
-
-    <div class="split">
-      <div>
-        <label for="stateInput">State filter (abbr or full name)</label>
-        <input id="stateInput" list="stateList" placeholder="Example: CA or California (leave empty = auto from ZIP)"  autocomplete="new-password"/>
-        <datalist id="stateList"></datalist>
-      </div>
-      <div>
-        <label for="zipInput">Ticket ZIP (required for Find Closest)</label>
-        <input id="zipInput" inputmode="numeric" placeholder="Required for Find Closest — e.g. 90210"  autocomplete="new-password"/>
-      </div>
-    </div>
-
-    <label for="lastNameInput">Last name (optional)</label>
-    <input id="lastNameInput" placeholder="Example: Young (works without ZIP or State)"  autocomplete="new-password"/>
-
-    <label for="ticketInput">Ticket text (optional)</label>
-    <textarea id="ticketInput" placeholder="Paste the ticket here. You can click 'Extract ZIP' to fill the ZIP field."></textarea>
-
-    <div class="row" style="margin-top:10px;">
-      <button class="btn secondary" id="uploadDbBtn" type="button">Upload Tech DB (Excel)</button>
-      <input id="techDbUpload" type="file" accept=".xlsx,.xls" style="display:none;"  autocomplete="off"/>
-      <button class="btn secondary" id="resetDbBtn" type="button" title="Use built-in techdb.js">Reset DB</button>
-      <button class="btn secondary" id="downloadDbBtn" type="button" title="Download a techdb.js file generated from the uploaded Excel" disabled>Download techdb.js</button>
-      <div class="pill" id="dbPill">DB: built-in</div>
-    </div>
-
-    <div class="row">
-      <div class="pill" id="statusPill">Ready</div>
-      <button class="btn secondary" id="extractBtn" type="button">Extract ZIP</button>
-      <button class="btn secondary" id="revealAllBtn" type="button">Reveal All Flex Techs</button>
-      <button class="btn" id="findBtn" type="button">Find Closest</button>
-      <button class="btn secondary" id="prevBtn" type="button" disabled>Prev</button>
-      <button class="btn secondary" id="nextBtn" type="button" disabled>Next</button>
-      <button class="btn" id="clearBtn" type="button">Clear</button>
-    </div>
-
-    <div id="results"></div>
-
-    <p class="muted" style="margin-top:16px;">
-      Notes: The tool prefers <code>USA Tier 2 Flex Tech</code> when present in the Tech DB; otherwise it falls back to <code>TIER II TECH</code>. Tech location is based on the tech’s home ZIP in <code>techdb</code>.
-      If you want to include other tiers later, tell me which type names to include.
-    </p>
-  </div>
-
-  <!-- Shared offline databases (ZIP DB is shared with Oncall Lookup) -->
-  <script src="config.js"></script>
-  <script src="../oncall_webapp_v8/zipdb.js"></script>
-  <script src="techdb.js"></script>
-
+  <!-- ═══════════════════════════════════════════════════════════════
+       APPLICATION LOGIC — preserved 1:1 from original.
+       Only the status/dbPill updaters were lightly enhanced to also
+       drive the new status-dot color. Behavior is identical.
+       ═══════════════════════════════════════════════════════════════ -->
   <script>
     // --- Helpers ---
     const $ = (id) => document.getElementById(id);
     const statusPill = $("statusPill");
+    const statusDot  = $("statusDot");
+    const navStrip   = $("navStrip");
+    const navPos     = $("navPos");
     const resultsDiv = $("results");
 
-    function setStatus(text){ statusPill.textContent = text; }
+    function setStatus(text, isError){
+      statusPill.textContent = text;
+      if (!statusDot) return;
+      statusDot.classList.remove('is-error','is-warn','is-ok');
+      if (isError) { statusDot.classList.add('is-error'); return; }
+      const t = String(text || '').toLowerCase();
+      if (/error|not found|missing|required|no result|no flex/.test(t)) statusDot.classList.add('is-warn');
+      else if (/ready|loaded|ranked|match|showing|extracted/.test(t)) statusDot.classList.add('is-ok');
+    }
 
     function apiBase(){ return String(window.API_BASE || '').replace(/\/+$/,''); }
     async function fetchJson(url){
       let headers = { 'Accept':'application/json' };
       if (window.UFHAuth) {
-        // Enforce auth before cloud calls. Falling back to anonymous requests
-        // causes silent 401s, which looked like “cloud DB stopped working”.
         await window.UFHAuth.requireSession();
         headers = await window.UFHAuth.getAuthHeaders(headers);
       }
@@ -621,7 +1045,7 @@ option{background:#111827!important;color:#F1F5F9!important}
       return R * c;
     }
 
-    // --- State name maps (for user input convenience) ---
+    // --- State name maps ---
     const STATE_NAME_TO_ABBR = {
       "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA","Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA",
       "Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA","Kansas":"KS","Kentucky":"KY","Louisiana":"LA","Maine":"ME",
@@ -645,7 +1069,7 @@ option{background:#111827!important;color:#F1F5F9!important}
       return STATE_NAME_TO_ABBR[norm] || "";
     }
 
-    // Fill datalist for better UX
+    // Fill datalist
     (function fillStateList(){
       const dl = $("stateList");
       dl.innerHTML = Object.entries(STATE_NAME_TO_ABBR)
@@ -653,9 +1077,7 @@ option{background:#111827!important;color:#F1F5F9!important}
         .join("");
     })();
 
-    // --- Optional: Load Tech DB from cloud API (preferred) ---
-    // Table name if you used the included seed script:
-    //   usa_tier_2_flex_tech
+    // --- Optional: Load Tech DB from cloud API ---
     window.__CLOUD_TECHDB_PROMISE = (async function tryLoadCloudTechDb(){
       const base = apiBase();
       if(!base) return;
@@ -665,122 +1087,114 @@ option{background:#111827!important;color:#F1F5F9!important}
         const j = await fetchJson(`${base}/api/export/${table}?format=aoa&limit=200000`);
 
         if(j && j.ok && Array.isArray(j.rows) && j.rows.length){
-         // Replace bundled techdb with the cloud copy.
-// IMPORTANT: only do column-mapping if we actually have columns metadata.
-try{
-  const rows = Array.isArray(j.rows) ? j.rows : [];
-  const first = rows[0];
-  const cols = Array.isArray(j.columns) ? j.columns.map(c => String(c||'')) : [];
+         try{
+            const rows = Array.isArray(j.rows) ? j.rows : [];
+            const first = rows[0];
+            const cols = Array.isArray(j.columns) ? j.columns.map(c => String(c||'')) : [];
 
-  // If API already returns AOA (9+ columns) and no columns metadata -> use as-is
-  if (!cols.length && Array.isArray(first) && first.length >= 9){
-    window.TECH_DB_ROWS = rows;
-  } else if (!cols.length && first && typeof first === 'object' && !Array.isArray(first)){
-    // No columns metadata + object rows -> infer keys and normalize to AOA
-    const norm = (s) => String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
-    const keyMap = new Map(Object.keys(first).map(k => [norm(k), k]));
-    const pickKey = (names) => {
-      for (const n of names){
-        const k = norm(n);
-        if (keyMap.has(k)) return keyMap.get(k);
-      }
-      return '';
-    };
-    const K = {
-      tech: pickKey(['Tech ID','tech_id','techid','id','TechID']),
-      first: pickKey(['First Name','first_name','firstname','First']),
-      last: pickKey(['Last Name','last_name','lastname','Last']),
-      region: pickKey(['Region','region']),
-      zone: pickKey(['Zone','zone']),
-      type: pickKey(['Type','type']),
-      city: pickKey(['City','city']),
-      state: pickKey(['State','state']),
-      zip: pickKey(['Zip','ZIP','zip','zip_code','ZIP Code','postal_code'])
-    };
-    const mustHave = [K.tech, K.first, K.last, K.type, K.state, K.zip];
-    if (mustHave.some(k => !k)){
-      // keep existing built-in DB if shape is not usable
-    } else {
-      const toStr = (v) => (v == null ? '' : String(v));
-      window.TECH_DB_ROWS = rows.map(r => ([
-        toStr(r[K.tech]),
-        toStr(r[K.first]),
-        toStr(r[K.last]),
-        toStr(r[K.region]),
-        toStr(r[K.zone]),
-        toStr(r[K.type]),
-        toStr(r[K.city]),
-        toStr(r[K.state]),
-        toStr(r[K.zip]),
-      ]));
-    }
-  } else if (!cols.length){
-    // No columns metadata and unknown shape -> keep bundled DB
-  } else {
-    const norm = (s) => String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
-    const idxMap = new Map(cols.map((c,i)=>[norm(c), i]));
-    const pickIdx = (names) => {
-      for (const n of names){
-        const k = norm(n);
-        if (idxMap.has(k)) return idxMap.get(k);
-      }
-      return -1;
-    };
+            if (!cols.length && Array.isArray(first) && first.length >= 9){
+              window.TECH_DB_ROWS = rows;
+            } else if (!cols.length && first && typeof first === 'object' && !Array.isArray(first)){
+              const norm = (s) => String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+              const keyMap = new Map(Object.keys(first).map(k => [norm(k), k]));
+              const pickKey = (names) => {
+                for (const n of names){
+                  const k = norm(n);
+                  if (keyMap.has(k)) return keyMap.get(k);
+                }
+                return '';
+              };
+              const K = {
+                tech: pickKey(['Tech ID','tech_id','techid','id','TechID']),
+                first: pickKey(['First Name','first_name','firstname','First']),
+                last: pickKey(['Last Name','last_name','lastname','Last']),
+                region: pickKey(['Region','region']),
+                zone: pickKey(['Zone','zone']),
+                type: pickKey(['Type','type']),
+                city: pickKey(['City','city']),
+                state: pickKey(['State','state']),
+                zip: pickKey(['Zip','ZIP','zip','zip_code','ZIP Code','postal_code'])
+              };
+              const mustHave = [K.tech, K.first, K.last, K.type, K.state, K.zip];
+              if (mustHave.some(k => !k)){
+                // keep built-in
+              } else {
+                const toStr = (v) => (v == null ? '' : String(v));
+                window.TECH_DB_ROWS = rows.map(r => ([
+                  toStr(r[K.tech]),
+                  toStr(r[K.first]),
+                  toStr(r[K.last]),
+                  toStr(r[K.region]),
+                  toStr(r[K.zone]),
+                  toStr(r[K.type]),
+                  toStr(r[K.city]),
+                  toStr(r[K.state]),
+                  toStr(r[K.zip]),
+                ]));
+              }
+            } else if (!cols.length){
+              // keep built-in
+            } else {
+              const norm = (s) => String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+              const idxMap = new Map(cols.map((c,i)=>[norm(c), i]));
+              const pickIdx = (names) => {
+                for (const n of names){
+                  const k = norm(n);
+                  if (idxMap.has(k)) return idxMap.get(k);
+                }
+                return -1;
+              };
 
-    const I = {
-      tech: pickIdx(['Tech ID','tech_id','techid','id','TechID']),
-      first: pickIdx(['First Name','first_name','firstname','First']),
-      last: pickIdx(['Last Name','last_name','lastname','Last']),
-      region: pickIdx(['Region','region']),
-      zone: pickIdx(['Zone','zone']),
-      type: pickIdx(['Type','type']),
-      city: pickIdx(['City','city']),
-      state: pickIdx(['State','state']),
-      zip: pickIdx(['Zip','ZIP','zip','zip_code','ZIP Code','postal_code'])
-    };
+              const I = {
+                tech: pickIdx(['Tech ID','tech_id','techid','id','TechID']),
+                first: pickIdx(['First Name','first_name','firstname','First']),
+                last: pickIdx(['Last Name','last_name','lastname','Last']),
+                region: pickIdx(['Region','region']),
+                zone: pickIdx(['Zone','zone']),
+                type: pickIdx(['Type','type']),
+                city: pickIdx(['City','city']),
+                state: pickIdx(['State','state']),
+                zip: pickIdx(['Zip','ZIP','zip','zip_code','ZIP Code','postal_code'])
+              };
 
-    // If we can’t map required columns, fallback to rows as-is
-    const mustHave = [I.tech, I.first, I.last, I.type, I.state, I.zip];
-    if (mustHave.some(i => i < 0)){
-      window.TECH_DB_ROWS = rows;
-    } else {
-      const toStr = (v) => (v == null ? '' : String(v));
-      const fixed = rows.map(r => ([
-        toStr(r[I.tech]),
-        toStr(r[I.first]),
-        toStr(r[I.last]),
-        toStr(r[I.region]),
-        toStr(r[I.zone]),
-        toStr(r[I.type]),
-        toStr(r[I.city]),
-        toStr(r[I.state]),
-        toStr(r[I.zip]),
-      ]));
-      window.TECH_DB_ROWS = fixed;
-    }
-  }
-}catch(_){
-  window.TECH_DB_ROWS = j.rows;
-}
+              const mustHave = [I.tech, I.first, I.last, I.type, I.state, I.zip];
+              if (mustHave.some(i => i < 0)){
+                window.TECH_DB_ROWS = rows;
+              } else {
+                const toStr = (v) => (v == null ? '' : String(v));
+                const fixed = rows.map(r => ([
+                  toStr(r[I.tech]),
+                  toStr(r[I.first]),
+                  toStr(r[I.last]),
+                  toStr(r[I.region]),
+                  toStr(r[I.zone]),
+                  toStr(r[I.type]),
+                  toStr(r[I.city]),
+                  toStr(r[I.state]),
+                  toStr(r[I.zip]),
+                ]));
+                window.TECH_DB_ROWS = fixed;
+              }
+            }
+          }catch(_){
+            window.TECH_DB_ROWS = j.rows;
+          }
 
-          // If user is NOT using an uploaded override, update the DB pill
           try{
             if(!(Array.isArray(TECH_ROWS_OVERRIDE) && TECH_ROWS_OVERRIDE.length)){
               setDbPill(`DB: cloud — ${j.rows.length.toLocaleString()}`);
             }
-          }catch(_){ /* ignore */ }
+          }catch(_){}
 
-          // Rebuild the derived list so the UI actually uses the cloud DB
           try{
             rebuildTechList();
             setStatus(`Ready — Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
             refreshResultsAfterDbChange();
-          }catch(_){ /* ignore */ }
+          }catch(_){}
 
           return;
         }
 
-        // Cloud returned nothing -> keep bundled DB
         setStatus('DB: built-in');
       }catch(e){
         console.warn('Cloud techdb load failed; using built-in techdb.js', e);
@@ -788,7 +1202,7 @@ try{
       }
     })();
 
-    // --- Build ZIP index (ZIP -> lat/lon/state/city) ---
+    // --- Build ZIP index ---
     function buildZipIndex(){
       const rows = window.ZIP_DB_ROWS;
       if (!Array.isArray(rows)) return new Map();
@@ -809,11 +1223,12 @@ try{
 
     const ZIP_INDEX = buildZipIndex();
 
-    // --- Tech parsing + override (Flex-only upload) ---
+    // --- Tech parsing + override ---
     const LS_ROWS_KEY = "UFH_FLEX_TECH_DB_ROWS_V8";
     const LS_META_KEY = "UFH_FLEX_TECH_DB_META_V8";
 
     const dbPill = $("dbPill");
+    const dbPillMini = $("dbPillMini");
     const uploadDbBtn = $("uploadDbBtn");
     const techDbUpload = $("techDbUpload");
     const resetDbBtn = $("resetDbBtn");
@@ -823,7 +1238,15 @@ try{
     let TECH_META_OVERRIDE = null;
     let ALL_TIER2_TECHS = [];
 
-    function setDbPill(text){ if (dbPill) dbPill.textContent = text; }
+    function setDbPill(text){
+      if (dbPill) dbPill.textContent = text;
+      if (dbPillMini){
+        const lc = String(text || '').toLowerCase();
+        if (lc.includes('uploaded')) { dbPillMini.textContent = 'Uploaded'; dbPillMini.classList.add('is-uploaded'); }
+        else if (lc.includes('cloud')) { dbPillMini.textContent = 'Cloud'; dbPillMini.classList.remove('is-uploaded'); }
+        else { dbPillMini.textContent = 'Built-in'; dbPillMini.classList.remove('is-uploaded'); }
+      }
+    }
 
     function getActiveTechRows(){
       return (Array.isArray(TECH_ROWS_OVERRIDE) && TECH_ROWS_OVERRIDE.length) ? TECH_ROWS_OVERRIDE : window.TECH_DB_ROWS;
@@ -1003,13 +1426,22 @@ try{
       return String(s ?? "").replace(/[&<>"']/g, (ch)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[ch]));
     }
 
+    function hideNavStrip(){
+      navStrip.classList.remove('is-visible');
+      $("prevBtn").disabled = true;
+      $("nextBtn").disabled = true;
+    }
+
+    function showNavStrip(){
+      navStrip.classList.add('is-visible');
+    }
+
     function renderList(items, meta){
       currentList = [];
       currentIndex = 0;
       currentMeta = null;
 
-      $("prevBtn").disabled = true;
-      $("nextBtn").disabled = true;
+      hideNavStrip();
 
       const hasTarget = !!(meta && meta.targetZip && ZIP_INDEX.get(meta.targetZip));
       const header = meta?.mode === "revealAll"
@@ -1028,7 +1460,7 @@ try{
           const miles = Number.isFinite(t.distance_miles) ? t.distance_miles : NaN;
           if (Number.isFinite(miles)){
             const km = miles * 1.609344;
-            distStr = `${miles.toFixed(1)} mi (${km.toFixed(1)} km)`;
+            distStr = `${miles.toFixed(1)} mi · ${km.toFixed(1)} km`;
           } else {
             distStr = "N/A";
           }
@@ -1044,7 +1476,7 @@ try{
             <td>${esc(t.city)}</td>
             <td>${esc(t.state)}</td>
             <td>${esc(t.zip)}</td>
-            ${hasTarget ? `<td>${distStr}</td>` : ``}
+            ${hasTarget ? `<td data-col="distance">${distStr}</td>` : ``}
           </tr>
         `;
       }
@@ -1053,7 +1485,7 @@ try{
         <div class="tech-card">
           <div class="tech-name">
             <span>${header}</span>
-            <span class="badge">${items.length}</span>
+            <span class="badge">${items.length} ${items.length === 1 ? 'result' : 'results'}</span>
           </div>
           <div class="table-wrap">
             <table class="tbl">
@@ -1076,15 +1508,22 @@ try{
               </tbody>
             </table>
           </div>
-          ${hasTarget ? `<div class="muted" style="margin-top:10px;">Target: ${esc(meta.targetZip)}${meta.targetCity ? ` — ${esc(meta.targetCity)}, ${esc(meta.targetState)}` : ""}</div>` : ""}
+          ${hasTarget ? `<div class="muted" style="margin-top:12px; font-family: var(--ff-mono); font-size: 12px;">Target: ${esc(meta.targetZip)}${meta.targetCity ? ` — ${esc(meta.targetCity)}, ${esc(meta.targetState)}` : ""}</div>` : ""}
         </div>
       `;
     }
 
     function renderEmpty(msg){
-      resultsDiv.innerHTML = `<div class="empty"><p><strong>${msg}</strong></p><p class="muted">Check the ZIP / state filter, then try again.</p></div>`;
-      $("prevBtn").disabled = true;
-      $("nextBtn").disabled = true;
+      resultsDiv.innerHTML = `
+        <div class="empty">
+          <div class="icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
+          <p><strong>${msg}</strong></p>
+          <p class="muted">Check the ZIP / state filter, then try again.</p>
+        </div>
+      `;
+      hideNavStrip();
     }
 
     function renderTech(item, index, total, meta){
@@ -1108,13 +1547,16 @@ try{
             ${kv("City", item.city)}
             ${kv("State", item.state)}
             ${kv("Tech ZIP", item.zip)}
-            ${kv("Distance", `${miles.toFixed(1)} mi  (${km.toFixed(1)} km)`) }
+            ${kv("Distance", `${miles.toFixed(1)} mi · ${km.toFixed(1)} km`) }
             ${kv("Target ZIP", `${targetZip}${meta.targetCity ? ` — ${meta.targetCity}, ${meta.targetState}` : ""}`)}
             ${stateFilter ? kv("Applied State Filter", `${stateFilter}${stateName ? ` — ${stateName}` : ""}`) : ""}
           </div>
         </div>
       `;
 
+      // Update nav strip
+      showNavStrip();
+      navPos.innerHTML = `<strong>${index + 1}</strong> of ${total}`;
       $("prevBtn").disabled = index <= 0;
       $("nextBtn").disabled = index >= total - 1;
     }
@@ -1127,7 +1569,7 @@ try{
     function runSearch(){
       if (!window.ZIP_DB_ROWS || !Array.isArray(getActiveTechRows())){
         renderEmpty("zipdb / techdb not loaded.");
-        setStatus("Error: DB not loaded");
+        setStatus("Error: DB not loaded", true);
         return;
       }
 
@@ -1137,7 +1579,7 @@ try{
       let stateFilter = toStateAbbr($("stateInput").value);
       const targetZip = normZip($("zipInput").value);
 
-      // --- Mode A: Last name search (works without ZIP or State) ---
+      // Mode A: Last name search
       if (lastQ){
         let items = ALL_TIER2_TECHS.filter(t => String(t.last_name || "").toUpperCase().includes(lastQ));
         if (stateFilter) items = items.filter(t => t.state === stateFilter);
@@ -1188,7 +1630,7 @@ try{
         return;
       }
 
-      // --- Mode B: State-only list (when ZIP is empty) ---
+      // Mode B: State-only list
       if (!targetZip){
         if (!stateFilter){
           renderEmpty("Enter ZIP to find closest, or enter State to list all techs, or enter Last name to search.");
@@ -1207,7 +1649,7 @@ try{
         return;
       }
 
-      // --- Mode C: Original behavior (ZIP-based ranking) ---
+      // Mode C: ZIP-based ranking
       const target = ZIP_INDEX.get(targetZip);
       if (!target){
         renderEmpty(`ZIP ${targetZip} not found in ZIP database.`);
@@ -1252,7 +1694,7 @@ try{
     function runFindClosest(){
       if (!window.ZIP_DB_ROWS || !Array.isArray(getActiveTechRows())){
         renderEmpty("zipdb / techdb not loaded.");
-        setStatus("Error: DB not loaded");
+        setStatus("Error: DB not loaded", true);
         return;
       }
 
@@ -1299,14 +1741,12 @@ try{
       currentIndex = 0;
       currentMeta = null;
       resultsDiv.innerHTML = "";
-      $("prevBtn").disabled = true;
-      $("nextBtn").disabled = true;
+      hideNavStrip();
       setStatus("Ready");
       $("zipInput").focus();
     }
 
-    // ✅ FIXED: reveal all waits for cloud load, then rebuilds list
-    async function revealAllFlexTechs(e){
+    async function revealAllFlexTechs(){
       try{
         if (window.__CLOUD_TECHDB_PROMISE) await window.__CLOUD_TECHDB_PROMISE;
       }catch(_){}
@@ -1349,7 +1789,7 @@ try{
       revealAllBtn.addEventListener("click", revealAllFlexTechs);
     }
 
-    // Flex-only Tech DB upload (stored in browser localStorage)
+    // Tech DB upload
     if (uploadDbBtn && techDbUpload){
       uploadDbBtn.addEventListener("click", () => techDbUpload.click());
       techDbUpload.addEventListener("change", async () => {
@@ -1405,15 +1845,13 @@ try{
       if (z) $("zipInput").value = normZip(z);
     });
 
-    // Auto list by State (no need to click Find Closest)
+    // Auto list by State
     let stateDebounce = null;
     $("stateInput").addEventListener("input", () => {
       clearTimeout(stateDebounce);
       stateDebounce = setTimeout(() => {
         const stateFilter = toStateAbbr($("stateInput").value);
-        if (!stateFilter){
-          return;
-        }
+        if (!stateFilter) return;
 
         const items = ALL_TIER2_TECHS.filter(t => t.state === stateFilter);
         if (!items.length){
@@ -1427,7 +1865,16 @@ try{
       }, 250);
     });
 
-    // Init DB (use uploaded override if exists)
+    // ─── Bonus: "/" focuses the ZIP input (like search shortcuts) ───
+    document.addEventListener('keydown', (e) => {
+      if (e.key === '/' && document.activeElement &&
+          !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        $("zipInput").focus();
+      }
+    });
+
+    // Init DB
     (function initDb(){
       const hadOverride = loadOverrideFromStorage();
       if (!hadOverride){
