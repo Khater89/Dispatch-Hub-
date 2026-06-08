@@ -1,1 +1,791 @@
 
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Console — Dispatch Hub</title>
+
+  <!-- Theme bootstrap -->
+  <script>(function(){try{var t=localStorage.getItem('dispatchhub-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();</script>
+  <link rel="stylesheet" href="../assets/theme.css" />
+  <link rel="stylesheet" href="../assets/glass.css" />
+  <script defer src="../assets/theme.js"></script>
+  <script defer src="../assets/glass.js"></script>
+
+  <!-- Auth -->
+  <script src="../assets/auth-config.js"></script>
+  <script defer src="../assets/auth-client.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      if (window.UFHAuth) {
+        window.UFHAuth.init({ appName: "Dispatch Hub \u2014 Admin", mountUserBadge: true });
+      }
+    });
+  </script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg-0: #060c18;
+      --surface-1: rgba(17, 24, 39, 0.72);
+      --surface-2: rgba(15, 23, 42, 0.85);
+      --surface-3: rgba(15, 23, 42, 0.55);
+      --surface-elev: rgba(255, 255, 255, 0.03);
+      --border-1: rgba(255, 255, 255, 0.08);
+      --border-2: rgba(255, 255, 255, 0.14);
+      --border-focus: rgba(6, 182, 212, 0.5);
+      --text-1: #f1f5f9;
+      --text-2: #cbd5e1;
+      --text-3: #94a3b8;
+      --text-4: #64748b;
+      --text-5: #475569;
+      --accent: #06b6d4;
+      --accent-soft: rgba(6, 182, 212, 0.12);
+      --accent-strong: #0891b2;
+      --success: #10b981;
+      --success-soft: rgba(16, 185, 129, 0.12);
+      --warning: #f59e0b;
+      --warning-soft: rgba(245, 158, 11, 0.12);
+      --danger: #ef4444;
+      --danger-soft: rgba(239, 68, 68, 0.12);
+      --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 20px;
+      --shadow-card: 0 8px 32px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.2);
+      --ff-display: 'Syne', system-ui, sans-serif;
+      --ff-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+      --ff-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100vh; }
+    body {
+      background:
+        radial-gradient(1200px 700px at 15% -5%, rgba(6, 182, 212, 0.08), transparent 60%),
+        radial-gradient(900px 600px at 95% 110%, rgba(6, 182, 212, 0.05), transparent 55%),
+        var(--bg-0);
+      color: var(--text-1);
+      font-family: var(--ff-body);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      padding: 28px 20px 80px;
+    }
+    body::before {
+      content: '';
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent) 20%, var(--accent) 80%, transparent);
+      opacity: 0.5; z-index: 9999; pointer-events: none;
+    }
+
+    /* Back btn */
+    .hub-back-btn {
+      position: fixed; top: 16px; left: 18px; z-index: 100;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 14px;
+      background: rgba(6, 12, 24, 0.85);
+      border: 1px solid var(--border-2);
+      border-radius: 10px;
+      color: var(--text-1);
+      font-family: var(--ff-display); font-size: 12px; font-weight: 700; letter-spacing: 0.03em;
+      text-decoration: none;
+      backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
+    }
+    .hub-back-btn:hover { background: rgba(15, 23, 42, 0.95); border-color: rgba(255, 255, 255, 0.28); transform: translateX(-2px); }
+
+    .page { max-width: 920px; margin: 0 auto; padding-top: 32px; }
+
+    .header { margin-bottom: 24px; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--ff-mono); font-size: 11px; font-weight: 500;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent);
+    }
+    .eyebrow::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); box-shadow: 0 0 12px var(--accent);
+    }
+    .header h1 {
+      font-family: var(--ff-display); font-size: clamp(28px, 4vw, 38px);
+      font-weight: 700; letter-spacing: -0.02em; margin: 8px 0 4px;
+    }
+    .header h1 .accent { color: var(--accent); }
+    .header p { margin: 4px 0 0; color: var(--text-3); font-size: 14px; line-height: 1.6; max-width: 720px; }
+
+    /* Status strip */
+    .status-strip {
+      display: flex; align-items: center; gap: 12px;
+      margin: 20px 0 18px; padding: 10px 14px;
+      background: var(--surface-3);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-md);
+      backdrop-filter: blur(10px);
+      font-size: 12px; flex-wrap: wrap;
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+      flex-shrink: 0;
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+    .status-dot.is-ok { background: var(--success); box-shadow: 0 0 10px var(--success); }
+    .status-dot.is-warn { background: var(--warning); box-shadow: 0 0 10px var(--warning); }
+    .status-dot.is-err { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+    @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.85); } }
+    .status-text {
+      color: var(--text-2);
+      font-family: var(--ff-mono);
+      font-size: 12px;
+      flex: 1; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    /* Section heading */
+    .section-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 12px; margin: 32px 0 14px;
+    }
+    .section-head h2 {
+      font-family: var(--ff-display); font-size: 18px; font-weight: 700;
+      margin: 0; color: var(--text-1); letter-spacing: -0.01em;
+    }
+    .section-head .count {
+      font-family: var(--ff-mono); font-size: 11px;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-4);
+    }
+
+    /* Tool card */
+    .tool-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-lg);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow-card);
+      padding: 22px;
+      margin-bottom: 14px;
+      transition: border-color 0.15s ease;
+    }
+    .tool-card.is-disabled { border-color: rgba(245, 158, 11, 0.25); }
+    .tool-card.is-saving { opacity: 0.7; pointer-events: none; }
+
+    .tool-card-head {
+      display: flex; align-items: center; gap: 14px;
+    }
+    .tool-card-info { flex: 1; min-width: 0; }
+    .tool-card-name {
+      font-family: var(--ff-display);
+      font-size: 17px; font-weight: 700;
+      color: var(--text-1); letter-spacing: -0.005em;
+      margin: 0 0 3px;
+    }
+    .tool-card-key {
+      font-family: var(--ff-mono);
+      font-size: 11px; font-weight: 500;
+      color: var(--text-4); letter-spacing: 0.05em;
+    }
+    .tool-card-status {
+      font-family: var(--ff-mono);
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 4px 9px; border-radius: 999px; flex-shrink: 0;
+    }
+    .tool-card-status.is-on { background: var(--success-soft); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.25); }
+    .tool-card-status.is-off { background: var(--warning-soft); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.25); }
+
+    /* Switch */
+    .switch {
+      position: relative;
+      width: 46px; height: 26px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-2);
+      border-radius: 99px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      padding: 0; outline: none;
+    }
+    .switch::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 18px; height: 18px;
+      background: var(--text-3);
+      border-radius: 50%;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .switch.is-on { background: var(--accent); border-color: var(--accent); }
+    .switch.is-on::after { transform: translateX(20px); background: #021018; }
+    .switch:focus-visible { box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.3); }
+
+    /* Disabled message editor (only when off) */
+    .msg-editor {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-1);
+      display: none;
+    }
+    .msg-editor.is-visible { display: block; }
+    .msg-editor label {
+      display: block;
+      font-family: var(--ff-mono); font-size: 11px; font-weight: 500;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-3); margin-bottom: 6px;
+    }
+    textarea, input[type="text"], input[type="email"] {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-md);
+      color: var(--text-1);
+      font-family: var(--ff-body);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    textarea { min-height: 60px; resize: vertical; line-height: 1.5; }
+    textarea:focus, input[type="text"]:focus, input[type="email"]:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.12);
+    }
+    textarea::placeholder, input::placeholder { color: var(--text-5); }
+
+    .msg-actions {
+      display: flex; gap: 8px; margin-top: 10px;
+      align-items: center;
+    }
+    .msg-actions .meta {
+      flex: 1;
+      font-family: var(--ff-mono); font-size: 11px; color: var(--text-4);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 8px 14px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--border-2);
+      background: var(--surface-2);
+      color: var(--text-1);
+      font-family: var(--ff-display); font-size: 12px; font-weight: 600;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn:hover { background: rgba(30, 41, 59, 0.95); border-color: rgba(255, 255, 255, 0.22); }
+    .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.3); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      border-color: var(--accent);
+      color: #021018;
+      box-shadow: 0 4px 14px rgba(6, 182, 212, .3);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #22d3ee, var(--accent));
+      box-shadow: 0 6px 20px rgba(6, 182, 212, .5);
+      color: #021018;
+    }
+    .btn-ghost { background: transparent; border-color: var(--border-1); color: var(--text-2); }
+    .btn-danger {
+      background: transparent;
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+    .btn-danger:hover {
+      background: var(--danger-soft);
+      border-color: rgba(239, 68, 68, 0.5);
+      color: #fecaca;
+    }
+    .btn-sm { padding: 6px 10px; font-size: 11px; }
+
+    /* Admin list */
+    .admin-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-lg);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow-card);
+      padding: 22px;
+    }
+    .admin-list { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 18px; }
+    .admin-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px;
+      background: var(--surface-3);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-md);
+    }
+    .admin-row .avatar {
+      width: 32px; height: 32px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--ff-mono);
+      font-size: 12px; font-weight: 600;
+      flex-shrink: 0;
+    }
+    .admin-row .info { flex: 1; min-width: 0; }
+    .admin-row .email {
+      font-size: 14px; color: var(--text-1); font-weight: 500;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .admin-row .meta {
+      font-family: var(--ff-mono); font-size: 11px; color: var(--text-4);
+    }
+    .admin-row.is-self .info::after {
+      content: 'you'; margin-left: 8px;
+      padding: 2px 7px; border-radius: 999px;
+      background: var(--accent-soft); color: var(--accent);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+      font-family: var(--ff-mono); font-size: 10px; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+
+    .add-admin-row {
+      display: flex; gap: 8px; align-items: stretch;
+    }
+    .add-admin-row input { flex: 1; }
+
+    /* Loading / Empty / Forbidden */
+    .panel {
+      background: var(--surface-1);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-lg);
+      backdrop-filter: blur(14px);
+      padding: 48px 32px;
+      text-align: center;
+    }
+    .panel .icon {
+      width: 56px; height: 56px;
+      margin: 0 auto 18px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2);
+      border: 1px solid var(--border-1);
+      color: var(--text-3);
+    }
+    .panel.is-forbidden .icon { background: var(--danger-soft); color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
+    .panel h2 {
+      font-family: var(--ff-display); font-size: 22px; margin: 0 0 8px; color: var(--text-1);
+    }
+    .panel p { color: var(--text-3); margin: 0 0 18px; font-size: 14px; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      z-index: 99999; max-width: 90vw;
+      padding: 12px 18px;
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid var(--border-2);
+      border-left-width: 3px;
+      border-radius: var(--r-md);
+      color: var(--text-1);
+      font-family: var(--ff-body); font-size: 13px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 14px 40px rgba(0,0,0,.5);
+      opacity: 0;
+      transition: transform .25s cubic-bezier(.4,0,.2,1), opacity .25s;
+    }
+    .toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.is-ok    { border-left-color: var(--success); }
+    .toast.is-err   { border-left-color: var(--danger); }
+    .toast.is-warn  { border-left-color: var(--warning); }
+
+    @media (max-width: 600px) {
+      body { padding: 24px 14px 60px; }
+      .page { padding-top: 44px; }
+      .tool-card, .admin-card, .panel { padding: 18px; }
+      .add-admin-row { flex-direction: column; }
+      .add-admin-row .btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <a href="../index.html" class="hub-back-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 12H5M12 5l-7 7 7 7"/>
+    </svg>
+    Hub
+  </a>
+
+  <div class="page">
+
+    <header class="header">
+      <span class="eyebrow">Dispatch Hub · Admin</span>
+      <h1>Tool <span class="accent">Management</span></h1>
+      <p>Enable or disable any tool for all users. Disabled tools show a notice when accessed and are greyed-out on the Hub. Changes propagate within 30 seconds.</p>
+    </header>
+
+    <div class="status-strip" role="status" aria-live="polite">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="status-text" id="statusText">Checking permissions…</span>
+    </div>
+
+    <!-- Main content area — populated by JS -->
+    <main id="main"></main>
+
+  </div>
+
+  <!-- Cloud API base -->
+  <script src="../config.js"></script>
+
+  <script>
+    // ─── Helpers ─────────────────────────────────────────────────────
+    const $ = (id) => document.getElementById(id);
+    const main = $("main");
+    const statusText = $("statusText");
+    const statusDot = $("statusDot");
+
+    function setStatus(text, kind){
+      statusText.textContent = text;
+      statusDot.classList.remove('is-ok','is-warn','is-err');
+      if (kind) statusDot.classList.add('is-' + kind);
+    }
+
+    function apiBase(){ return String(window.API_BASE || '').replace(/\/+$/, ''); }
+
+    function escapeHtml(s){
+      return String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    }
+
+    function relativeTime(iso){
+      if (!iso) return '—';
+      const d = new Date(iso);
+      const diff = (Date.now() - d.getTime()) / 1000;
+      if (diff < 60) return 'just now';
+      if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+      if (diff < 86400*7) return `${Math.floor(diff/86400)}d ago`;
+      return d.toLocaleDateString();
+    }
+
+    function initials(email){
+      if (!email) return '?';
+      return email.split('@')[0].slice(0,2).toUpperCase();
+    }
+
+    function toast(msg, kind){
+      document.querySelectorAll('.toast').forEach(t => t.remove());
+      const div = document.createElement('div');
+      div.className = 'toast' + (kind ? ' is-'+kind : '');
+      div.textContent = msg;
+      document.body.appendChild(div);
+      requestAnimationFrame(()=> div.classList.add('is-visible'));
+      setTimeout(()=>{ div.classList.remove('is-visible'); setTimeout(()=>div.remove(), 250); }, 3500);
+    }
+
+    async function authedFetch(path, opts){
+      if (!window.UFHAuth) throw new Error('Auth not ready');
+      await window.UFHAuth.requireSession();
+      const headers = await window.UFHAuth.getAuthHeaders({
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      });
+      const r = await fetch(apiBase() + path, { ...opts, headers });
+      const text = await r.text();
+      let body = null;
+      try { body = text ? JSON.parse(text) : null; } catch(_) {}
+      if (!r.ok) {
+        const err = (body && body.error) ? body.error : `HTTP ${r.status}`;
+        const msg = (body && body.message) ? body.message : err;
+        const e = new Error(msg); e.status = r.status; e.code = err; throw e;
+      }
+      return body;
+    }
+
+    // ─── State ───────────────────────────────────────────────────────
+    let TOOLS = [];
+    let ADMINS = [];
+    let ME_ID = null;
+    let ME_EMAIL = null;
+
+    // ─── Renderers ───────────────────────────────────────────────────
+    function renderForbidden(){
+      main.innerHTML = `
+        <div class="panel is-forbidden">
+          <div class="icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <h2>Access Denied</h2>
+          <p>Your account does not have administrator privileges. Contact an existing administrator to be added.</p>
+          <a class="btn btn-ghost" href="../index.html">Back to Hub</a>
+        </div>
+      `;
+      setStatus('Not an administrator', 'err');
+    }
+
+    function renderToolsAndAdmins(){
+      const toolsHtml = TOOLS.map(t => toolCardHtml(t)).join('');
+      const adminsHtml = ADMINS.map(a => adminRowHtml(a)).join('');
+
+      main.innerHTML = `
+        <div class="section-head">
+          <h2>Tools</h2>
+          <span class="count">${TOOLS.length} ${TOOLS.length === 1 ? 'tool' : 'tools'}</span>
+        </div>
+        <div id="toolsList">${toolsHtml || '<div class="panel"><p>No tools registered yet.</p></div>'}</div>
+
+        <div class="section-head" style="margin-top: 40px;">
+          <h2>Administrators</h2>
+          <span class="count">${ADMINS.length} ${ADMINS.length === 1 ? 'admin' : 'admins'}</span>
+        </div>
+        <div class="admin-card">
+          <div class="admin-list" id="adminList">${adminsHtml}</div>
+          <div class="add-admin-row">
+            <input id="addAdminEmail" type="email" placeholder="email@example.com" autocomplete="off"/>
+            <button class="btn btn-primary" id="addAdminBtn" type="button">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              Add admin
+            </button>
+          </div>
+          <p style="margin: 12px 0 0; font-size: 12px; color: var(--text-4); line-height: 1.5;">
+            The user must have signed in at least once before they can be promoted to admin.
+          </p>
+        </div>
+      `;
+
+      wireEvents();
+    }
+
+    function toolCardHtml(t){
+      const on = !!t.enabled;
+      const msg = t.disabled_message || '';
+      return `
+        <div class="tool-card ${on ? '' : 'is-disabled'}" data-tool-key="${escapeHtml(t.tool_key)}">
+          <div class="tool-card-head">
+            <div class="tool-card-info">
+              <h3 class="tool-card-name">${escapeHtml(t.tool_name)}</h3>
+              <div class="tool-card-key">${escapeHtml(t.tool_key)}</div>
+            </div>
+            <span class="tool-card-status ${on ? 'is-on' : 'is-off'}">${on ? 'Enabled' : 'Disabled'}</span>
+            <button class="switch ${on ? 'is-on' : ''}" data-action="toggle"
+              role="switch" aria-checked="${on}" aria-label="Toggle ${escapeHtml(t.tool_name)}"></button>
+          </div>
+          <div class="msg-editor ${on ? '' : 'is-visible'}">
+            <label for="msg-${escapeHtml(t.tool_key)}">Message shown to users when disabled</label>
+            <textarea id="msg-${escapeHtml(t.tool_key)}" data-field="message"
+              placeholder="Optional. Example: Down for scheduled maintenance until 3pm EST.">${escapeHtml(msg)}</textarea>
+            <div class="msg-actions">
+              <span class="meta">Last updated ${relativeTime(t.updated_at)}</span>
+              <button class="btn btn-sm" data-action="save-msg" type="button">Save message</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function adminRowHtml(a){
+      const isSelf = a.user_id === ME_ID;
+      return `
+        <div class="admin-row ${isSelf ? 'is-self' : ''}" data-user-id="${escapeHtml(a.user_id)}">
+          <div class="avatar">${escapeHtml(initials(a.email))}</div>
+          <div class="info">
+            <div class="email">${escapeHtml(a.email)}</div>
+            <div class="meta">Added ${relativeTime(a.added_at)}</div>
+          </div>
+          ${isSelf ? '' : `<button class="btn btn-sm btn-danger" data-action="remove-admin" type="button">Remove</button>`}
+        </div>
+      `;
+    }
+
+    // ─── Events ──────────────────────────────────────────────────────
+    function wireEvents(){
+      // Tool toggle & message save
+      document.querySelectorAll('.tool-card').forEach(card => {
+        const key = card.getAttribute('data-tool-key');
+        const toggle = card.querySelector('[data-action="toggle"]');
+        const saveBtn = card.querySelector('[data-action="save-msg"]');
+
+        toggle?.addEventListener('click', () => onToggleTool(key, card));
+        saveBtn?.addEventListener('click', () => onSaveMessage(key, card));
+      });
+
+      // Admin add
+      $("addAdminBtn")?.addEventListener('click', onAddAdmin);
+      $("addAdminEmail")?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') onAddAdmin();
+      });
+
+      // Admin remove (delegated)
+      document.querySelectorAll('[data-action="remove-admin"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const row = btn.closest('.admin-row');
+          const uid = row?.getAttribute('data-user-id');
+          const email = row?.querySelector('.email')?.textContent;
+          if (uid) onRemoveAdmin(uid, email, row);
+        });
+      });
+    }
+
+    async function onToggleTool(toolKey, cardEl){
+      const tool = TOOLS.find(t => t.tool_key === toolKey);
+      if (!tool) return;
+      const newEnabled = !tool.enabled;
+      const messageEl = cardEl.querySelector('textarea[data-field="message"]');
+      const message = messageEl ? messageEl.value.trim() : (tool.disabled_message || '');
+
+      cardEl.classList.add('is-saving');
+      try {
+        const res = await authedFetch('/tool-status', {
+          method: 'POST',
+          body: JSON.stringify({
+            tool_key: toolKey,
+            enabled: newEnabled,
+            disabled_message: newEnabled ? null : (message || null)
+          })
+        });
+        Object.assign(tool, res.tool);
+        // Re-render just this card
+        cardEl.outerHTML = toolCardHtml(tool);
+        wireEvents();
+        toast(`${tool.tool_name} ${newEnabled ? 'enabled' : 'disabled'}`, 'ok');
+      } catch (e){
+        cardEl.classList.remove('is-saving');
+        toast(`Failed: ${e.message}`, 'err');
+      }
+    }
+
+    async function onSaveMessage(toolKey, cardEl){
+      const tool = TOOLS.find(t => t.tool_key === toolKey);
+      if (!tool) return;
+      const messageEl = cardEl.querySelector('textarea[data-field="message"]');
+      const message = messageEl ? messageEl.value.trim() : '';
+
+      cardEl.classList.add('is-saving');
+      try {
+        const res = await authedFetch('/tool-status', {
+          method: 'POST',
+          body: JSON.stringify({
+            tool_key: toolKey,
+            enabled: tool.enabled,
+            disabled_message: message || null
+          })
+        });
+        Object.assign(tool, res.tool);
+        cardEl.outerHTML = toolCardHtml(tool);
+        wireEvents();
+        toast('Message saved', 'ok');
+      } catch (e){
+        cardEl.classList.remove('is-saving');
+        toast(`Failed: ${e.message}`, 'err');
+      }
+    }
+
+    async function onAddAdmin(){
+      const input = $("addAdminEmail");
+      const email = String(input.value || '').trim();
+      if (!email){ input.focus(); return; }
+
+      const btn = $("addAdminBtn");
+      btn.disabled = true;
+      try {
+        const res = await authedFetch('/tool-status/admins', {
+          method: 'POST',
+          body: JSON.stringify({ email })
+        });
+        ADMINS.push(res.admin);
+        ADMINS.sort((a,b) => new Date(a.added_at) - new Date(b.added_at));
+        renderToolsAndAdmins();
+        toast(`Added ${res.admin.email} as admin`, 'ok');
+        $("addAdminEmail").value = '';
+      } catch (e){
+        if (e.code === 'user_not_found') toast(e.message || 'User has not signed in yet', 'warn');
+        else toast(`Failed: ${e.message}`, 'err');
+      } finally {
+        const b = $("addAdminBtn"); if (b) b.disabled = false;
+      }
+    }
+
+    async function onRemoveAdmin(userId, email, rowEl){
+      if (!confirm(`Remove ${email} from administrators?`)) return;
+      try {
+        await authedFetch('/tool-status/admins', {
+          method: 'DELETE',
+          body: JSON.stringify({ user_id: userId })
+        });
+        ADMINS = ADMINS.filter(a => a.user_id !== userId);
+        renderToolsAndAdmins();
+        toast(`Removed ${email}`, 'ok');
+      } catch (e){
+        toast(`Failed: ${e.message}`, 'err');
+      }
+    }
+
+    // ─── Init ────────────────────────────────────────────────────────
+    async function init(){
+      setStatus('Checking permissions…');
+
+      // Wait for UFHAuth
+      if (!window.UFHAuth){
+        await new Promise(r => {
+          const i = setInterval(() => { if (window.UFHAuth){ clearInterval(i); r(); } }, 50);
+          setTimeout(r, 3000); // safety
+        });
+      }
+
+      try {
+        const me = await authedFetch('/tool-status/me');
+        ME_ID = null; // we don't get id from /me — get it via auth client if available
+        try {
+          const user = await window.UFHAuth.getUser?.();
+          ME_ID = user?.id || null;
+        } catch(_){}
+        ME_EMAIL = me.email;
+
+        if (!me.is_admin){
+          renderForbidden();
+          return;
+        }
+
+        // Load tools + admins in parallel
+        const [toolsRes, adminsRes] = await Promise.all([
+          authedFetch('/tool-status'),
+          authedFetch('/tool-status/admins')
+        ]);
+        TOOLS = toolsRes.tools || [];
+        ADMINS = adminsRes.admins || [];
+        if (!ME_ID && adminsRes.me) ME_ID = adminsRes.me;
+
+        setStatus(`Signed in as ${ME_EMAIL || 'admin'} · ${TOOLS.length} tool(s) · ${ADMINS.length} admin(s)`, 'ok');
+        renderToolsAndAdmins();
+      } catch (e){
+        if (e.status === 401){
+          setStatus('Sign-in required', 'warn');
+        } else {
+          setStatus(`Error: ${e.message}`, 'err');
+          main.innerHTML = `
+            <div class="panel">
+              <div class="icon">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </div>
+              <h2>Couldn't load admin console</h2>
+              <p>${escapeHtml(e.message)}</p>
+              <button class="btn btn-primary" onclick="location.reload()">Retry</button>
+            </div>
+          `;
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+</body>
+</html>
