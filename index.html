@@ -120,6 +120,23 @@ body::before{
 }
 .techdb-btn:active{transform:scale(.97)}
 
+/* ── ADMIN BUTTON (visible only to admins) ── */
+.admin-btn{
+  display:none;
+  align-items:center;gap:7px;
+  padding:9px 16px;
+  background:rgba(6,182,212,.12);
+  border:1px solid rgba(6,182,212,.3);
+  border-radius:10px;
+  color:#22d3ee;
+  font-family:'Syne',sans-serif;
+  font-size:12px;font-weight:700;letter-spacing:.02em;
+  cursor:pointer;transition:all .2s;text-decoration:none;
+}
+.admin-btn.is-admin-visible{display:inline-flex}
+.admin-btn:hover{background:rgba(6,182,212,.2);border-color:rgba(6,182,212,.5);color:#67e8f9}
+.admin-btn:active{transform:scale(.97)}
+
 .logout-btn{
   display:inline-flex;align-items:center;gap:7px;
   padding:9px 16px;
@@ -721,6 +738,13 @@ body::before{
       </a>
 
     <div style="display:flex;align-items:center;gap:10px">
+    <a href="admin/index.html" class="admin-btn" data-admin-only>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+      Admin
+    </a>
     <button class="logout-btn" id="logoutBtn">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -788,7 +812,7 @@ body::before{
   <div class="tools-grid">
 
     <!-- 01 Contractors B-J -->
-    <a href="contractors.html" class="tool-card" style="
+    <a href="contractors.html" class="tool-card" data-tool-key="contractors" style="
       --card-accent:var(--fn);
       --card-glow:var(--fn-glow);
       --card-icon-bg:var(--fn-dim);
@@ -806,30 +830,12 @@ body::before{
       </div>
 
       <div class="card-title">Contractors (B–J)</div>
-      <div class="card-desc">Real-time W2 technician lookup across all US service zones. Search by zip, skill tier, and availability. Powered by live Supabase sync.</div>
 
-      <div class="card-meta">
-        <div class="card-tags">
-          <span class="card-tag">US · W2</span>
-          <span class="card-tag">Tier 1–3</span>
-        </div>
-        <div class="card-arrow">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </div>
-      </div>
 
-      <div class="card-data-lines">
-        <svg viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg">
-          <polyline points="0,60 40,45 80,55 120,30 160,42 200,20 240,35 280,18 320,28 360,15 400,22" fill="none" stroke="#F97316" stroke-width="2"/>
-          <polyline points="0,70 50,65 100,68 150,55 200,60 250,50 300,58 350,45 400,52" fill="none" stroke="#F97316" stroke-width="1" opacity=".5"/>
-        </svg>
-      </div>
     </a>
 
     <!-- 02 On-Call Lookup -->
-    <a href="oncall_webapp_v8/index.html" class="tool-card" style="
+    <a href="oncall_webapp_v8/index.html" class="tool-card" data-tool-key="oncall" style="
       --card-accent:#8B5CF6;
       --card-glow:rgba(139,92,246,.35);
       --card-icon-bg:rgba(139,92,246,.12);
@@ -847,37 +853,12 @@ body::before{
       </div>
 
       <div class="card-title">On-Call Lookup</div>
-      <div class="card-desc">Instant rotation-aware on-call technician finder. Drill into zip codes, FSA regions, and escalation trees with real-time availability status.</div>
 
-      <div class="card-meta">
-        <div class="card-tags">
-          <span class="card-tag" style="color:#8B5CF6;background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.2)">Rotation</span>
-          <span class="card-tag" style="color:#8B5CF6;background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.2)">Zip · FSA</span>
-        </div>
-        <div class="card-arrow">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </div>
-      </div>
 
-      <div class="card-data-lines">
-        <svg viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="40" cy="40" r="3" fill="#8B5CF6" opacity=".6"/>
-          <circle cx="120" cy="28" r="3" fill="#8B5CF6" opacity=".6"/>
-          <circle cx="200" cy="50" r="3" fill="#8B5CF6" opacity=".6"/>
-          <circle cx="280" cy="22" r="3" fill="#8B5CF6" opacity=".6"/>
-          <circle cx="360" cy="38" r="3" fill="#8B5CF6" opacity=".6"/>
-          <line x1="40" y1="40" x2="120" y2="28" stroke="#8B5CF6" stroke-width="1.5"/>
-          <line x1="120" y1="28" x2="200" y2="50" stroke="#8B5CF6" stroke-width="1.5"/>
-          <line x1="200" y1="50" x2="280" y2="22" stroke="#8B5CF6" stroke-width="1.5"/>
-          <line x1="280" y1="22" x2="360" y2="38" stroke="#8B5CF6" stroke-width="1.5"/>
-        </svg>
-      </div>
     </a>
 
     <!-- 03 Flex Tech Finder -->
-    <a href="flex_webapp_v8/index.html" class="tool-card" style="
+    <a href="flex_webapp_v8/index.html" class="tool-card" data-tool-key="flex_tier2" style="
       --card-accent:#06B6D4;
       --card-glow:rgba(6,182,212,.35);
       --card-icon-bg:rgba(6,182,212,.12);
@@ -895,33 +876,12 @@ body::before{
       </div>
 
       <div class="card-title">Flex Tech Finder</div>
-      <div class="card-desc">Tier 2 flexible technician matching engine. Multi-zone coverage with drive-time matrix routing and skills-based filtering for complex dispatch.</div>
 
-      <div class="card-meta">
-        <div class="card-tags">
-          <span class="card-tag" style="color:#06B6D4;background:rgba(6,182,212,.12);border-color:rgba(6,182,212,.2)">Tier 2</span>
-          <span class="card-tag" style="color:#06B6D4;background:rgba(6,182,212,.12);border-color:rgba(6,182,212,.2)">ORS Matrix</span>
-        </div>
-        <div class="card-arrow">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </div>
-      </div>
 
-      <div class="card-data-lines">
-        <svg viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg">
-          <rect x="20" y="30" width="60" height="20" rx="4" fill="#06B6D4" opacity=".2" stroke="#06B6D4" stroke-width="1"/>
-          <rect x="160" y="20" width="80" height="40" rx="4" fill="#06B6D4" opacity=".1" stroke="#06B6D4" stroke-width="1"/>
-          <rect x="320" y="30" width="60" height="20" rx="4" fill="#06B6D4" opacity=".2" stroke="#06B6D4" stroke-width="1"/>
-          <line x1="80" y1="40" x2="160" y2="40" stroke="#06B6D4" stroke-width="1.5" stroke-dasharray="4,3"/>
-          <line x1="240" y1="40" x2="320" y2="40" stroke="#06B6D4" stroke-width="1.5" stroke-dasharray="4,3"/>
-        </svg>
-      </div>
     </a>
 
     <!-- 04 Canada Dispatch -->
-    <a href="canada_dispatch_w2/index.html" class="tool-card" style="
+    <a href="canada_dispatch_w2/index.html" class="tool-card" data-tool-key="canada_w2" style="
       --card-accent:#EF4444;
       --card-glow:rgba(239,68,68,.35);
       --card-icon-bg:rgba(239,68,68,.12);
@@ -939,30 +899,12 @@ body::before{
       </div>
 
       <div class="card-title">Canada Dispatch W2</div>
-      <div class="card-desc">Canadian operations hub. Full FSA postal code resolution, province-level technician routing, and bilingual dispatch support for all Canadian regions.</div>
 
-      <div class="card-meta">
-        <div class="card-tags">
-          <span class="card-tag" style="color:#EF4444;background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.2)">CA · FSA</span>
-          <span class="card-tag" style="color:#EF4444;background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.2)">All Provinces</span>
-        </div>
-        <div class="card-arrow">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </div>
-      </div>
 
-      <div class="card-data-lines">
-        <svg viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg">
-          <path d="M20 60 Q100 10 200 45 Q300 70 380 20" fill="none" stroke="#EF4444" stroke-width="2"/>
-          <path d="M20 70 Q100 40 200 60 Q300 75 380 50" fill="none" stroke="#EF4444" stroke-width="1" opacity=".4"/>
-        </svg>
-      </div>
     </a>
 
     <!-- 05 International Suppliers -->
-    <a href="intl-suppliers.html" class="tool-card" style="
+    <a href="intl-suppliers.html" class="tool-card" data-tool-key="intl_suppliers" style="
       --card-accent:#10B981;
       --card-glow:rgba(16,185,129,.35);
       --card-icon-bg:rgba(16,185,129,.12);
@@ -980,33 +922,12 @@ body::before{
       </div>
 
       <div class="card-title">International Suppliers</div>
-      <div class="card-desc">Global supplier intelligence platform. Browse, filter, and analyze international vendor networks across multiple regions with live status tracking.</div>
 
-      <div class="card-meta">
-        <div class="card-tags">
-          <span class="card-tag" style="color:#10B981;background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.2)">Global</span>
-          <span class="card-tag" style="color:#10B981;background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.2)">Multi-Region</span>
-        </div>
-        <div class="card-arrow">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </div>
-      </div>
 
-      <div class="card-data-lines">
-        <svg viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="60" cy="50" r="25" fill="none" stroke="#10B981" stroke-width="1.5"/>
-          <circle cx="200" cy="40" r="30" fill="none" stroke="#10B981" stroke-width="1.5"/>
-          <circle cx="340" cy="50" r="20" fill="none" stroke="#10B981" stroke-width="1.5"/>
-          <line x1="85" y1="50" x2="170" y2="42" stroke="#10B981" stroke-width="1" stroke-dasharray="3,3"/>
-          <line x1="230" y1="42" x2="320" y2="50" stroke="#10B981" stroke-width="1" stroke-dasharray="3,3"/>
-        </svg>
-      </div>
     </a>
 
     <!-- 06 Audit & Validation -->
-    <a href="validation_tool/index.html" class="tool-card" style="
+    <a href="validation_tool/index.html" class="tool-card" data-tool-key="audit" style="
       --card-accent:var(--ie);
       --card-glow:var(--ie-glow);
       --card-icon-bg:var(--ie-dim);
@@ -1024,33 +945,8 @@ body::before{
       </div>
 
       <div class="card-title">Audit & Validation</div>
-      <div class="card-desc">Full audit trail with filter-responsive statistics. Track Created, Updated, and Deleted operations across all date ranges with advanced query controls.</div>
 
-      <div class="card-meta">
-        <div class="card-tags">
-          <span class="card-tag" style="color:var(--ie);background:var(--ie-dim);border-color:rgba(37,99,235,.2)">Logs · RLS</span>
-          <span class="card-tag" style="color:var(--ie);background:var(--ie-dim);border-color:rgba(37,99,235,.2)">Full History</span>
-        </div>
-        <div class="card-arrow">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </div>
-      </div>
 
-      <div class="card-data-lines">
-        <svg viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg">
-          <rect x="20" y="55" width="25" height="20" rx="3" fill="#2563EB" opacity=".5"/>
-          <rect x="60" y="40" width="25" height="35" rx="3" fill="#2563EB" opacity=".5"/>
-          <rect x="100" y="30" width="25" height="45" rx="3" fill="#2563EB" opacity=".7"/>
-          <rect x="140" y="45" width="25" height="30" rx="3" fill="#2563EB" opacity=".5"/>
-          <rect x="180" y="20" width="25" height="55" rx="3" fill="#2563EB" opacity=".8"/>
-          <rect x="220" y="35" width="25" height="40" rx="3" fill="#2563EB" opacity=".5"/>
-          <rect x="260" y="50" width="25" height="25" rx="3" fill="#2563EB" opacity=".4"/>
-          <rect x="300" y="25" width="25" height="50" rx="3" fill="#2563EB" opacity=".7"/>
-          <rect x="340" y="40" width="25" height="35" rx="3" fill="#2563EB" opacity=".5"/>
-        </svg>
-      </div>
     </a>
 
   </div>
@@ -1490,5 +1386,8 @@ document.getElementById('logoutBtn')?.addEventListener('click', async () => {
 })();
 
 </script>
+<!-- Admin button visibility + disabled cards greying -->
+<script defer src="assets/hub-tool-status.js"></script>
+
 </body>
 </html>
