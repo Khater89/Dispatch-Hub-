@@ -1236,7 +1236,7 @@ document.getElementById('pingApiBtn')?.addEventListener('click', async () => {
     const token = getAccessToken();
     const headers = {'Content-Type':'application/json'};
     if (token) headers['Authorization'] = 'Bearer ' + token;
-    const r = await fetch(url + '/ping', { method:'GET', headers });
+    const r = await fetch(url + '/health', { method:'GET', headers });
     resultEl.textContent = r.ok ? `✅ API responded: ${r.status} ${r.statusText}` : `❌ API error: ${r.status} ${r.statusText}`;
   } catch(e) {
     resultEl.textContent = '❌ Connection failed: ' + (e.message || e);
@@ -1263,20 +1263,33 @@ document.getElementById('uploadSyncBtn')?.addEventListener('click', async () => 
     const token = getAccessToken();
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('mode', syncMode);
-    if (secret) formData.append('secret', secret);
+    // NOTE: backend reads `mode` from URL query, not FormData. See supabase/functions/api/index.ts.
+    // NOTE: backend reads admin secret from `x-admin-token` header, not FormData.
 
     const headers = {};
     if (token) headers['Authorization'] = 'Bearer ' + token;
+    if (secret) headers['x-admin-token'] = secret;
 
-    const r = await fetch(url + '/upload-excel', { method:'POST', headers, body: formData });
+    const endpoint = url + '/admin/techdbs/upload?mode=' + encodeURIComponent(syncMode);
+    const r = await fetch(endpoint, { method:'POST', headers, body: formData });
     const text = await r.text();
     let msg;
     try {
       const j = JSON.parse(text);
-      msg = j.message || j.error || text;
+      // Backend returns a structured report on success. Render it usefully.
+      if (r.ok && Array.isArray(j.results)) {
+        const okRows = j.results.filter(x => !x.skipped);
+        const skipped = j.results.filter(x => x.skipped);
+        const okSummary = okRows.map(x => `${x.sheet} → ${x.table}: ${x.upserted}/${x.rows}`).join('\n');
+        const skipSummary = skipped.map(x => `${x.sheet}: skipped (${x.reason})`).join('\n');
+        msg = `Mode: ${j.mode}\nAdmin: ${j.admin?.email || '?'}\n\n${okSummary}${skipSummary ? '\n\n' + skipSummary : ''}`;
+      } else {
+        msg = j.message || j.error || j.reason || text;
+      }
     } catch(_) { msg = text; }
     resultEl.textContent = r.ok ? `✅ ${msg}` : `❌ ${msg}`;
+    // Keep line-breaks readable
+    resultEl.style.whiteSpace = 'pre-wrap';
   } catch(e) {
     resultEl.textContent = '❌ Upload failed: ' + (e.message || e);
   } finally {
