@@ -691,6 +691,9 @@ body::before{
 .login-divider-line{flex:1;height:1px;background:rgba(255,255,255,.07)}
 .login-divider-text{font-size:11px;color:#334155;white-space:nowrap}
 </style>
+<!-- XLSX.js for client-side inspection of uploaded workbook sheet names -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 </head>
 <body>
 
@@ -1023,10 +1026,24 @@ body::before{
         <label class="form-label">Excel File</label>
         <input class="form-input" id="syncExcelFile" type="file" accept=".xlsx,.xls"
           style="padding:9px 12px;cursor:pointer"/>
+        <div style="font-size:11px;color:var(--text3);margin-top:5px" id="syncSheetPreview">
+          Pick a file to see its sheet names.
+        </div>
+      </div>
+
+      <!-- Force target table (optional override) -->
+      <div class="form-group">
+        <label class="form-label">Force target table
+          <span style="font-weight:400;color:var(--text3);font-size:11px">— optional, overrides sheet name matching</span>
+        </label>
+        <select class="form-input" id="syncForceTarget" style="padding:9px 12px;cursor:pointer">
+          <option value="">Auto (detect from sheet names)</option>
+          <option value="ars_technician">ARS Technician (main tech DB)</option>
+          <option value="usa_tier_2_flex_tech">USA Tier 2 Flex</option>
+          <option value="canada_w2">Canada W2</option>
+        </select>
         <div style="font-size:11px;color:var(--text3);margin-top:5px">
-          Sheets: <span style="color:var(--ie)">ARS Technician</span> ·
-          <span style="color:var(--ie)">USA Tier 2 Flex</span> ·
-          <span style="color:var(--ie)">Canada W2</span>
+          Use this if your sheet is named "Sheet1" or anything the auto-detector doesn't recognize.
         </div>
       </div>
 
@@ -1226,6 +1243,69 @@ document.getElementById('copyTokenBtn')?.addEventListener('click', async () => {
   }
 });
 
+// ── Sheet preview: parse the picked file and show its REAL sheet names ────────
+// Mirrors the backend's sheetToTable() logic so preview matches actual behavior.
+function classifySheet(name){
+  const s = String(name || '').trim().toLowerCase();
+  if (s.includes('ars') || s.includes('technician') || s.includes('tech db')) return { table: 'ars_technician', label: 'ARS Technician' };
+  if (s.includes('tier 2') || s.includes('tier2') || s.includes('flex'))     return { table: 'usa_tier_2_flex_tech', label: 'USA Tier 2 Flex' };
+  if (s.includes('canada') && s.includes('w2'))                              return { table: 'canada_w2', label: 'Canada W2' };
+  return null;
+}
+
+document.getElementById('syncExcelFile')?.addEventListener('change', async () => {
+  const preview = document.getElementById('syncSheetPreview');
+  if (!preview) return;
+  const f = document.getElementById('syncExcelFile').files?.[0];
+  if (!f) { preview.innerHTML = 'Pick a file to see its sheet names.'; return; }
+
+  preview.innerHTML = 'Reading…';
+  try {
+    if (!window.XLSX) throw new Error('XLSX library did not load');
+    const buf = await f.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const names = wb.SheetNames || [];
+
+    if (!names.length) {
+      preview.innerHTML = '<span style="color:#F87171">⚠ File has no sheets.</span>';
+      return;
+    }
+
+    const forceEl = document.getElementById('syncForceTarget');
+    const forced = forceEl?.value || '';
+
+    const parts = names.map(n => {
+      const cls = classifySheet(n);
+      if (forced) {
+        // Every sheet will be pushed into the forced table
+        return `<span style="color:#34D399">✓</span> <strong>${escapeHtml(n)}</strong> → ${escapeHtml(forced)}`;
+      }
+      if (cls) {
+        return `<span style="color:#34D399">✓</span> <strong>${escapeHtml(n)}</strong> → ${escapeHtml(cls.table)}`;
+      }
+      return `<span style="color:#F87171">✗</span> <strong>${escapeHtml(n)}</strong> — will be skipped (no mapping)`;
+    });
+
+    const anyMatch = forced || names.some(classifySheet);
+    const header = anyMatch
+      ? `<div style="color:var(--text2);margin-bottom:4px">Found ${names.length} sheet(s):</div>`
+      : `<div style="color:#F87171;margin-bottom:4px;font-weight:600">⚠ No sheets will sync. Rename a tab (e.g. "ARS Technician"), or pick a target above.</div>`;
+    preview.innerHTML = header + parts.map(p => '<div style="padding:1px 0">' + p + '</div>').join('');
+  } catch (e) {
+    preview.innerHTML = '<span style="color:#F87171">⚠ Could not read file: ' + escapeHtml(e.message || String(e)) + '</span>';
+  }
+});
+
+// When user picks a Force Target, re-render preview so ✓/✗ marks update live
+document.getElementById('syncForceTarget')?.addEventListener('change', () => {
+  document.getElementById('syncExcelFile')?.dispatchEvent(new Event('change'));
+});
+
+// Small HTML-escape helper used above
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
 // ── Ping API ──────────────────────────────────────────────────────────────────
 document.getElementById('pingApiBtn')?.addEventListener('click', async () => {
   const url = document.getElementById('syncApiUrl')?.value?.trim();
@@ -1295,7 +1375,10 @@ document.getElementById('uploadSyncBtn')?.addEventListener('click', async () => 
     if (token)        headers['Authorization']  = 'Bearer ' + token;
     if (cleanSecret)  headers['x-admin-token']  = cleanSecret;
 
-    const endpoint = url + '/admin/techdbs/upload?mode=' + encodeURIComponent(syncMode);
+    const forceTarget = document.getElementById('syncForceTarget')?.value?.trim() || '';
+
+    const endpoint = url + '/admin/techdbs/upload?mode=' + encodeURIComponent(syncMode)
+                   + (forceTarget ? '&target=' + encodeURIComponent(forceTarget) : '');
     const r = await fetch(endpoint, { method:'POST', headers, body: formData });
     const text = await r.text();
     let msg;
