@@ -1266,9 +1266,34 @@ document.getElementById('uploadSyncBtn')?.addEventListener('click', async () => 
     // NOTE: backend reads `mode` from URL query, not FormData. See supabase/functions/api/index.ts.
     // NOTE: backend reads admin secret from `x-admin-token` header, not FormData.
 
+    // ── Sanitize + validate header values ──────────────────────────────────
+    // HTTP headers must be ISO-8859-1 only. Reject values that would fail
+    // silently at fetch() time with an unhelpful browser error.
+    function stripHiddenChars(s) {
+      if (s == null) return '';
+      // Remove zero-width chars, BOM, and ASCII control chars (keep space, tab)
+      return String(s).replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[\x00-\x08\x0B-\x1F\x7F]/g, '').trim();
+    }
+    function isLatin1Safe(s) {
+      for (let i = 0; i < s.length; i++) {
+        if (s.charCodeAt(i) > 0xFF) return false;
+      }
+      return true;
+    }
+
+    const cleanSecret = stripHiddenChars(secret);
+    if (cleanSecret && !isLatin1Safe(cleanSecret)) {
+      const bad = [...cleanSecret].filter(ch => ch.charCodeAt(0) > 0xFF).slice(0,3)
+        .map(ch => `"${ch}" (U+${ch.charCodeAt(0).toString(16).padStart(4,'0').toUpperCase()})`).join(', ');
+      throw new Error(`Admin Secret has invalid characters: ${bad}. Retype it in ASCII only (English letters, digits, symbols).`);
+    }
+    if (token && !isLatin1Safe(token)) {
+      throw new Error('Auth token corrupted. Please log out and log in again.');
+    }
+
     const headers = {};
-    if (token) headers['Authorization'] = 'Bearer ' + token;
-    if (secret) headers['x-admin-token'] = secret;
+    if (token)        headers['Authorization']  = 'Bearer ' + token;
+    if (cleanSecret)  headers['x-admin-token']  = cleanSecret;
 
     const endpoint = url + '/admin/techdbs/upload?mode=' + encodeURIComponent(syncMode);
     const r = await fetch(endpoint, { method:'POST', headers, body: formData });
