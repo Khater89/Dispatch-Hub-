@@ -190,6 +190,15 @@
     .abtn.mk:hover{background:linear-gradient(135deg,#6d28d9,#7c3aed);transform:translateY(-1px);box-shadow:0 8px 18px rgba(139,92,246,.30);}
     .abtn.dn{background:var(--cor-soft);color:var(--cor-text);cursor:default;border:1px solid rgba(139,92,246,.20);box-shadow:none;}
 
+    /* ── Historically corrected (from previous audits) ── */
+    tbody tr.rc-hist{background:linear-gradient(90deg,#f0f9ff 0%,#faf5ff 100%);border-left:3px solid #06b6d4;}
+    tbody tr.rc-hist td.ticket-col{background:#ecfeff;box-shadow:1px 0 0 rgba(6,182,212,.4);}
+    tbody tr.rc-hist td.ticket-col strong{color:#0891b2;}
+    .abtn.dn-hist{background:#ecfeff;color:#0891b2;cursor:default;border:1px solid rgba(6,182,212,.35);box-shadow:none;font-size:10px;}
+    .abtn.undo{padding:5px 9px;font-size:10px;min-width:auto;background:transparent;color:#94a3b8;border:1px solid #cbd5e1;font-weight:700;margin-left:4px;}
+    .abtn.undo:hover{background:#fee2e2;border-color:#fca5a5;color:#b91c1c;}
+    .hist-badge{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.08em;padding:2px 6px;border-radius:4px;background:rgba(6,182,212,.15);color:#0891b2;border:1px solid rgba(6,182,212,.3);text-transform:uppercase;margin-left:4px;vertical-align:middle;}
+
     .dcl2,.ncl{max-width:240px;white-space:normal;line-height:1.4;font-size:11px;color:var(--text2);}
     .emp{text-align:center;padding:48px;color:var(--text3);font-weight:600;}
     .mn{font-family:'JetBrains Mono',monospace;font-size:11px;}
@@ -513,7 +522,10 @@
       <div class="fg"><label>Status</label>
         <select id="statF">
           <option value="all">All Rows</option><option value="errors">Errors Only</option>
-          <option value="corrected">Corrected Only</option><option value="matched">Matched Only</option>
+          <option value="corrected">Corrected Only</option>
+          <option value="corrected_hist">🕘 Previously Corrected (from history)</option>
+          <option value="corrected_session">✓ Corrected in This Session</option>
+          <option value="matched">Matched Only</option>
           <option value="exception">Exception Matches</option>
         </select>
       </div>
@@ -547,6 +559,13 @@
       <button class="btn bo" id="pdfBtn">📄 Export Management PDF</button>
     </div>
     <div class="fn-note">📅 Date filter uses <strong>FN Scheduled Date</strong> first, then <strong>Inside Edge Due Date</strong> as fallback. &nbsp;·&nbsp; ⚡ ITD tickets always pass date validation.</div>
+
+    <!-- Corrections history summary -->
+    <div id="histBar" style="margin-top:10px;padding:10px 14px;background:linear-gradient(90deg,rgba(6,182,212,.08),rgba(139,92,246,.06));border:1px solid rgba(6,182,212,.2);border-radius:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;">
+      <span style="color:#0891b2;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;">🕘 Corrections Memory</span>
+      <span id="histSummary" style="color:var(--text2)">Remembering <strong id="histTotal">0</strong> corrected ticket(s) across all previous audits. <strong id="histApplied">0</strong> applied to this report.</span>
+      <button class="btn" id="histClearBtn" type="button" style="padding:6px 12px;font-size:11px;background:#fff;color:#b91c1c;border:1px solid #fca5a5;font-weight:700;margin-left:auto;">🗑 Clear History…</button>
+    </div>
   </div>
 
   <!-- TABLE -->
@@ -681,8 +700,70 @@ function parseTimePart(v){
 function norm(v){return(v??'').toString().trim().replace(/\s+/g,' ');}
 function normU(v){return norm(v).toUpperCase();}
 function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function defTrk(){return{correctedMarked:false,correctedAt:''};}
+function defTrk(){return{correctedMarked:false,correctedAt:'',fromHistory:false};}
 function nowStr(){return new Date().toLocaleString();}
+
+/* ═══ GLOBAL CORRECTIONS HISTORY ══════════════════════════════
+   Persists corrections BY TICKET NUMBER across different report
+   generations. This is what makes "day 2" auto-mark tickets that
+   were corrected on "day 1", even if the source file is different.
+   ═══════════════════════════════════════════════════════════ */
+const HIST_KEY = 'vra_corrections_history_v1';
+
+function loadCorrectionsHistory(){
+  try{
+    const raw = localStorage.getItem(HIST_KEY);
+    if(!raw) return {};
+    const obj = JSON.parse(raw);
+    return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+  }catch(_){ return {}; }
+}
+function saveCorrectionsHistory(hist){
+  try{ localStorage.setItem(HIST_KEY, JSON.stringify(hist||{})); }catch(_){}
+}
+function addToCorrectionsHistory(ticket, data){
+  if(!ticket) return;
+  const hist = loadCorrectionsHistory();
+  const key = String(ticket).trim();
+  hist[key] = {
+    correctedAt: data.correctedAt || nowStr(),
+    errorSig:    data.errorSig    || '',
+    lastSeenAt:  nowStr()
+  };
+  saveCorrectionsHistory(hist);
+}
+function removeFromCorrectionsHistory(ticket){
+  if(!ticket) return;
+  const hist = loadCorrectionsHistory();
+  delete hist[String(ticket).trim()];
+  saveCorrectionsHistory(hist);
+}
+function clearAllCorrectionsHistory(){
+  saveCorrectionsHistory({});
+}
+
+/* Apply history to S.raw: for every Error row whose ticket appears in
+   the global history, auto-mark it as Corrected with a "fromHistory" flag
+   so we can style it differently. Called after every report generation. */
+function applyCorrectionsHistory(){
+  if(!Array.isArray(S.raw) || !S.raw.length) return 0;
+  const hist = loadCorrectionsHistory();
+  let auto = 0;
+  for(const r of S.raw){
+    // Skip rows already marked in this session (file-specific state wins)
+    if(r.trk.correctedMarked) continue;
+    // Only apply history to rows that are currently flagged as errors
+    if(r.vRes !== 'Error') continue;
+    const rec = hist[String(r.ticket).trim()];
+    if(!rec) continue;
+    r.trk.correctedMarked = true;
+    r.trk.correctedAt = rec.correctedAt || nowStr();
+    r.trk.fromHistory = true;
+    recomp(r);
+    auto++;
+  }
+  return auto;
+}
 
 function recomp(row){
   const sOk=normU(row.ieFnStatus)==='OK';
@@ -763,6 +844,10 @@ function handleWB(file){
         return;
       }
       popTypes();loadState();
+      const autoCount = applyCorrectionsHistory();
+      if(autoCount > 0){
+        setTimeout(()=>showBan(`🕘 Auto-marked ${autoCount} ticket(s) as corrected from previous audits.`), 300);
+      }
       ['dash','tbp','tbl'].forEach(id=>$(id).classList.remove('h'));
       applyFilters();
     } catch(err){
@@ -817,6 +902,8 @@ function applyFilters(){
     if(to&&d&&d>to) return false;
     if(st==='errors'&&r.fRes!=='Error') return false;
     if(st==='corrected'&&r.fRes!=='Corrected') return false;
+    if(st==='corrected_hist'&&!(r.fRes==='Corrected' && r.trk.fromHistory)) return false;
+    if(st==='corrected_session'&&!(r.fRes==='Corrected' && !r.trk.fromHistory)) return false;
     if(st==='matched'&&r.fRes!=='Matched') return false;
     if(st==='exception'&&!(r.excA&&r.fRes==='Matched')) return false;
     if(err==='status'&&r.sOk) return false;
@@ -830,6 +917,7 @@ function applyFilters(){
   renderStats(S.filtered);renderCharts(S.filtered);renderTable(S.filtered);
   E.stag.textContent=`${S.filtered.length} of ${S.raw.length} tickets`;
   saveState();
+  if(typeof updateHistBar === 'function') updateHistBar();
 }
 function clearF(){
   [E.srch,E.specD,E.fromD,E.toD].forEach(e=>{e.value='';});
@@ -967,15 +1055,29 @@ function mc(v,ex){return(!v&&!ex)?'mm':'';}
 function renderTable(rows){
   if(!rows.length){E.tbody.innerHTML=`<tr><td colspan="23" class="emp">No rows match the current filters.</td></tr>`;return;}
   E.tbody.innerHTML=rows.map(r=>{
-    const rc=r.fRes==='Corrected'?'rc':r.fRes==='Error'?'re':r.excA?'rx':'rm';
-    const act=r.fRes==='Corrected'
-      ?`<button class="abtn dn" disabled>✓ Corrected</button>`
-      :r.vRes==='Error'
-      ?`<button class="abtn mk" data-cid="${esc(r.rowId)}">✓ Correct</button>`
-      :`<span style="color:var(--text3)">—</span>`;
+    // Row class: differentiate historically-corrected (from previous audits) with a distinct cyan tint
+    let rc;
+    if(r.fRes==='Corrected') rc = r.trk.fromHistory ? 'rc-hist' : 'rc';
+    else if(r.fRes==='Error') rc = 're';
+    else if(r.excA) rc = 'rx';
+    else rc = 'rm';
+
+    // Action cell: three states — Correct (unresolved error), Corrected+Undo (this session), Historically Corrected+Undo
+    let act;
+    if(r.fRes==='Corrected'){
+      const label = r.trk.fromHistory ? '🕘 Previously' : '✓ Corrected';
+      const cls = r.trk.fromHistory ? 'dn-hist' : 'dn';
+      act = `<button class="abtn ${cls}" disabled title="${esc(r.trk.correctedAt||'')}">${label}</button>`
+          + `<button class="abtn undo" data-uid="${esc(r.rowId)}" title="Undo correction and remove from history">↺</button>`;
+    } else if(r.vRes==='Error'){
+      act = `<button class="abtn mk" data-cid="${esc(r.rowId)}">✓ Correct</button>`;
+    } else {
+      act = `<span style="color:var(--text3)">—</span>`;
+    }
+
     return `<tr class="${rc}">
       <td class="mn" style="color:var(--text3)">${esc(r.srcRow)}</td>
-      <td class="ticket-col"><strong>${esc(r.ticket)}</strong></td>
+      <td class="ticket-col"><strong>${esc(r.ticket)}</strong>${r.trk.fromHistory ? '<span class="hist-badge">from history</span>' : ''}</td>
       <td>${esc(r.type)}</td>
       <td style="font-size:11px;color:var(--text2)">${esc(r.company)}</td>
       <td class="mn">${esc(r.filterDate)}</td>
@@ -1006,6 +1108,23 @@ function markCorrected(id){
   const r=S.raw.find(x=>x.rowId===id);
   if(!r||r.vRes!=='Error'||r.trk.correctedMarked) return;
   r.trk.correctedMarked=true;r.trk.correctedAt=nowStr();
+  r.trk.fromHistory=false;  // marked in this session
+  // Also persist to the global history so future reports auto-mark this ticket
+  addToCorrectionsHistory(r.ticket, { correctedAt: r.trk.correctedAt, errorSig: r.bDet });
+  recomp(r);saveState();applyFilters();
+}
+
+/* Undo a correction — both from this session AND from global history. */
+function undoCorrection(id){
+  const r=S.raw.find(x=>x.rowId===id);
+  if(!r||!r.trk.correctedMarked) return;
+  const wasHist = !!r.trk.fromHistory;
+  const label = wasHist ? 'This ticket was corrected in a previous audit.' : 'This ticket was just corrected in the current session.';
+  if(!confirm(`${label}\nUn-correct ticket #${r.ticket} and remove it from the history?`)) return;
+  r.trk.correctedMarked=false;
+  r.trk.correctedAt='';
+  r.trk.fromHistory=false;
+  removeFromCorrectionsHistory(r.ticket);
   recomp(r);saveState();applyFilters();
 }
 
@@ -1646,7 +1765,10 @@ function bindAll(){
   ['srch','typeF','statF','errTypeF','sortD','specD','fromD','toD'].forEach(id=>{
     $(id).addEventListener('input',applyFilters);$(id).addEventListener('change',applyFilters);
   });
-  E.tbody.addEventListener('click',ev=>{const b=ev.target.closest('[data-cid]');if(b)markCorrected(b.getAttribute('data-cid'));});
+  E.tbody.addEventListener('click',ev=>{
+    const c=ev.target.closest('[data-cid]'); if(c){ markCorrected(c.getAttribute('data-cid')); return; }
+    const u=ev.target.closest('[data-uid]'); if(u){ undoCorrection(u.getAttribute('data-uid')); return; }
+  });
   window.addEventListener('error',ev=>{console.error('[VRA]',ev.error||ev.message);showBan(`Error: ${ev.message||'Unknown'}`);});
   window.addEventListener('unhandledrejection',ev=>{console.error('[VRA]',ev.reason);showBan(`Async error: ${ev.reason?.message||ev.reason||'Unknown'}`);});
 
@@ -2381,6 +2503,10 @@ function mfGenerateReport(){
   S.raw = out;
   S.fileMeta = { name: 'Multi-File: ' + (MF.ie.file?.name||'Inside Edge') + ' + ' + (MF.ie2.file?.name||'Sheet1') + ' + ' + (MF.fn.file?.name||'FN'), rows: out.length, when: new Date().toISOString(), source: 'multi-file' };
 
+  // Auto-mark tickets that were corrected in previous audits (across ALL past reports)
+  loadState();  // was missing in multi-file mode
+  const autoHistCount = applyCorrectionsHistory();
+
   const ts=[...new Set(out.map(r=>r.type).filter(Boolean))].sort();
   E.typeF.innerHTML='<option value="all">All Types</option>'+ts.map(t=>'<option value="'+esc(t)+'">'+esc(t)+'</option>').join('');
 
@@ -2395,7 +2521,7 @@ function mfGenerateReport(){
 
   const errCount = out.filter(r=>r.fRes==='Error').length;
   const excCount = out.filter(r=>r.excA).length;
-  showBan('✅ Dashboard generated ' + out.length.toLocaleString() + ' Field Nation-assigned tickets only. Excel export will include all ' + masterRows.length.toLocaleString() + ' Inside Edge ticket rows to match the original/manual source count. Hidden from dashboard: ' + skippedNonFN.toLocaleString() + ' non-Field-Nation rows. Field Nation-assigned tickets not found in FN Report but still shown: ' + skippedNoFNMatch.toLocaleString() + '. ' + errCount + ' errors, ' + excCount + ' ITD/ITR exceptions.');
+  showBan('✅ Dashboard generated ' + out.length.toLocaleString() + ' Field Nation-assigned tickets only. Excel export will include all ' + masterRows.length.toLocaleString() + ' Inside Edge ticket rows to match the original/manual source count. Hidden from dashboard: ' + skippedNonFN.toLocaleString() + ' non-Field-Nation rows. Field Nation-assigned tickets not found in FN Report but still shown: ' + skippedNoFNMatch.toLocaleString() + '. ' + errCount + ' errors, ' + excCount + ' ITD/ITR exceptions.' + (autoHistCount>0 ? '  🕘 Auto-marked ' + autoHistCount + ' ticket(s) as corrected from previous audits.' : ''));
   setTimeout(()=>{ const el = $('dash'); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); }, 200);
 }
 
@@ -2479,6 +2605,43 @@ function initMultiFileMode(){
   const eb = $('mfExcelBtn'); if(eb) eb.addEventListener('click', mfExportExcel);
 
   mfUpdateGenBtn();
+
+  /* ═══ Wire the Corrections History bar ══════════════════════ */
+  const histBtn = document.getElementById('histClearBtn');
+  if(histBtn){
+    histBtn.addEventListener('click', () => {
+      const total = Object.keys(loadCorrectionsHistory()).length;
+      if(!total){ showBan('Corrections history is already empty.'); return; }
+      if(!confirm(`Permanently delete ${total} ticket correction(s) from history?\n\nThis cannot be undone. Future audit reports will no longer auto-mark these tickets as corrected.`)) return;
+      clearAllCorrectionsHistory();
+      // Also strip fromHistory flags from current session so display refreshes
+      if(Array.isArray(S.raw)){
+        for(const r of S.raw){
+          if(r.trk.correctedMarked && r.trk.fromHistory){
+            r.trk.correctedMarked = false;
+            r.trk.correctedAt = '';
+            r.trk.fromHistory = false;
+            recomp(r);
+          }
+        }
+        saveState();
+        applyFilters();
+      }
+      updateHistBar();
+      showBan('🗑 Corrections history cleared.');
+    });
+  }
+  updateHistBar();
+}
+
+/* Update the "Corrections Memory" bar counts */
+function updateHistBar(){
+  const total = Object.keys(loadCorrectionsHistory()).length;
+  const applied = Array.isArray(S.raw) ? S.raw.filter(r => r.fRes==='Corrected' && r.trk.fromHistory).length : 0;
+  const totalEl = document.getElementById('histTotal');
+  const appliedEl = document.getElementById('histApplied');
+  if(totalEl) totalEl.textContent = total.toLocaleString();
+  if(appliedEl) appliedEl.textContent = applied.toLocaleString();
 }
 
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bindAll);
