@@ -2240,7 +2240,6 @@ document.getElementById('logoutBtn')?.addEventListener('click', async () => {
 // Log In on landing: purge session then reveal the hub's login-gate
 (function(){
   const btn = document.getElementById('loginBtn');
-  if (!btn) return;
 
   function purgeSupabaseSession(){
     try {
@@ -2257,16 +2256,22 @@ document.getElementById('logoutBtn')?.addEventListener('click', async () => {
     } catch(_) {}
   }
 
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
+  function openLoginGate(e){
+    if (e) e.preventDefault();
     purgeSupabaseSession();
-    // Hide landing → hub's own #login-gate becomes visible naturally
     document.body.classList.remove('mode-landing');
-    // Focus the email field once visible
     setTimeout(() => {
       const emailEl = document.getElementById('loginEmail');
       if (emailEl) emailEl.focus();
     }, 100);
+  }
+
+  // Wire the "Log in" button in the nav
+  if (btn) btn.addEventListener('click', openLoginGate);
+
+  // Wire ALL tool cards on the landing to also open the login gate
+  document.querySelectorAll('.landing-view .tk').forEach(card => {
+    card.addEventListener('click', openLoginGate);
   });
 })();
 
