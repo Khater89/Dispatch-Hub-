@@ -11,6 +11,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
+  <!-- Auth (loaded but NOT auto-initialized — landing stays public until Log in is clicked) -->
+  <script src="assets/auth-config.js"></script>
+  <script defer src="assets/auth-client.js"></script>
+
   <style>
     /* ─── Palette + tokens ─────────────────────────────────────────── */
     :root{
@@ -606,7 +610,7 @@
         <img src="assets/acuative_logo.png" alt="Acuative"/>
         <span class="brand-mark">RA/VM<span class="sep">·</span>Hub</span>
       </a>
-      <a href="hub.html" class="btn btn-primary">
+      <a href="hub.html" class="btn btn-primary" id="loginBtn">
         Log in
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M5 12h14M13 5l7 7-7 7"/>
@@ -621,7 +625,8 @@
       <div>
         <div class="eyebrow">Acuative · V8 Unified · Operations</div>
         <h1>
-
+          <span class="line">Be Ready for</span>
+          <span class="line accent">what's next<span style="color:var(--orange)">!</span></span>
         </h1>
       </div>
 
@@ -799,6 +804,56 @@
       const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 8);
       window.addEventListener('scroll', onScroll, { passive: true });
       onScroll();
+    })();
+
+    // ─── Log In flow ─────────────────────────────────────────────────
+    // Clicking "Log in" ALWAYS asks for the password:
+    //   1. Signs out any existing (cached) Supabase session
+    //   2. Opens the auth overlay on this page with email + password fields
+    //   3. On successful login → redirects to hub.html
+    (function(){
+      const btn = document.getElementById('loginBtn');
+      if (!btn) return;
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        // Fallback if UFHAuth failed to load (network issue): let hub.html handle it
+        if (!window.UFHAuth) {
+          location.href = 'hub.html';
+          return;
+        }
+
+        // Show loading state on the button
+        const orig = btn.innerHTML;
+        btn.style.pointerEvents = 'none';
+        btn.style.opacity = '0.7';
+        btn.innerHTML = 'Opening…';
+
+        try {
+          // 1) Get the Supabase client
+          const client = await window.UFHAuth.ensureClient();
+
+          // 2) Force sign-out first — kills any cached session so the overlay
+          //    definitely shows and the user is prompted for their password.
+          try { await client.auth.signOut({ scope: 'local' }); } catch(_) {}
+
+          // 3) Init the auth overlay + require session (shows email/password prompt)
+          await window.UFHAuth.init({
+            appName: 'RA/VM Hub',
+            mountUserBadge: false
+          });
+          await window.UFHAuth.requireSession();
+
+          // 4) Login successful → open the hub
+          location.href = 'hub.html';
+        } catch (err) {
+          // User closed the overlay or auth error — restore the button
+          btn.innerHTML = orig;
+          btn.style.pointerEvents = '';
+          btn.style.opacity = '';
+          console.warn('Login flow not completed:', err);
+        }
+      });
     })();
 
     // Reveal on scroll (IntersectionObserver — simple + fast)
