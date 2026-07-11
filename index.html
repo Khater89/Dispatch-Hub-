@@ -807,47 +807,75 @@
     })();
 
     // ─── Log In flow ─────────────────────────────────────────────────
-    // Clicking "Log in" ALWAYS asks for the password:
-    //   1. Signs out any existing (cached) Supabase session
-    //   2. Opens the auth overlay on this page with email + password fields
-    //   3. On successful login → redirects to hub.html
+    // Every click on "Log in" forces a fresh login (asks for password),
+    // even if a Supabase session is cached in localStorage.
+    //
+    // Root cause of the earlier issue: signOut() alone doesn't fully clear
+    // in-memory client state that hydrates during initialization. So we
+    // purge storage MANUALLY *before* touching the auth client, then call
+    // signOut for good measure.
     (function(){
       const btn = document.getElementById('loginBtn');
       if (!btn) return;
+
+      function purgeSupabaseSession(){
+        try {
+          // localStorage: remove every Supabase-related key
+          const lkeys = Object.keys(localStorage);
+          for (const k of lkeys) {
+            if (k.startsWith('sb-') || k.startsWith('supabase.auth') || k.includes('-auth-token')) {
+              localStorage.removeItem(k);
+            }
+          }
+          // sessionStorage: same treatment
+          const skeys = Object.keys(sessionStorage);
+          for (const k of skeys) {
+            if (k.startsWith('sb-') || k.startsWith('supabase.auth') || k.includes('-auth-token')) {
+              sessionStorage.removeItem(k);
+            }
+          }
+        } catch(_) { /* private mode etc — ignore */ }
+      }
+
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
 
-        // Fallback if UFHAuth failed to load (network issue): let hub.html handle it
+        // 1) Manually purge all cached auth tokens BEFORE the client sees them
+        purgeSupabaseSession();
+
+        // Fallback if UFHAuth failed to load
         if (!window.UFHAuth) {
           location.href = 'hub.html';
           return;
         }
 
-        // Show loading state on the button
+        // Loading state
         const orig = btn.innerHTML;
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.7';
         btn.innerHTML = 'Opening…';
 
         try {
-          // 1) Get the Supabase client
-          const client = await window.UFHAuth.ensureClient();
+          // 2) Belt-and-suspenders: also call the Supabase signOut in case
+          //    the client already loaded in-memory before our purge above.
+          try {
+            const client = await window.UFHAuth.ensureClient();
+            try { await client.auth.signOut({ scope: 'local' }); } catch(_) {}
+          } catch(_) {}
 
-          // 2) Force sign-out first — kills any cached session so the overlay
-          //    definitely shows and the user is prompted for their password.
-          try { await client.auth.signOut({ scope: 'local' }); } catch(_) {}
+          // 3) Purge again after signOut (signOut writes back an empty token key)
+          purgeSupabaseSession();
 
-          // 3) Init the auth overlay + require session (shows email/password prompt)
+          // 4) Initialize the overlay + require a session — password prompt appears
           await window.UFHAuth.init({
             appName: 'RA/VM Hub',
             mountUserBadge: false
           });
           await window.UFHAuth.requireSession();
 
-          // 4) Login successful → open the hub
+          // 5) Login successful → open the hub
           location.href = 'hub.html';
         } catch (err) {
-          // User closed the overlay or auth error — restore the button
           btn.innerHTML = orig;
           btn.style.pointerEvents = '';
           btn.style.opacity = '';
