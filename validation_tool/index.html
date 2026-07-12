@@ -199,6 +199,13 @@
     .abtn.undo:hover{background:#fee2e2;border-color:#fca5a5;color:#b91c1c;}
     .hist-badge{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.08em;padding:2px 6px;border-radius:4px;background:rgba(6,182,212,.15);color:#0891b2;border:1px solid rgba(6,182,212,.3);text-transform:uppercase;margin-left:4px;vertical-align:middle;}
 
+    /* ── Previously corrected but has NEW errors — needs re-review ── */
+    tbody tr.re-newerr{background:linear-gradient(90deg,#fef3c7 0%,#fff5f5 100%);border-left:3px solid #f59e0b;}
+    tbody tr.re-newerr td.ticket-col{background:#fef3c7;box-shadow:1px 0 0 rgba(245,158,11,.5);}
+    tbody tr.re-newerr td.ticket-col strong{color:#b45309;}
+    .newerr-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;letter-spacing:.08em;padding:2px 6px;border-radius:4px;background:rgba(245,158,11,.18);color:#b45309;border:1px solid rgba(245,158,11,.4);text-transform:uppercase;margin-left:4px;vertical-align:middle;cursor:help;}
+    .newerr-badge::before{content:'⚠';font-size:10px;}
+
     .dcl2,.ncl{max-width:240px;white-space:normal;line-height:1.4;font-size:11px;color:var(--text2);}
     .emp{text-align:center;padding:48px;color:var(--text3);font-weight:600;}
     .mn{font-family:'JetBrains Mono',monospace;font-size:11px;}
@@ -525,6 +532,7 @@
           <option value="corrected">Corrected Only</option>
           <option value="corrected_hist">🕘 Previously Corrected (from history)</option>
           <option value="corrected_session">✓ Corrected in This Session</option>
+          <option value="new_errors_since_correction">⚠ New Errors Since Previous Correction</option>
           <option value="matched">Matched Only</option>
           <option value="exception">Exception Matches</option>
         </select>
@@ -563,7 +571,7 @@
     <!-- Corrections history summary -->
     <div id="histBar" style="margin-top:10px;padding:10px 14px;background:linear-gradient(90deg,rgba(6,182,212,.08),rgba(139,92,246,.06));border:1px solid rgba(6,182,212,.2);border-radius:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;">
       <span style="color:#0891b2;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;">🕘 Corrections Memory</span>
-      <span id="histSummary" style="color:var(--text2)">Remembering <strong id="histTotal">0</strong> corrected ticket(s) across all previous audits. <strong id="histApplied">0</strong> applied to this report.</span>
+      <span id="histSummary" style="color:var(--text2)">Remembering <strong id="histTotal">0</strong> corrected ticket(s) across all previous audits. <strong id="histApplied">0</strong> applied to this report. <span id="histExcludedWrap" style="display:none"><span style="color:#b45309;font-weight:700">⚠ <strong id="histExcluded">0</strong> excluded — new errors detected</span></span></span>
       <button class="btn" id="histClearBtn" type="button" style="padding:6px 12px;font-size:11px;background:#fff;color:#b91c1c;border:1px solid #fca5a5;font-weight:700;margin-left:auto;">🗑 Clear History…</button>
     </div>
   </div>
@@ -728,6 +736,7 @@ function addToCorrectionsHistory(ticket, data){
   hist[key] = {
     correctedAt: data.correctedAt || nowStr(),
     errorSig:    data.errorSig    || '',
+    errorFlags:  data.errorFlags  || null,  // null means old-style record (backward compat)
     lastSeenAt:  nowStr()
   };
   saveCorrectionsHistory(hist);
@@ -742,27 +751,55 @@ function clearAllCorrectionsHistory(){
   saveCorrectionsHistory({});
 }
 
-/* Apply history to S.raw: for every Error row whose ticket appears in
-   the global history, auto-mark it as Corrected with a "fromHistory" flag
-   so we can style it differently. Called after every report generation. */
+/* Apply history to S.raw: for every Error row whose ticket appears in the global
+   history, compare its CURRENT error flags to the flags saved when it was corrected.
+   - If no new errors appeared → auto-mark as Corrected (fromHistory=true)
+   - If a new error dimension appeared (that wasn't in the saved snapshot)
+     → SKIP auto-marking; expose it for user to correct again (with a hint)
+   Returns { auto, excluded } counts. */
 function applyCorrectionsHistory(){
-  if(!Array.isArray(S.raw) || !S.raw.length) return 0;
+  if(!Array.isArray(S.raw) || !S.raw.length) return {auto:0, excluded:0, excludedDetails:[]};
   const hist = loadCorrectionsHistory();
   let auto = 0;
+  let excluded = 0;
+  const excludedDetails = [];  // [{ticket, newDims}, ...]
+
   for(const r of S.raw){
     // Skip rows already marked in this session (file-specific state wins)
     if(r.trk.correctedMarked) continue;
-    // Only apply history to rows that are currently flagged as errors
+    // Only care about error rows
     if(r.vRes !== 'Error') continue;
     const rec = hist[String(r.ticket).trim()];
     if(!rec) continue;
+
+    // Compare current error state to saved snapshot
+    const current = getErrorFlags(r);
+    const newDims = newErrorDims(current, rec.errorFlags);
+
+    if(newDims.length > 0){
+      // NEW errors appeared since the correction → don't auto-mark, expose for re-correction
+      r.trk.newErrorsSinceCorrection = newDims;   // remember which dims are new
+      r.trk.previouslyCorrectedAt = rec.correctedAt;  // remember when it was corrected
+      excluded++;
+      excludedDetails.push({ ticket: r.ticket, newDims });
+      // recomp is not needed — row stays as Error with these hint flags
+      continue;
+    }
+
+    // No new errors → safe to auto-mark
     r.trk.correctedMarked = true;
     r.trk.correctedAt = rec.correctedAt || nowStr();
     r.trk.fromHistory = true;
+    r.trk.errorFlagsAtCorrection = rec.errorFlags || null;
     recomp(r);
     auto++;
   }
-  return auto;
+  return { auto, excluded, excludedDetails };
+}
+
+/* Human-readable label for a dimension */
+function dimLabel(d){
+  return { status: 'Status', date: 'Date', time: 'Time', name: 'Name' }[d] || d;
 }
 
 function recomp(row){
@@ -844,9 +881,12 @@ function handleWB(file){
         return;
       }
       popTypes();loadState();
-      const autoCount = applyCorrectionsHistory();
-      if(autoCount > 0){
-        setTimeout(()=>showBan(`🕘 Auto-marked ${autoCount} ticket(s) as corrected from previous audits.`), 300);
+      const histResult = applyCorrectionsHistory();
+      if(histResult.auto > 0 || histResult.excluded > 0){
+        const parts = [];
+        if(histResult.auto > 0)     parts.push(`🕘 Auto-marked ${histResult.auto} ticket(s) as corrected from history`);
+        if(histResult.excluded > 0) parts.push(`⚠ ${histResult.excluded} previously-corrected ticket(s) have NEW errors — available for re-correction`);
+        setTimeout(()=>showBan(parts.join(' · ')), 300);
       }
       ['dash','tbp','tbl'].forEach(id=>$(id).classList.remove('h'));
       applyFilters();
@@ -904,6 +944,7 @@ function applyFilters(){
     if(st==='corrected'&&r.fRes!=='Corrected') return false;
     if(st==='corrected_hist'&&!(r.fRes==='Corrected' && r.trk.fromHistory)) return false;
     if(st==='corrected_session'&&!(r.fRes==='Corrected' && !r.trk.fromHistory)) return false;
+    if(st==='new_errors_since_correction'&&!(Array.isArray(r.trk.newErrorsSinceCorrection) && r.trk.newErrorsSinceCorrection.length > 0)) return false;
     if(st==='matched'&&r.fRes!=='Matched') return false;
     if(st==='exception'&&!(r.excA&&r.fRes==='Matched')) return false;
     if(err==='status'&&r.sOk) return false;
@@ -1055,14 +1096,24 @@ function mc(v,ex){return(!v&&!ex)?'mm':'';}
 function renderTable(rows){
   if(!rows.length){E.tbody.innerHTML=`<tr><td colspan="23" class="emp">No rows match the current filters.</td></tr>`;return;}
   E.tbody.innerHTML=rows.map(r=>{
-    // Row class: differentiate historically-corrected (from previous audits) with a distinct cyan tint
+    // Row class: differentiate multiple states
+    // - rc:      corrected in current session
+    // - rc-hist: corrected from previous audits (auto-marked)
+    // - re-newerr: was previously corrected BUT has new errors → needs re-review
+    // - re:      unresolved error
+    // - rx:      exception match
+    // - rm:      matched
     let rc;
+    const hasNewErrs = Array.isArray(r.trk.newErrorsSinceCorrection) && r.trk.newErrorsSinceCorrection.length > 0;
     if(r.fRes==='Corrected') rc = r.trk.fromHistory ? 'rc-hist' : 'rc';
-    else if(r.fRes==='Error') rc = 're';
+    else if(r.fRes==='Error') rc = hasNewErrs ? 're-newerr' : 're';
     else if(r.excA) rc = 'rx';
     else rc = 'rm';
 
-    // Action cell: three states — Correct (unresolved error), Corrected+Undo (this session), Historically Corrected+Undo
+    // Action cell:
+    // - Corrected → disabled label + undo button
+    // - Error with NEW errors since previous correction → prominent "Re-correct" button + tooltip
+    // - Regular error → normal "Correct" button
     let act;
     if(r.fRes==='Corrected'){
       const label = r.trk.fromHistory ? '🕘 Previously' : '✓ Corrected';
@@ -1070,14 +1121,32 @@ function renderTable(rows){
       act = `<button class="abtn ${cls}" disabled title="${esc(r.trk.correctedAt||'')}">${label}</button>`
           + `<button class="abtn undo" data-uid="${esc(r.rowId)}" title="Undo correction and remove from history">↺</button>`;
     } else if(r.vRes==='Error'){
-      act = `<button class="abtn mk" data-cid="${esc(r.rowId)}">✓ Correct</button>`;
+      if(hasNewErrs){
+        const dimList = r.trk.newErrorsSinceCorrection.map(dimLabel).join(', ');
+        const prevAt = r.trk.previouslyCorrectedAt || '';
+        const tip = `Previously corrected on ${prevAt}. New error(s) since: ${dimList}. Click to re-correct.`;
+        act = `<button class="abtn mk" data-cid="${esc(r.rowId)}" title="${esc(tip)}">✓ Re-correct</button>`;
+      } else {
+        act = `<button class="abtn mk" data-cid="${esc(r.rowId)}">✓ Correct</button>`;
+      }
     } else {
       act = `<span style="color:var(--text3)">—</span>`;
     }
 
+    // Ticket cell badge:
+    // - from-history badge for auto-marked
+    // - new-errors badge for excluded (with tooltip)
+    let ticketBadge = '';
+    if(r.trk.fromHistory){
+      ticketBadge = '<span class="hist-badge">from history</span>';
+    } else if(hasNewErrs){
+      const dimList = r.trk.newErrorsSinceCorrection.map(dimLabel).join(', ');
+      ticketBadge = `<span class="newerr-badge" title="Previously corrected. New error(s) detected: ${esc(dimList)}">new ${r.trk.newErrorsSinceCorrection.length} err</span>`;
+    }
+
     return `<tr class="${rc}">
       <td class="mn" style="color:var(--text3)">${esc(r.srcRow)}</td>
-      <td class="ticket-col"><strong>${esc(r.ticket)}</strong>${r.trk.fromHistory ? '<span class="hist-badge">from history</span>' : ''}</td>
+      <td class="ticket-col"><strong>${esc(r.ticket)}</strong>${ticketBadge}</td>
       <td>${esc(r.type)}</td>
       <td style="font-size:11px;color:var(--text2)">${esc(r.company)}</td>
       <td class="mn">${esc(r.filterDate)}</td>
@@ -1103,14 +1172,37 @@ function renderTable(rows){
   }).join('');
 }
 
+/* Get current error signature of a row — used to compare against saved corrections
+   Returns 4 flags: which dimensions currently have an error. */
+function getErrorFlags(row){
+  return {
+    status: !row.sOk,
+    date:   !row.dVal,
+    time:   !row.tVal,
+    name:   !row.nVal
+  };
+}
+/* Check if any dimension is a NEW error that wasn't in the saved snapshot.
+   Returns array of dimension names that became errors after correction. */
+function newErrorDims(current, saved){
+  if (!saved) return []; // No saved flags → treat as no new errors (backward compat)
+  const dims = ['status','date','time','name'];
+  return dims.filter(d => current[d] === true && saved[d] !== true);
+}
+
 /* ═══ CORRECTION ══════════════════════════════════════════════ */
 function markCorrected(id){
   const r=S.raw.find(x=>x.rowId===id);
   if(!r||r.vRes!=='Error'||r.trk.correctedMarked) return;
   r.trk.correctedMarked=true;r.trk.correctedAt=nowStr();
   r.trk.fromHistory=false;  // marked in this session
+  r.trk.errorFlagsAtCorrection = getErrorFlags(r);  // snapshot the error state
   // Also persist to the global history so future reports auto-mark this ticket
-  addToCorrectionsHistory(r.ticket, { correctedAt: r.trk.correctedAt, errorSig: r.bDet });
+  addToCorrectionsHistory(r.ticket, {
+    correctedAt: r.trk.correctedAt,
+    errorSig: r.bDet,
+    errorFlags: r.trk.errorFlagsAtCorrection
+  });
   recomp(r);saveState();applyFilters();
 }
 
@@ -2505,7 +2597,9 @@ function mfGenerateReport(){
 
   // Auto-mark tickets that were corrected in previous audits (across ALL past reports)
   loadState();  // was missing in multi-file mode
-  const autoHistCount = applyCorrectionsHistory();
+  const histResult = applyCorrectionsHistory();
+  const autoHistCount = histResult.auto;
+  const excludedHistCount = histResult.excluded;
 
   const ts=[...new Set(out.map(r=>r.type).filter(Boolean))].sort();
   E.typeF.innerHTML='<option value="all">All Types</option>'+ts.map(t=>'<option value="'+esc(t)+'">'+esc(t)+'</option>').join('');
@@ -2521,7 +2615,7 @@ function mfGenerateReport(){
 
   const errCount = out.filter(r=>r.fRes==='Error').length;
   const excCount = out.filter(r=>r.excA).length;
-  showBan('✅ Dashboard generated ' + out.length.toLocaleString() + ' Field Nation-assigned tickets only. Excel export will include all ' + masterRows.length.toLocaleString() + ' Inside Edge ticket rows to match the original/manual source count. Hidden from dashboard: ' + skippedNonFN.toLocaleString() + ' non-Field-Nation rows. Field Nation-assigned tickets not found in FN Report but still shown: ' + skippedNoFNMatch.toLocaleString() + '. ' + errCount + ' errors, ' + excCount + ' ITD/ITR exceptions.' + (autoHistCount>0 ? '  🕘 Auto-marked ' + autoHistCount + ' ticket(s) as corrected from previous audits.' : ''));
+  showBan('✅ Dashboard generated ' + out.length.toLocaleString() + ' Field Nation-assigned tickets only. Excel export will include all ' + masterRows.length.toLocaleString() + ' Inside Edge ticket rows to match the original/manual source count. Hidden from dashboard: ' + skippedNonFN.toLocaleString() + ' non-Field-Nation rows. Field Nation-assigned tickets not found in FN Report but still shown: ' + skippedNoFNMatch.toLocaleString() + '. ' + errCount + ' errors, ' + excCount + ' ITD/ITR exceptions.' + (autoHistCount>0 ? '  🕘 Auto-marked ' + autoHistCount + ' ticket(s) as corrected from previous audits.' : '') + (excludedHistCount>0 ? '  ⚠ ' + excludedHistCount + ' previously-corrected ticket(s) have NEW errors — available for re-correction.' : ''));
   setTimeout(()=>{ const el = $('dash'); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); }, 200);
 }
 
@@ -2638,10 +2732,15 @@ function initMultiFileMode(){
 function updateHistBar(){
   const total = Object.keys(loadCorrectionsHistory()).length;
   const applied = Array.isArray(S.raw) ? S.raw.filter(r => r.fRes==='Corrected' && r.trk.fromHistory).length : 0;
+  const excluded = Array.isArray(S.raw) ? S.raw.filter(r => Array.isArray(r.trk.newErrorsSinceCorrection) && r.trk.newErrorsSinceCorrection.length > 0).length : 0;
   const totalEl = document.getElementById('histTotal');
   const appliedEl = document.getElementById('histApplied');
+  const excludedEl = document.getElementById('histExcluded');
+  const excludedWrap = document.getElementById('histExcludedWrap');
   if(totalEl) totalEl.textContent = total.toLocaleString();
   if(appliedEl) appliedEl.textContent = applied.toLocaleString();
+  if(excludedEl) excludedEl.textContent = excluded.toLocaleString();
+  if(excludedWrap) excludedWrap.style.display = excluded > 0 ? 'inline' : 'none';
 }
 
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bindAll);
