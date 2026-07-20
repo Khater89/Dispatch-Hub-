@@ -172,11 +172,12 @@ function normalizeCol(name: string) {
 function sheetToTable(sheetName: string) {
   const s = sheetName.trim().toLowerCase();
 
+  // Flex must be checked first because some Flex sheet names also contain
+  // "technician", which otherwise routes them into the ARS table.
+  if (s.includes("tier 2") || s.includes("tier2") || s.includes("flex")) return FLEX_TABLE;
+
   // ARS / main tech db
   if (s.includes("ars") || s.includes("technician") || s.includes("tech db")) return TECH_TABLE;
-
-  // Flex / Tier 2
-  if (s.includes("tier 2") || s.includes("tier2") || s.includes("flex")) return FLEX_TABLE;
 
   // Canada W2
   if (s.includes("canada") && s.includes("w2")) return CA_W2_TABLE;
@@ -547,14 +548,16 @@ Deno.serve(async (req) => {
 
       const techs = (data || []).map((x: any) => {
         const m = buildKeyMap(x);
+        const first = String(pick(m, ["first_name", "First Name", "firstname"], "")).trim();
+        const last = String(pick(m, ["last_name", "Last Name", "lastname"], "")).trim();
         return {
           tech_id: String(pick(m, ["tech_id", "Tech ID", "tech id", "id"], "")),
-          name: String(pick(m, ["name", "Name", "full_name", "Full Name", "tech_name"], "")),
+          name: String(pick(m, ["name", "Name", "full_name", "Full Name", "tech_name"], `${first} ${last}`)).trim(),
           city: String(pick(m, ["city", "City"], "")),
           province: String(pick(m, ["province", "prov", "state", "State"], "")).toUpperCase(),
-          postal: String(pick(m, ["postal", "postal_code", "Zip", "zip"], "")).replace(/\s+/g, "").toUpperCase(),
+          postal: String(pick(m, ["postal", "postal_code", "Postal Code", "Zip", "zip", "zip_code"], "")).replace(/\s+/g, "").toUpperCase(),
         };
-      });
+      }).filter((t: any) => t.postal && (t.tech_id || t.name));
 
       return new Response(JSON.stringify({ ok: true, table, techs }), {
         headers: { ...cors(origin), "Content-Type": "application/json" },

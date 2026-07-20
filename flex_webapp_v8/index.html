@@ -1004,12 +1004,24 @@
 
     function apiBase(){ return String(window.API_BASE || '').replace(/\/+$/,''); }
     async function fetchJson(url){
-      let headers = { 'Accept':'application/json' };
-      if (window.UFHAuth) {
-        await window.UFHAuth.requireSession();
-        headers = await window.UFHAuth.getAuthHeaders(headers);
+      async function authHeaders(){
+        let headers = { 'Accept':'application/json' };
+        if (window.UFHAuth) {
+          await window.UFHAuth.requireSession();
+          headers = await window.UFHAuth.getAuthHeaders(headers);
+        }
+        return headers;
       }
-      const r = await fetch(url, { headers });
+      let r = await fetch(url, { headers: await authHeaders() });
+      // A stale Supabase access token can make Flex silently fall back to an
+      // empty bundled DB. Refresh once and retry before reporting the error.
+      if (r.status === 401 && window.UFHAuth) {
+        try{
+          const client = await window.UFHAuth.ensureClient();
+          await client.auth.refreshSession();
+          r = await fetch(url, { headers: await authHeaders() });
+        }catch(_){ }
+      }
       if(!r.ok) throw new Error(`API error ${r.status}: ${await r.text()}`);
       return await r.json();
     }
@@ -1180,25 +1192,32 @@
             window.TECH_DB_ROWS = j.rows;
           }
 
+          // Cloud is the authoritative Flex source. Remove any old uploaded
+          // override so localStorage cannot shadow fresh database results.
+          TECH_ROWS_OVERRIDE = null;
+          TECH_META_OVERRIDE = null;
           try{
-            if(!(Array.isArray(TECH_ROWS_OVERRIDE) && TECH_ROWS_OVERRIDE.length)){
-              setDbPill(`DB: cloud — ${j.rows.length.toLocaleString()}`);
-            }
-          }catch(_){}
+            localStorage.removeItem(LS_ROWS_KEY);
+            localStorage.removeItem(LS_META_KEY);
+          }catch(_){ }
 
-          try{
-            rebuildTechList();
-            setStatus(`Ready — Flex techs loaded: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
-            refreshResultsAfterDbChange();
-          }catch(_){}
+          rebuildTechList();
+          if (!ALL_TIER2_TECHS.length) {
+            throw new Error(`Cloud table ${table} returned rows, but none matched the required Flex Tech schema/type.`);
+          }
+          setDbPill(`DB: cloud — ${j.rows.length.toLocaleString()}`);
+          if (downloadDbBtn) downloadDbBtn.disabled = true;
+          setStatus(`Ready — Flex techs loaded from cloud: ${ALL_TIER2_TECHS.length.toLocaleString()}`);
+          refreshResultsAfterDbChange();
 
           return;
         }
 
-        setStatus('DB: built-in');
+        throw new Error(`Cloud table ${table} returned no rows.`);
       }catch(e){
-        console.warn('Cloud techdb load failed; using built-in techdb.js', e);
-        setStatus('DB: built-in');
+        console.error('Cloud Flex Tech DB load failed', e);
+        setDbPill('DB: cloud error');
+        setStatus(`Flex Cloud DB error — ${String(e.message || e)}`, true);
       }
     })();
 

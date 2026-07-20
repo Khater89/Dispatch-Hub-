@@ -226,16 +226,28 @@
   }
 
   async function postJson(url, body){
-    let headers = { 'Content-Type': 'application/json' };
-    if (window.UFHAuth) {
-      await window.UFHAuth.requireSession();
-      headers = await window.UFHAuth.getAuthHeaders(headers);
+    async function authHeaders(){
+      let headers = { 'Content-Type': 'application/json' };
+      if (window.UFHAuth) {
+        await window.UFHAuth.requireSession();
+        headers = await window.UFHAuth.getAuthHeaders(headers);
+      }
+      return headers;
     }
-    const r = await fetch(url, {
+    const payload = JSON.stringify(body);
+    let r = await fetch(url, {
       method: 'POST',
-      headers,
-      body: JSON.stringify(body)
+      headers: await authHeaders(),
+      body: payload
     });
+
+    if (r.status === 401 && window.UFHAuth) {
+      try{
+        const client = await window.UFHAuth.ensureClient();
+        await client.auth.refreshSession();
+        r = await fetch(url, { method:'POST', headers:await authHeaders(), body:payload });
+      }catch(_){ }
+    }
 
     let j = null;
     const text = await r.text();
@@ -539,5 +551,9 @@
     }, 250);
   });
 
-  setStatus('Ready', true);
+  if (window.CA_W2_CLOUD_ERROR) {
+    setStatus(`Canada Cloud DB error — ${window.CA_W2_CLOUD_ERROR}`, false);
+  } else {
+    setStatus(`Ready — Canada W2 loaded from ${window.CA_W2_CLOUD_SOURCE || 'fallback'} (${TECHS.length})`, true);
+  }
 })();
